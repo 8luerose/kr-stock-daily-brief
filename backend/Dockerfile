@@ -1,12 +1,13 @@
-FROM gradle:8.7-jdk17 AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace
-COPY build.gradle settings.gradle ./
+COPY gradlew gradlew.bat build.gradle settings.gradle ./
+COPY gradle ./gradle
+RUN chmod +x ./gradlew
 COPY src ./src
-RUN gradle bootJar --no-daemon
+RUN ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /workspace/build/libs/*.jar /app/app.jar
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","/app/app.jar"]
-

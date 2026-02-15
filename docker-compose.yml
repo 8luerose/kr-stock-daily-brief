@@ -39,8 +39,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     environment:
-      VITE_PUBLIC_KEY: ${PUBLIC_KEY:-}
-      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8080}
+      PUBLIC_KEY: ${PUBLIC_KEY:-}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     depends_on:
