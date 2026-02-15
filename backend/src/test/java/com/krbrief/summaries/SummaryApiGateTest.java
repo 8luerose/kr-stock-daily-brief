@@ -16,7 +16,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(properties = {"app.publicKey=secret"})
 @AutoConfigureMockMvc
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class SummaryApiGateTest {
   @Container
   static final MySQLContainer<?> mysql =
@@ -44,4 +44,3 @@ class SummaryApiGateTest {
     mvc.perform(get("/api/summaries/2026-02-15?k=secret")).andExpect(status().isNotFound());
   }
 }
-

@@ -18,7 +18,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class SummaryApiTest {
   @Container
   static final MySQLContainer<?> mysql =
