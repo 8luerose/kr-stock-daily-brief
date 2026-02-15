@@ -34,5 +34,10 @@ dependencies {
 
 tasks.named('test') {
   useJUnitPlatform()
+
+  // Some environments (e.g., certain macOS FS / sandbox mounts) can cause Gradle to fail
+  // while snapshotting test outputs ("Resource deadlock avoided"). Disable state tracking
+  // for reliability; this is fine for a small internal project.
+  doNotTrackState("Avoid flaky file snapshotting in constrained environments")
 }
 

@@ -1,5 +1,7 @@
 package com.krbrief.summaries;
 
+import com.krbrief.marketdata.DailyLeaders;
+import com.krbrief.marketdata.MarketDataClient;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -10,9 +12,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class DailySummaryService {
   private final DailySummaryRepository repo;
+  private final MarketDataClient marketData;
 
-  public DailySummaryService(DailySummaryRepository repo) {
+  public DailySummaryService(DailySummaryRepository repo, MarketDataClient marketData) {
     this.repo = repo;
+    this.marketData = marketData;
   }
 
   public List<DailySummary> list(LocalDate from, LocalDate to) {
@@ -25,18 +29,35 @@ public class DailySummaryService {
 
   @Transactional
   public DailySummary generate(LocalDate date) {
-    // Deterministic placeholder generation. TODO: replace with real scraping + summarization.
     DailySummary s = repo.findById(date).orElseGet(() -> new DailySummary(date));
-    s.setTopGainer("TOP_GAINER_" + date);
-    s.setTopLoser("TOP_LOSER_" + date);
+
+    DailyLeaders leaders =
+        marketData
+            .getDailyLeaders(date)
+            .orElseGet(
+                () ->
+                    new DailyLeaders(
+                        "TOP_GAINER_" + date,
+                        "TOP_LOSER_" + date,
+                        "fallback",
+                        "marketdata unavailable"));
+
+    s.setTopGainer(leaders.topGainer());
+    s.setTopLoser(leaders.topLoser());
+
+    // TODO: implement real mention tracking + picks.
     s.setMostMentioned("MOST_MENTIONED_" + date);
     s.setKospiPick("KOSPI_PICK_" + date);
     s.setKosdaqPick("KOSDAQ_PICK_" + date);
+
     s.setRawNotes(
-        "Placeholder notes for "
-            + date
-            + ".\n"
-            + "TODO: implement real data fetch (gainers/losers/mentions) + brief generation.");
+        "Source: "
+            + leaders.source()
+            + "\n"
+            + (leaders.notes() == null ? "" : leaders.notes() + "\n")
+            + "\n"
+            + "TODO: implement real data fetch (mentions/picks) + brief generation.");
+
     return repo.save(s);
   }
 
