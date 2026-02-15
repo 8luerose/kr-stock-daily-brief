@@ -1,6 +1,6 @@
 package com.krbrief.summaries;
 
-import com.krbrief.marketdata.DailyLeaders;
+import com.krbrief.marketdata.DailyMarketBrief;
 import com.krbrief.marketdata.MarketDataClient;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
@@ -31,40 +31,48 @@ public class DailySummaryService {
   public DailySummary generate(LocalDate date) {
     DailySummary s = repo.findById(date).orElseGet(() -> new DailySummary(date));
 
-    DailyLeaders leaders =
+    DailyMarketBrief brief =
         marketData
-            .getDailyLeaders(date)
+            .getDailyBrief(date)
             .orElseGet(
                 () ->
-                    new DailyLeaders(
+                    new DailyMarketBrief(
                         "TOP_GAINER_" + date,
                         "TOP_LOSER_" + date,
+                        "MOST_MENTIONED_" + date,
+                        "KOSPI_PICK_" + date,
+                        "KOSDAQ_PICK_" + date,
                         "fallback",
                         "marketdata unavailable"));
 
     // If provider returns '-' (best-effort), fall back to deterministic placeholders.
-    String topGainer = leaders.topGainer() == null || leaders.topGainer().isBlank() || "-".equals(leaders.topGainer())
-        ? "TOP_GAINER_" + date
-        : leaders.topGainer();
-    String topLoser = leaders.topLoser() == null || leaders.topLoser().isBlank() || "-".equals(leaders.topLoser())
-        ? "TOP_LOSER_" + date
-        : leaders.topLoser();
+    String topGainer =
+        brief.topGainer() == null || brief.topGainer().isBlank() || "-".equals(brief.topGainer())
+            ? "TOP_GAINER_" + date
+            : brief.topGainer();
+    String topLoser =
+        brief.topLoser() == null || brief.topLoser().isBlank() || "-".equals(brief.topLoser())
+            ? "TOP_LOSER_" + date
+            : brief.topLoser();
 
     s.setTopGainer(topGainer);
     s.setTopLoser(topLoser);
-
-    // TODO: implement real mention tracking + picks.
-    s.setMostMentioned("MOST_MENTIONED_" + date);
-    s.setKospiPick("KOSPI_PICK_" + date);
-    s.setKosdaqPick("KOSDAQ_PICK_" + date);
+    s.setMostMentioned(
+        brief.mostMentioned() == null || brief.mostMentioned().isBlank()
+            ? "MOST_MENTIONED_" + date
+            : brief.mostMentioned());
+    s.setKospiPick(
+        brief.kospiPick() == null || brief.kospiPick().isBlank() ? "KOSPI_PICK_" + date : brief.kospiPick());
+    s.setKosdaqPick(
+        brief.kosdaqPick() == null || brief.kosdaqPick().isBlank()
+            ? "KOSDAQ_PICK_" + date
+            : brief.kosdaqPick());
 
     s.setRawNotes(
         "Source: "
-            + leaders.source()
+            + brief.source()
             + "\n"
-            + (leaders.notes() == null ? "" : leaders.notes() + "\n")
-            + "\n"
-            + "TODO: implement real data fetch (mentions/picks) + brief generation.");
+            + (brief.notes() == null ? "" : brief.notes() + "\n"));
 
     return repo.save(s);
   }

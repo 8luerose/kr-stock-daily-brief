@@ -38,7 +38,7 @@ public class KrxMarketDataClient implements MarketDataClient {
   }
 
   @Override
-  public Optional<DailyLeaders> getDailyLeaders(LocalDate date) {
+  public Optional<DailyMarketBrief> getDailyBrief(LocalDate date) {
     try {
       // NOTE: For MVP we fetch the "전종목 등락률" style dataset and pick max/min.
       // The exact bld + parameters may need tweaking depending on KRX.
@@ -65,7 +65,10 @@ public class KrxMarketDataClient implements MarketDataClient {
 
       if (otp == null || otp.isBlank()) {
         return Optional.of(
-            new DailyLeaders(
+            new DailyMarketBrief(
+                "-",
+                "-",
+                "-",
                 "-",
                 "-",
                 "krx",
@@ -87,7 +90,10 @@ public class KrxMarketDataClient implements MarketDataClient {
 
       if (csv == null || csv.isBlank()) {
         return Optional.of(
-            new DailyLeaders(
+            new DailyMarketBrief(
+                "-",
+                "-",
+                "-",
                 "-",
                 "-",
                 "krx",
@@ -98,14 +104,20 @@ public class KrxMarketDataClient implements MarketDataClient {
       // For now we return placeholders but keep the real CSV snippet in notes for debugging.
       String firstLine = csv.lines().findFirst().orElse("");
       return Optional.of(
-          new DailyLeaders(
+          new DailyMarketBrief(
+              "-",
+              "-",
+              "-",
               "-",
               "-",
               "krx(otp-download)",
               "Fetched CSV (not parsed yet). Header: " + firstLine));
     } catch (Exception e) {
       return Optional.of(
-          new DailyLeaders(
+          new DailyMarketBrief(
+              "-",
+              "-",
+              "-",
               "-",
               "-",
               "krx_error",

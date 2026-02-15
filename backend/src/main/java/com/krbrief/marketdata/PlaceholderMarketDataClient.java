@@ -9,13 +9,16 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "marketdata.provider", havingValue = "placeholder", matchIfMissing = true)
 public class PlaceholderMarketDataClient implements MarketDataClient {
   @Override
-  public Optional<DailyLeaders> getDailyLeaders(LocalDate date) {
+  public Optional<DailyMarketBrief> getDailyBrief(LocalDate date) {
     return Optional.of(
-        new DailyLeaders(
+        new DailyMarketBrief(
             "TOP_GAINER_" + date,
             "TOP_LOSER_" + date,
+            "MOST_MENTIONED_" + date,
+            "KOSPI_PICK_" + date,
+            "KOSDAQ_PICK_" + date,
             "placeholder",
-            "TODO: implement real data fetch (gainers/losers)"
+            "TODO: implement real data fetch (gainers/losers/most mentioned/picks)"
         )
     );
   }

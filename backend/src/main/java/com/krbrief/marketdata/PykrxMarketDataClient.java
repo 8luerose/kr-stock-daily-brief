@@ -18,7 +18,7 @@ public class PykrxMarketDataClient implements MarketDataClient {
   }
 
   @Override
-  public Optional<DailyLeaders> getDailyLeaders(LocalDate date) {
+  public Optional<DailyMarketBrief> getDailyBrief(LocalDate date) {
     try {
       PykrxLeadersResponse res =
           http
@@ -29,12 +29,23 @@ public class PykrxMarketDataClient implements MarketDataClient {
               .body(PykrxLeadersResponse.class);
 
       if (res == null) return Optional.empty();
-      return Optional.of(new DailyLeaders(res.topGainer(), res.topLoser(), res.source(), res.notes()));
+      return Optional.of(
+          new DailyMarketBrief(
+              res.topGainer(),
+              res.topLoser(),
+              "-",
+              "-",
+              "-",
+              res.source(),
+              res.notes()));
     } catch (Exception e) {
       return Optional.of(
-          new DailyLeaders(
+          new DailyMarketBrief(
               "TOP_GAINER_" + date,
               "TOP_LOSER_" + date,
+              "-",
+              "-",
+              "-",
               "pykrx_error",
               "Failed to fetch leaders from marketdata service: " + e.getMessage()));
     }

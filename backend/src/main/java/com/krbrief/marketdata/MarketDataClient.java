@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public interface MarketDataClient {
   /**
-   * @return best-effort top gainer/loser symbols for the given market date.
+   * @return best-effort market brief for the given market date.
    */
-  Optional<DailyLeaders> getDailyLeaders(LocalDate date);
+  Optional<DailyMarketBrief> getDailyBrief(LocalDate date);
 }
