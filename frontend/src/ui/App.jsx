@@ -54,7 +54,13 @@ export default function App() {
 
   const [month, setMonth] = useState(() => new Date());
   const [selected, setSelected] = useState(() => isoDate(new Date()));
+
+  // Current day detail
   const [summary, setSummary] = useState(null);
+
+  // Month overview (used to mark days with existing summaries)
+  const [monthHasSummary, setMonthHasSummary] = useState(() => new Set());
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -94,6 +100,27 @@ export default function App() {
     }
   }
 
+  async function loadMonthOverview(monthDate) {
+    // If gated and no key, don't spam the API.
+    if (cfg.gateEnabled && !k) {
+      setMonthHasSummary(new Set());
+      return;
+    }
+
+    const from = isoDate(startOfMonth(monthDate));
+    const to = isoDate(endOfMonth(monthDate));
+
+    try {
+      const list = await apiFetch(`/api/summaries?from=${from}&to=${to}`);
+      const set = new Set(list.map((x) => x.date));
+      setMonthHasSummary(set);
+    } catch (e) {
+      // Month overview is non-critical; show error only if we have nothing else.
+      console.warn("Failed to load month overview", e);
+      setMonthHasSummary(new Set());
+    }
+  }
+
   async function generate(dateStr) {
     setLoading(true);
     setError("");
@@ -111,6 +138,11 @@ export default function App() {
     load(selected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
+
+  useEffect(() => {
+    loadMonthOverview(month);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [month]);
 
   const todayStr = useMemo(() => isoDate(new Date()), []);
 
@@ -156,6 +188,7 @@ export default function App() {
               const inMonth = d.getMonth() === month.getMonth();
               const isSelected = dStr === selected;
               const isToday = dStr === todayStr;
+              const hasSummary = monthHasSummary.has(dStr);
               return (
                 <button
                   key={dStr}
@@ -163,11 +196,13 @@ export default function App() {
                     "day",
                     inMonth ? "inMonth" : "outMonth",
                     isSelected ? "selected" : "",
-                    isToday ? "today" : ""
+                    isToday ? "today" : "",
+                    hasSummary ? "hasSummary" : ""
                   ].join(" ")}
                   onClick={() => setSelected(dStr)}
                 >
                   <div className="dayNum">{d.getDate()}</div>
+                  {hasSummary ? <div className="dot" title="Summary exists" /> : null}
                 </button>
               );
             })}
