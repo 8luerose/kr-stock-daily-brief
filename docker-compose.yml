@@ -17,6 +17,7 @@ services:
       retries: 30
 
   marketdata:
+    profiles: ["marketdata"]
     build:
       context: ./marketdata-python
       dockerfile: Dockerfile
@@ -44,8 +45,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      marketdata:
-        condition: service_started
 
   frontend:
     build:
