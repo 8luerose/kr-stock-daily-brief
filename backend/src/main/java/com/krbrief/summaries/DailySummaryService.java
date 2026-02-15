@@ -42,8 +42,16 @@ public class DailySummaryService {
                         "fallback",
                         "marketdata unavailable"));
 
-    s.setTopGainer(leaders.topGainer());
-    s.setTopLoser(leaders.topLoser());
+    // If provider returns '-' (best-effort), fall back to deterministic placeholders.
+    String topGainer = leaders.topGainer() == null || leaders.topGainer().isBlank() || "-".equals(leaders.topGainer())
+        ? "TOP_GAINER_" + date
+        : leaders.topGainer();
+    String topLoser = leaders.topLoser() == null || leaders.topLoser().isBlank() || "-".equals(leaders.topLoser())
+        ? "TOP_LOSER_" + date
+        : leaders.topLoser();
+
+    s.setTopGainer(topGainer);
+    s.setTopLoser(topLoser);
 
     // TODO: implement real mention tracking + picks.
     s.setMostMentioned("MOST_MENTIONED_" + date);
