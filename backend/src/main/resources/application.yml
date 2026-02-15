@@ -27,3 +27,7 @@ management:
 app:
   publicKey: ${PUBLIC_KEY:}
 
+marketdata:
+  provider: ${MARKETDATA_PROVIDER:placeholder}
+  baseUrl: ${MARKETDATA_BASE_URL:http://marketdata:8000}
+

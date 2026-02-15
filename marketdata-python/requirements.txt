@@ -1,0 +1,4 @@
+fastapi==0.115.8
+uvicorn[standard]==0.30.6
+pykrx==1.0.48
+pandas==2.2.3

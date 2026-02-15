@@ -16,6 +16,15 @@ services:
       timeout: 5s
       retries: 30
 
+  marketdata:
+    build:
+      context: ./marketdata-python
+      dockerfile: Dockerfile
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "${MARKETDATA_PORT:-8000}:8000"
+
   backend:
     build:
       context: ./backend
@@ -28,11 +37,15 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-app}
       PUBLIC_KEY: ${PUBLIC_KEY:-}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
+      MARKETDATA_PROVIDER: ${MARKETDATA_PROVIDER:-placeholder}
+      MARKETDATA_BASE_URL: ${MARKETDATA_BASE_URL:-http://marketdata:8000}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       mysql:
         condition: service_healthy
+      marketdata:
+        condition: service_started
 
   frontend:
     build:
