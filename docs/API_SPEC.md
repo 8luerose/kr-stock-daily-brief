@@ -66,7 +66,23 @@
 
 ---
 
-## 2) 단일 날짜 조회
+## 2) 최신 요약 조회
+
+### `GET /api/summaries/latest`
+
+가장 최근(최대 날짜) 요약 1건 조회.
+
+#### 성공 응답 (200)
+
+`SummaryDto` 1건 반환.
+
+#### 실패 응답
+
+- 404 Not Found: 저장된 요약이 없음
+
+---
+
+## 3) 단일 날짜 조회
 
 ### `GET /api/summaries/{date}`
 
@@ -86,7 +102,7 @@
 
 ---
 
-## 3) 특정 날짜 생성/갱신
+## 4) 특정 날짜 생성/갱신
 
 ### `POST /api/summaries/{date}/generate`
 
@@ -102,7 +118,7 @@
 
 ---
 
-## 4) 오늘(서울 기준) 생성/갱신
+## 5) 오늘(서울 기준) 생성/갱신
 
 ### `POST /api/summaries/generate/today`
 

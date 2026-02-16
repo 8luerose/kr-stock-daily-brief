@@ -35,6 +35,12 @@ public class SummaryController {
     return service.list(from, to).stream().map(SummaryDto::from).toList();
   }
 
+  @GetMapping("/latest")
+  public ResponseEntity<SummaryDto> latest() {
+    return service.latest().map(s -> ResponseEntity.ok(SummaryDto.from(s)))
+        .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
   @GetMapping("/{date}")
   public ResponseEntity<SummaryDto> get(
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {

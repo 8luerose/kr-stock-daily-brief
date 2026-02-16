@@ -48,6 +48,7 @@ make generate-today
 ## API
 
 - `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- `GET /api/summaries/latest`
 - `GET /api/summaries/{date}`
 - `POST /api/summaries/{date}/generate`
 - `POST /api/summaries/generate/today`
@@ -84,6 +85,7 @@ curl "http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29&k=secret
 - `make logs`: tail logs
 - `make generate-today`: generate today summary (Asia/Seoul date)
 - `make check-month MONTH=YYYY-MM`: query monthly summaries quickly
+- `make latest`: get latest saved summary
 - `make backend-test`: run backend API tests
 
 If you use Colima on macOS, you may need:

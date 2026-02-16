@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test backend-e2e health generate-today check-month
+.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test backend-e2e health generate-today check-month latest
 
 DOCKER_SOCK ?= /var/run/docker.sock
 
@@ -40,6 +40,9 @@ check-month:
 	@FROM="$(MONTH)-01"; \
 	TO="$$(python3 -c 'import sys,datetime as d,calendar;y,m=map(int,sys.argv[1].split("-"));print(d.date(y,m,calendar.monthrange(y,m)[1]).isoformat())' "$(MONTH)")"; \
 	curl -sS "http://localhost:$${BACKEND_PORT:-8080}/api/summaries?from=$${FROM}&to=$${TO}"
+
+latest:
+	curl -sS "http://localhost:$${BACKEND_PORT:-8080}/api/summaries/latest"
 
 # Runs API tests against a disposable MySQL Testcontainer (inside the Gradle container).
 backend-test:

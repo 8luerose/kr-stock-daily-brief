@@ -8,5 +8,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface DailySummaryRepository extends JpaRepository<DailySummary, LocalDate> {
   List<DailySummary> findAllByDateBetweenOrderByDateAsc(LocalDate from, LocalDate to);
+
+  java.util.Optional<DailySummary> findTopByOrderByDateDesc();
 }
 

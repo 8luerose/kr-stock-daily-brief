@@ -137,6 +137,23 @@ export default function App() {
     }
   }
 
+  async function jumpToLatest() {
+    setLoading(true);
+    setError("");
+    try {
+      const s = await apiFetch("/api/summaries/latest");
+      setSummary(s);
+      setSelected(s.date);
+      const [y, m, d] = s.date.split("-").map(Number);
+      setMonth(new Date(y, m - 1, d));
+    } catch (e) {
+      if (String(e.message).includes("404")) setError("아직 생성된 요약이 없습니다.");
+      else setError(e.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     load(selected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,6 +171,9 @@ export default function App() {
       <header className="top">
         <div className="brand">KR Stock Daily Brief</div>
         <div className="actions">
+          <button className="btn ghost" onClick={jumpToLatest} disabled={loading}>
+            최신 요약 이동
+          </button>
           <button
             className="btn"
             onClick={() => generate(todayStr)}
