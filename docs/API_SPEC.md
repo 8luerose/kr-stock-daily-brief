@@ -47,7 +47,38 @@
 
 ---
 
-## 2) 월/기간 조회
+## 2) 기간 인사이트 조회
+
+### `GET /api/summaries/insights?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+기간 내 요약 누적 현황/최다 언급 종목 집계.
+
+#### Query Parameters
+
+- `from` (required): 시작일
+- `to` (required): 종료일
+
+#### 성공 응답 (200)
+
+```json
+{
+  "from": "2026-02-01",
+  "to": "2026-02-29",
+  "totalDays": 29,
+  "generatedDays": 12,
+  "missingDays": 17,
+  "topMostMentioned": "SK증권",
+  "topMostMentionedCount": 4
+}
+```
+
+#### 실패 응답
+
+- 400 Bad Request: `from > to`
+
+---
+
+## 3) 월/기간 조회
 
 ### `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
 
@@ -84,7 +115,7 @@
 
 ---
 
-## 3) 최신 요약 조회
+## 4) 최신 요약 조회
 
 ### `GET /api/summaries/latest`
 
@@ -100,7 +131,7 @@
 
 ---
 
-## 4) 단일 날짜 조회
+## 5) 단일 날짜 조회
 
 ### `GET /api/summaries/{date}`
 
@@ -120,7 +151,7 @@
 
 ---
 
-## 5) 특정 날짜 생성/갱신
+## 6) 특정 날짜 생성/갱신
 
 ### `POST /api/summaries/{date}/generate`
 
@@ -136,7 +167,7 @@
 
 ---
 
-## 6) 오늘(서울 기준) 생성/갱신
+## 7) 오늘(서울 기준) 생성/갱신
 
 ### `POST /api/summaries/generate/today`
 

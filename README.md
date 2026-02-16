@@ -48,6 +48,7 @@ make generate-today
 ## API
 
 - `GET /api/summaries/stats`
+- `GET /api/summaries/insights?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /api/summaries/latest`
 - `GET /api/summaries/{date}`

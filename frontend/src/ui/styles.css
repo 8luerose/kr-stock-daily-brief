@@ -58,6 +58,10 @@ body {
   margin-bottom: 14px;
 }
 
+.overview.insights {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .overviewItem {
   border: 1px solid var(--line);
   border-radius: 10px;

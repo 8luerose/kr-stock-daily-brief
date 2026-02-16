@@ -35,6 +35,16 @@ public class SummaryController {
     return service.list(from, to).stream().map(SummaryDto::from).toList();
   }
 
+  @GetMapping("/insights")
+  public SummaryInsightsDto insights(
+      @RequestParam("from") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam("to") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    if (from.isAfter(to)) {
+      throw new ResponseStatusException(BAD_REQUEST, "from_must_be_on_or_before_to");
+    }
+    return service.insights(from, to);
+  }
+
   @GetMapping("/latest")
   public ResponseEntity<SummaryDto> latest() {
     return service.latest().map(s -> ResponseEntity.ok(SummaryDto.from(s)))

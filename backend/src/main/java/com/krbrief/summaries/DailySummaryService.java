@@ -5,7 +5,10 @@ import com.krbrief.marketdata.MarketDataClient;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +40,31 @@ public class DailySummaryService {
         repo.count(),
         latest.map(DailySummary::getDate).orElse(null),
         latest.map(DailySummary::getUpdatedAt).orElse(null));
+  }
+
+  public SummaryInsightsDto insights(LocalDate from, LocalDate to) {
+    List<DailySummary> rows = repo.findAllByDateBetweenOrderByDateAsc(from, to);
+    long totalDays = ChronoUnit.DAYS.between(from, to) + 1;
+    long generatedDays = rows.size();
+    long missingDays = Math.max(0, totalDays - generatedDays);
+
+    Map<String, Long> mentionCounts = new HashMap<>();
+    for (DailySummary row : rows) {
+      String m = row.getMostMentioned();
+      if (m == null || m.isBlank()) continue;
+      mentionCounts.put(m, mentionCounts.getOrDefault(m, 0L) + 1);
+    }
+
+    String top = null;
+    long topCount = 0L;
+    for (Map.Entry<String, Long> e : mentionCounts.entrySet()) {
+      if (e.getValue() > topCount) {
+        top = e.getKey();
+        topCount = e.getValue();
+      }
+    }
+
+    return new SummaryInsightsDto(from, to, totalDays, generatedDays, missingDays, top, topCount);
   }
 
   @Transactional

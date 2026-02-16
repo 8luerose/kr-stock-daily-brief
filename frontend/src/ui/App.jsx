@@ -60,6 +60,7 @@ export default function App() {
 
   // Dashboard stats
   const [stats, setStats] = useState(null);
+  const [insights, setInsights] = useState(null);
 
   // Month overview (used to mark days with existing summaries)
   const [monthHasSummary, setMonthHasSummary] = useState(() => new Set());
@@ -119,6 +120,24 @@ export default function App() {
     }
   }
 
+  async function loadInsights(monthDate) {
+    if (cfg.gateEnabled && !k) {
+      setInsights(null);
+      return;
+    }
+
+    const from = isoDate(startOfMonth(monthDate));
+    const to = isoDate(endOfMonth(monthDate));
+
+    try {
+      const data = await apiFetch(`/api/summaries/insights?from=${from}&to=${to}`);
+      setInsights(data);
+    } catch (e) {
+      console.warn("Failed to load insights", e);
+      setInsights(null);
+    }
+  }
+
   async function loadMonthOverview(monthDate) {
     // If gated and no key, don't spam the API.
     if (cfg.gateEnabled && !k) {
@@ -150,6 +169,7 @@ export default function App() {
       // Refresh month overview so the dot appears immediately.
       await loadMonthOverview(month);
       await loadStats();
+      await loadInsights(month);
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -182,6 +202,7 @@ export default function App() {
 
   useEffect(() => {
     loadMonthOverview(month);
+    loadInsights(month);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month]);
 
@@ -223,6 +244,29 @@ export default function App() {
         <div className="overviewItem">
           <span className="label">최근 갱신</span>
           <strong>{stats?.latestUpdatedAt ?? "-"}</strong>
+        </div>
+      </section>
+
+      <section className="card overview insights">
+        <div className="overviewItem">
+          <span className="label">월 총 일수</span>
+          <strong>{insights?.totalDays ?? "-"}</strong>
+        </div>
+        <div className="overviewItem">
+          <span className="label">생성 완료 일수</span>
+          <strong>{insights?.generatedDays ?? "-"}</strong>
+        </div>
+        <div className="overviewItem">
+          <span className="label">미생성 일수</span>
+          <strong>{insights?.missingDays ?? "-"}</strong>
+        </div>
+        <div className="overviewItem">
+          <span className="label">월 최다 언급</span>
+          <strong>
+            {insights?.topMostMentioned
+              ? `${insights.topMostMentioned} (${insights.topMostMentionedCount}회)`
+              : "-"}
+          </strong>
         </div>
       </section>
 
