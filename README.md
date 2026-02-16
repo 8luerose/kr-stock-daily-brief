@@ -94,6 +94,7 @@ make backend-test DOCKER_SOCK="$HOME/.colima/default/docker.sock"
 
 ## Documentation
 
+- PRD: `docs/PRD.md`
 - API 명세: `docs/API_SPEC.md`
 - ERD: `docs/ERD.md`
 - DB 테이블 명세: `docs/DB_TABLES.md`
