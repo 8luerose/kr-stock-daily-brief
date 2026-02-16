@@ -127,6 +127,9 @@ export default function App() {
     try {
       const s = await apiFetch(`/api/summaries/${dateStr}/generate`, { method: "POST" });
       setSummary(s);
+
+      // Refresh month overview so the dot appears immediately.
+      await loadMonthOverview(month);
     } catch (e) {
       setError(e.message || String(e));
     } finally {
