@@ -9,6 +9,18 @@ MVP: stores and serves daily summaries from MySQL, with a small UI to browse a m
 - DB: MySQL
 - Orchestration: Docker Compose + Makefile wrappers
 
+## Market Data (v1)
+
+Default `MARKETDATA_PROVIDER` is **naver**.
+
+- Source: Naver Finance HTML pages (best-effort crawling)
+- v1 rules:
+  - Top gainer/loser: from Naver "상승/하락" ranking pages
+  - mostMentioned: approximated as highest volume among those ranking pages
+  - KOSPI/KOSDAQ pick: highest volume among KOSPI/KOSDAQ rising lists
+
+Note: this is internal-use and may break if Naver changes their HTML.
+
 ## Quickstart (Docker)
 
 1. Start everything:
@@ -23,6 +35,12 @@ make health
 - UI: `http://localhost:5173`
 - API: `http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29`
 
+3. Generate a day manually (example):
+
+```bash
+curl -X POST "http://localhost:8080/api/summaries/2026-02-16/generate"
+```
+
 ## API
 
 - `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
@@ -36,7 +54,8 @@ Notes:
 
 ## Scheduler
 
-Backend generates a summary automatically on weekdays at **15:40 Asia/Seoul**.
+A cron job is configured to auto-generate a summary on weekdays at **15:40 Asia/Seoul**.
+(If you don't see auto-generation, ensure the OpenClaw cron is enabled and the backend is running.)
 
 ## Optional Gate (PUBLIC_KEY)
 
