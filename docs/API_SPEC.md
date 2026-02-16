@@ -148,6 +148,18 @@
 #### 실패 응답
 
 - 404 Not Found: 해당 날짜 데이터 없음
+- 400 Bad Request: 날짜 형식/값이 잘못됨
+
+예시:
+
+```json
+{
+  "error": "invalid_date",
+  "message": "date must be YYYY-MM-DD and a real calendar date",
+  "param": "date",
+  "value": "2026-02-29"
+}
+```
 
 ---
 
