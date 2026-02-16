@@ -58,6 +58,9 @@ export default function App() {
   // Current day detail
   const [summary, setSummary] = useState(null);
 
+  // Dashboard stats
+  const [stats, setStats] = useState(null);
+
   // Month overview (used to mark days with existing summaries)
   const [monthHasSummary, setMonthHasSummary] = useState(() => new Set());
 
@@ -100,6 +103,22 @@ export default function App() {
     }
   }
 
+  async function loadStats() {
+    // If gated and no key, skip stats call.
+    if (cfg.gateEnabled && !k) {
+      setStats(null);
+      return;
+    }
+
+    try {
+      const s = await apiFetch("/api/summaries/stats");
+      setStats(s);
+    } catch (e) {
+      console.warn("Failed to load stats", e);
+      setStats(null);
+    }
+  }
+
   async function loadMonthOverview(monthDate) {
     // If gated and no key, don't spam the API.
     if (cfg.gateEnabled && !k) {
@@ -130,6 +149,7 @@ export default function App() {
 
       // Refresh month overview so the dot appears immediately.
       await loadMonthOverview(month);
+      await loadStats();
     } catch (e) {
       setError(e.message || String(e));
     } finally {
@@ -143,6 +163,7 @@ export default function App() {
     try {
       const s = await apiFetch("/api/summaries/latest");
       setSummary(s);
+      await loadStats();
       setSelected(s.date);
       const [y, m, d] = s.date.split("-").map(Number);
       setMonth(new Date(y, m - 1, d));
@@ -164,6 +185,11 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month]);
 
+  useEffect(() => {
+    loadStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const todayStr = useMemo(() => isoDate(new Date()), []);
 
   return (
@@ -184,6 +210,21 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <section className="card overview">
+        <div className="overviewItem">
+          <span className="label">누적 요약</span>
+          <strong>{stats?.totalCount ?? "-"}</strong>
+        </div>
+        <div className="overviewItem">
+          <span className="label">최신 날짜</span>
+          <strong>{stats?.latestDate ?? "-"}</strong>
+        </div>
+        <div className="overviewItem">
+          <span className="label">최근 갱신</span>
+          <strong>{stats?.latestUpdatedAt ?? "-"}</strong>
+        </div>
+      </section>
 
       <main className="main">
         <section className="card calendar">

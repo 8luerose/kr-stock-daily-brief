@@ -31,6 +31,14 @@ public class DailySummaryService {
     return repo.findTopByOrderByDateDesc();
   }
 
+  public SummaryStatsDto stats() {
+    Optional<DailySummary> latest = repo.findTopByOrderByDateDesc();
+    return new SummaryStatsDto(
+        repo.count(),
+        latest.map(DailySummary::getDate).orElse(null),
+        latest.map(DailySummary::getUpdatedAt).orElse(null));
+  }
+
   @Transactional
   public DailySummary generate(LocalDate date) {
     DailySummary s = repo.findById(date).orElseGet(() -> new DailySummary(date));

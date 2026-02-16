@@ -29,7 +29,25 @@
 
 ---
 
-## 1) 월/기간 조회
+## 1) 통계 조회
+
+### `GET /api/summaries/stats`
+
+요약 누적 개수와 최신 요약 메타 정보 조회.
+
+#### 성공 응답 (200)
+
+```json
+{
+  "totalCount": 12,
+  "latestDate": "2026-02-16",
+  "latestUpdatedAt": "2026-02-16T08:11:13.000Z"
+}
+```
+
+---
+
+## 2) 월/기간 조회
 
 ### `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
 
@@ -66,7 +84,7 @@
 
 ---
 
-## 2) 최신 요약 조회
+## 3) 최신 요약 조회
 
 ### `GET /api/summaries/latest`
 
@@ -82,7 +100,7 @@
 
 ---
 
-## 3) 단일 날짜 조회
+## 4) 단일 날짜 조회
 
 ### `GET /api/summaries/{date}`
 
@@ -102,7 +120,7 @@
 
 ---
 
-## 4) 특정 날짜 생성/갱신
+## 5) 특정 날짜 생성/갱신
 
 ### `POST /api/summaries/{date}/generate`
 
@@ -118,7 +136,7 @@
 
 ---
 
-## 5) 오늘(서울 기준) 생성/갱신
+## 6) 오늘(서울 기준) 생성/갱신
 
 ### `POST /api/summaries/generate/today`
 

@@ -41,14 +41,19 @@ public class SummaryController {
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
-  @GetMapping("/{date}")
+  @GetMapping("/stats")
+  public SummaryStatsDto stats() {
+    return service.stats();
+  }
+
+  @GetMapping("/{date:\\d{4}-\\d{2}-\\d{2}}")
   public ResponseEntity<SummaryDto> get(
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
     return service.get(date).map(s -> ResponseEntity.ok(SummaryDto.from(s)))
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
-  @PostMapping("/{date}/generate")
+  @PostMapping("/{date:\\d{4}-\\d{2}-\\d{2}}/generate")
   public SummaryDto generate(
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
     return SummaryDto.from(service.generate(date));
