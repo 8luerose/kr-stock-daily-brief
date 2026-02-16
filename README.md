@@ -39,6 +39,10 @@ make health
 
 ```bash
 curl -X POST "http://localhost:8080/api/summaries/2026-02-16/generate"
+# or
+curl -X POST "http://localhost:8080/api/summaries/generate/today"
+# or
+make generate-today
 ```
 
 ## API
@@ -46,6 +50,7 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-16/generate"
 - `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /api/summaries/{date}`
 - `POST /api/summaries/{date}/generate`
+- `POST /api/summaries/generate/today`
 
 Notes:
 - Dates are ISO `YYYY-MM-DD`.
@@ -77,6 +82,8 @@ curl "http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29&k=secret
 - `make up`: build + start services
 - `make down`: stop services
 - `make logs`: tail logs
+- `make generate-today`: generate today summary (Asia/Seoul date)
+- `make check-month MONTH=YYYY-MM`: query monthly summaries quickly
 - `make backend-test`: run backend API tests
 
 If you use Colima on macOS, you may need:

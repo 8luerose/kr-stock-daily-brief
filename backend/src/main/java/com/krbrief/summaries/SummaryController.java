@@ -47,4 +47,9 @@ public class SummaryController {
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
     return SummaryDto.from(service.generate(date));
   }
+
+  @PostMapping("/generate/today")
+  public SummaryDto generateToday() {
+    return SummaryDto.from(service.generate(service.todaySeoul()));
+  }
 }
