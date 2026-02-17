@@ -4,6 +4,15 @@ function valueOrDash(v) {
   return v && String(v).trim() ? v : "-";
 }
 
+function LinkOrDash({ href, label }) {
+  if (!href) return <span>-</span>;
+  return (
+    <a href={href} target="_blank" rel="noreferrer">
+      {label}
+    </a>
+  );
+}
+
 function isoDate(d) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -431,6 +440,33 @@ export default function App() {
                   {showNotes ? "rawNotes 접기" : "rawNotes 보기"}
                 </button>
                 {showNotes ? <pre className="content">{valueOrDash(summary.rawNotes)}</pre> : null}
+              </div>
+
+              <div className="notesWrap">
+                <h4>검증 링크</h4>
+                <ul className="verifyLinks">
+                  <li>
+                    KRX 데이터 포털: <LinkOrDash href={summary.verification?.krxDataPortal} label="열기" />
+                  </li>
+                  <li>
+                    pykrx 저장소: <LinkOrDash href={summary.verification?.pykrxRepo} label="열기" />
+                  </li>
+                  <li>
+                    Top Gainer 검색: <LinkOrDash href={summary.verification?.topGainerSearch} label={valueOrDash(summary.topGainer)} />
+                  </li>
+                  <li>
+                    Top Loser 검색: <LinkOrDash href={summary.verification?.topLoserSearch} label={valueOrDash(summary.topLoser)} />
+                  </li>
+                  <li>
+                    Most Mentioned 검색: <LinkOrDash href={summary.verification?.mostMentionedSearch} label={valueOrDash(summary.mostMentioned)} />
+                  </li>
+                  <li>
+                    KOSPI Pick 검색: <LinkOrDash href={summary.verification?.kospiPickSearch} label={valueOrDash(summary.kospiPick)} />
+                  </li>
+                  <li>
+                    KOSDAQ Pick 검색: <LinkOrDash href={summary.verification?.kosdaqPickSearch} label={valueOrDash(summary.kosdaqPick)} />
+                  </li>
+                </ul>
               </div>
             </div>
           ) : null}

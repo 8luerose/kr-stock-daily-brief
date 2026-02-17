@@ -14,6 +14,7 @@ public record SummaryDto(
     Instant createdAt,
     Instant updatedAt,
     Instant archivedAt,
+    SummaryVerificationLinks verification,
     // Back-compat fields for the current UI.
     String content,
     Instant generatedAt) {
@@ -29,6 +30,8 @@ public record SummaryDto(
         s.getCreatedAt(),
         s.getUpdatedAt(),
         s.getArchivedAt(),
+        SummaryVerificationLinks.from(
+            s.getTopGainer(), s.getTopLoser(), s.getMostMentioned(), s.getKospiPick(), s.getKosdaqPick()),
         s.renderContent(),
         s.getUpdatedAt());
   }
