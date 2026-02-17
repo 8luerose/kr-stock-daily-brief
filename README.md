@@ -54,7 +54,7 @@ make generate-today
 - `GET /api/summaries/{date}`
 - `POST /api/summaries/{date}/generate`
 - `PUT /api/summaries/{date}/archive` (soft delete)
-- `POST /api/summaries/backfill?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- `POST /api/summaries/backfill?from=YYYY-MM-DD&to=YYYY-MM-DD` (returns success/lowConfidence/fail counts)
 - `POST /api/summaries/generate/today`
 
 Notes:

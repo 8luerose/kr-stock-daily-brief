@@ -123,14 +123,27 @@ public class DailySummaryService {
   public BackfillResponseDto backfill(LocalDate from, LocalDate to) {
     java.util.ArrayList<BackfillResultDto> results = new java.util.ArrayList<>();
     int success = 0;
+    int lowConfidence = 0;
     int fail = 0;
 
+    LocalDate today = todaySeoul();
     LocalDate cur = from;
     while (!cur.isAfter(to)) {
       try {
-        generate(cur);
-        results.add(new BackfillResultDto(cur, "success", ""));
-        success++;
+        DailySummary saved = generate(cur);
+        String notes = saved.getRawNotes() == null ? "" : saved.getRawNotes();
+        boolean naverSource = notes.contains("Source: naver(");
+        if (naverSource && !cur.equals(today)) {
+          results.add(
+              new BackfillResultDto(
+                  cur,
+                  "low_confidence",
+                  "historical accuracy limited for current naver v1 source"));
+          lowConfidence++;
+        } else {
+          results.add(new BackfillResultDto(cur, "success", ""));
+          success++;
+        }
       } catch (Exception e) {
         String reason = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ":" + e.getMessage());
         results.add(new BackfillResultDto(cur, "fail", reason));
@@ -139,8 +152,8 @@ public class DailySummaryService {
       cur = cur.plusDays(1);
     }
 
-    int total = success + fail;
-    return new BackfillResponseDto(from, to, total, success, fail, results);
+    int total = success + lowConfidence + fail;
+    return new BackfillResponseDto(from, to, total, success, lowConfidence, fail, results);
   }
 
   private DailyMarketBrief loadBriefWithRetry(LocalDate date, int maxRetries) {

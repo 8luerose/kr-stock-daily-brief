@@ -208,10 +208,11 @@
   "from": "2026-02-01",
   "to": "2026-02-05",
   "totalDays": 5,
-  "successCount": 5,
+  "successCount": 1,
+  "lowConfidenceCount": 4,
   "failCount": 0,
   "results": [
-    { "date": "2026-02-01", "status": "success", "reason": "" }
+    { "date": "2026-02-01", "status": "low_confidence", "reason": "historical accuracy limited for current naver v1 source" }
   ]
 }
 ```

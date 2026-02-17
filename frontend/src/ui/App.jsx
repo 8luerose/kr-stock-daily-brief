@@ -388,7 +388,7 @@ export default function App() {
           </div>
           {backfillResult ? (
             <div className="hint">
-              backfill: success {backfillResult.successCount}, fail {backfillResult.failCount}
+              backfill: success {backfillResult.successCount}, low-confidence {backfillResult.lowConfidenceCount}, fail {backfillResult.failCount}
             </div>
           ) : null}
 
