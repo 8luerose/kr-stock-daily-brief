@@ -45,3 +45,14 @@ PUBLIC_KEY=secret make up
 
 - UI: `http://localhost:5173/?k=secret`
 - API: `...&k=secret` 없으면 403, 있으면 200
+
+### 자동 회귀 점검
+
+```bash
+./scripts/qa_public_key.sh
+```
+
+정상 기준:
+- PUBLIC_KEY off: stats 200
+- PUBLIC_KEY on + key 없음: 403
+- PUBLIC_KEY on + key 있음: 200

@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+function valueOrDash(v) {
+  return v && String(v).trim() ? v : "-";
+}
+
 function isoDate(d) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -67,6 +71,7 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
@@ -196,6 +201,7 @@ export default function App() {
   }
 
   useEffect(() => {
+    setShowNotes(false);
     load(selected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
@@ -341,7 +347,36 @@ export default function App() {
           {!loading && summary ? (
             <div className="summary">
               <div className="meta">Generated at: {summary.generatedAt}</div>
-              <pre className="content">{summary.content}</pre>
+
+              <div className="kvGrid">
+                <div className="kvItem">
+                  <span>Top Gainer</span>
+                  <strong>{valueOrDash(summary.topGainer)}</strong>
+                </div>
+                <div className="kvItem">
+                  <span>Top Loser</span>
+                  <strong>{valueOrDash(summary.topLoser)}</strong>
+                </div>
+                <div className="kvItem">
+                  <span>Most Mentioned</span>
+                  <strong>{valueOrDash(summary.mostMentioned)}</strong>
+                </div>
+                <div className="kvItem">
+                  <span>KOSPI Pick</span>
+                  <strong>{valueOrDash(summary.kospiPick)}</strong>
+                </div>
+                <div className="kvItem">
+                  <span>KOSDAQ Pick</span>
+                  <strong>{valueOrDash(summary.kosdaqPick)}</strong>
+                </div>
+              </div>
+
+              <div className="notesWrap">
+                <button className="btn ghost" onClick={() => setShowNotes((v) => !v)}>
+                  {showNotes ? "rawNotes 접기" : "rawNotes 보기"}
+                </button>
+                {showNotes ? <pre className="content">{valueOrDash(summary.rawNotes)}</pre> : null}
+              </div>
             </div>
           ) : null}
         </section>

@@ -90,6 +90,10 @@ body {
   .main {
     grid-template-columns: 1fr;
   }
+
+  .kvGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .card {
@@ -246,6 +250,31 @@ body {
 
 .summary {
   margin-top: 12px;
+}
+
+.kvGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.kvItem {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.kvItem span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.notesWrap {
+  margin-top: 10px;
 }
 
 .meta {
