@@ -90,6 +90,7 @@ curl "http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29&k=secret
 - `make check-month MONTH=YYYY-MM`: query monthly summaries quickly
 - `make latest`: get latest saved summary
 - `./scripts/qa_public_key.sh`: PUBLIC_KEY on/off 회귀 점검
+- `make qa`: 전체 API 스모크 + PUBLIC_KEY 회귀 점검
 - `make backend-test`: run backend API tests
 
 If you use Colima on macOS, you may need:

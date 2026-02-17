@@ -50,6 +50,8 @@ PUBLIC_KEY=secret make up
 
 ```bash
 ./scripts/qa_public_key.sh
+# or
+make qa
 ```
 
 정상 기준:

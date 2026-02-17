@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test backend-e2e health generate-today check-month latest
+.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test backend-e2e health generate-today check-month latest qa
 
 DOCKER_SOCK ?= /var/run/docker.sock
 
@@ -43,6 +43,10 @@ check-month:
 
 latest:
 	curl -sS "http://localhost:$${BACKEND_PORT:-8080}/api/summaries/latest"
+
+qa:
+	./scripts/test_all_apis.sh
+	./scripts/qa_public_key.sh
 
 # Runs API tests against a disposable MySQL Testcontainer (inside the Gradle container).
 backend-test:
