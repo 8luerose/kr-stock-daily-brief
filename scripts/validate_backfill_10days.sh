@@ -43,6 +43,7 @@ echo "PYKRX_URL=$PYKRX_URL"
 
 total=0
 matched=0
+pykrx_unavailable=0
 
 for d in "${target_dates[@]}"; do
   total=$((total + 1))
@@ -53,7 +54,13 @@ for d in "${target_dates[@]}"; do
 
   curl -fsS -X POST "$BASE_URL/api/summaries/backfill?from=$d&to=$d" > "$backfill_json"
   curl -fsS "$BASE_URL/api/summaries/$d" > "$summary_json"
-  curl -fsS "$PYKRX_URL/leaders?date=$d" > "$pykrx_json"
+
+  pykrx_code=$(curl -s -o "$pykrx_json" -w "%{http_code}" "$PYKRX_URL/leaders?date=$d" || true)
+  if [ "$pykrx_code" != "200" ]; then
+    pykrx_unavailable=$((pykrx_unavailable + 1))
+    echo "[$d] SKIP pykrx unavailable (http=$pykrx_code)"
+    continue
+  fi
 
   source_used="$(python3 - "$backfill_json" <<'PY'
 import json
@@ -120,4 +127,4 @@ PY
 )"
 
 echo "== Result =="
-echo "matched=$matched total=$total matchRate=${match_rate}%"
+echo "matched=$matched total=$total pykrxUnavailable=$pykrx_unavailable matchRate=${match_rate}%"
