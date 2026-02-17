@@ -65,7 +65,7 @@ Notes:
 - `rawNotes` stores source/rules/fallback reason (debug + trust trace).
 - failed fetch means external source retrieval/parsing failed; service retries, then falls back with reason.
 - Responses include structured fields (`topGainer`, `topLoser`, `mostMentioned`, `kospiPick`, `kosdaqPick`, `rawNotes`, `createdAt`, `updatedAt`) and also `content`/`generatedAt` for the current MVP UI.
-- Backfill result rows include `sourceUsed` (`pykrx|naver|fallback`) and `confidence` (`high|low`).
+- Backfill result rows include `sourceUsed` (`pykrx|fdr|naver|fallback`) and `confidence` (`high|low`).
 
 ## Scheduler
 

@@ -238,6 +238,9 @@ public class DailySummaryService {
     if (notes.contains("Source: pykrx") || notes.contains("Source: pykrx(")) {
       return "pykrx";
     }
+    if (notes.contains("Source: finance-datareader") || notes.contains("Source: finance-datareader(")) {
+      return "fdr";
+    }
     if (notes.contains("Source: naver(")) {
       return "naver";
     }
@@ -245,7 +248,7 @@ public class DailySummaryService {
   }
 
   private String confidenceFor(String sourceUsed) {
-    if ("pykrx".equals(sourceUsed)) {
+    if ("pykrx".equals(sourceUsed) || "fdr".equals(sourceUsed)) {
       return "high";
     }
     return "low";

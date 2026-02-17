@@ -7,20 +7,20 @@ PYKRX_URL="${PYKRX_URL:-http://localhost:8000}"
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
-today="$(TZ=Asia/Seoul date +%F)"
-
 collect_dates() {
-  python3 - "$today" <<'PY'
+  python3 <<'PY'
 import datetime
-import sys
 
-today = datetime.date.fromisoformat(sys.argv[1])
+year = 2024
+month = 2
 out = []
-for i in range(1, 15):
-    d = today - datetime.timedelta(days=i)
+d = datetime.date(year, month, 1)
+while d.month == month and len(out) < 10:
     if d.weekday() < 5:
         out.append(d.isoformat())
-for d in sorted(out[:10]):
+    d += datetime.timedelta(days=1)
+
+for d in out:
     print(d)
 PY
 }
@@ -37,11 +37,12 @@ if [ "${#target_dates[@]}" -eq 0 ]; then
   exit 1
 fi
 
-echo "== Validate backfill vs pykrx leaders (last 10 business days) =="
+echo "== Validate backfill vs pykrx leaders (2024-02 business days x10) =="
 echo "BASE_URL=$BASE_URL"
 echo "PYKRX_URL=$PYKRX_URL"
 
 total=0
+compared=0
 matched=0
 pykrx_unavailable=0
 
@@ -61,6 +62,8 @@ for d in "${target_dates[@]}"; do
     echo "[$d] SKIP pykrx unavailable (http=$pykrx_code)"
     continue
   fi
+
+  compared=$((compared + 1))
 
   source_used="$(python3 - "$backfill_json" <<'PY'
 import json
@@ -117,14 +120,19 @@ PY
   echo "  pykrx:    topGainer='$pykrx_gainer' topLoser='$pykrx_loser'"
 done
 
-match_rate="$(python3 - "$matched" "$total" <<'PY'
+match_rate="$(python3 - "$matched" "$compared" <<'PY'
 import sys
 
 matched = int(sys.argv[1])
-total = int(sys.argv[2])
-print(f"{(matched * 100.0 / total):.2f}")
+compared = int(sys.argv[2])
+if compared == 0:
+    print("0.00")
+else:
+    print(f"{(matched * 100.0 / compared):.2f}")
 PY
 )"
 
-echo "== Result =="
-echo "matched=$matched total=$total pykrxUnavailable=$pykrx_unavailable matchRate=${match_rate}%"
+echo "== Result Summary =="
+echo "targetDates=${#target_dates[@]} compared=$compared matched=$matched pykrxUnavailable=$pykrx_unavailable"
+echo "matchRate=${match_rate}% (matched/compared)"
+echo "dates=$(IFS=,; echo "${target_dates[*]}")"

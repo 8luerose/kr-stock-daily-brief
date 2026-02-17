@@ -235,7 +235,7 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 `results[*]` 필드:
 
-- `sourceUsed`: `pykrx | naver | fallback`
+- `sourceUsed`: `pykrx | fdr | naver | fallback`
 - `confidence`: `high | low` (`pykrx`면 `high`, 그 외 `low`)
 
 ---
