@@ -58,6 +58,7 @@ make generate-today
 Notes:
 - Dates are ISO `YYYY-MM-DD`.
 - `POST .../generate` is idempotent: it upserts the summary for that date.
+- Market data fetch uses retry/fallback for resilience (fallback reason is recorded in `rawNotes`).
 - Responses include structured fields (`topGainer`, `topLoser`, `mostMentioned`, `kospiPick`, `kosdaqPick`, `rawNotes`, `createdAt`, `updatedAt`) and also `content`/`generatedAt` for the current MVP UI.
 
 ## Scheduler

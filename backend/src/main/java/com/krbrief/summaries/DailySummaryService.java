@@ -10,10 +10,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class DailySummaryService {
+  private static final Logger log = LoggerFactory.getLogger(DailySummaryService.class);
+
   private final DailySummaryRepository repo;
   private final MarketDataClient marketData;
 
@@ -71,19 +75,7 @@ public class DailySummaryService {
   public DailySummary generate(LocalDate date) {
     DailySummary s = repo.findById(date).orElseGet(() -> new DailySummary(date));
 
-    DailyMarketBrief brief =
-        marketData
-            .getDailyBrief(date)
-            .orElseGet(
-                () ->
-                    new DailyMarketBrief(
-                        "TOP_GAINER_" + date,
-                        "TOP_LOSER_" + date,
-                        "MOST_MENTIONED_" + date,
-                        "KOSPI_PICK_" + date,
-                        "KOSDAQ_PICK_" + date,
-                        "fallback",
-                        "marketdata unavailable"));
+    DailyMarketBrief brief = loadBriefWithRetry(date, 2);
 
     // If provider returns '-' (best-effort), fall back to deterministic placeholders.
     String topGainer =
@@ -115,6 +107,35 @@ public class DailySummaryService {
             + (brief.notes() == null ? "" : brief.notes() + "\n"));
 
     return repo.save(s);
+  }
+
+  private DailyMarketBrief loadBriefWithRetry(LocalDate date, int maxRetries) {
+    String lastReason = "unknown";
+
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        Optional<DailyMarketBrief> found = marketData.getDailyBrief(date);
+        if (found.isPresent()) {
+          if (attempt > 0) {
+            log.info("marketdata recovered after retry: date={}, attempt={}", date, attempt);
+          }
+          return found.get();
+        }
+        lastReason = "empty_response";
+      } catch (Exception e) {
+        lastReason = e.getClass().getSimpleName() + ":" + (e.getMessage() == null ? "" : e.getMessage());
+        log.warn("marketdata fetch failed: date={}, attempt={}, reason={}", date, attempt, lastReason);
+      }
+    }
+
+    return new DailyMarketBrief(
+        "TOP_GAINER_" + date,
+        "TOP_LOSER_" + date,
+        "MOST_MENTIONED_" + date,
+        "KOSPI_PICK_" + date,
+        "KOSDAQ_PICK_" + date,
+        "fallback",
+        "marketdata unavailable after retries; reason=" + lastReason);
   }
 
   public LocalDate todaySeoul() {
