@@ -61,9 +61,11 @@ Notes:
 - Dates are ISO `YYYY-MM-DD`.
 - `POST .../generate` is idempotent: it upserts the summary for that date.
 - Market data fetch uses retry/fallback for resilience (fallback reason is recorded in `rawNotes`).
+- For backfill dates before today (`Asia/Seoul`), backend tries pykrx sidecar (`/leaders?date=YYYY-MM-DD`) first, then falls back to existing provider (default naver) and internal fallback placeholders.
 - `rawNotes` stores source/rules/fallback reason (debug + trust trace).
 - failed fetch means external source retrieval/parsing failed; service retries, then falls back with reason.
 - Responses include structured fields (`topGainer`, `topLoser`, `mostMentioned`, `kospiPick`, `kosdaqPick`, `rawNotes`, `createdAt`, `updatedAt`) and also `content`/`generatedAt` for the current MVP UI.
+- Backfill result rows include `sourceUsed` (`pykrx|naver|fallback`) and `confidence` (`high|low`).
 
 ## Scheduler
 
@@ -94,6 +96,7 @@ curl "http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29&k=secret
 - `make check-month MONTH=YYYY-MM`: query monthly summaries quickly
 - `make latest`: get latest saved summary
 - `./scripts/qa_public_key.sh`: PUBLIC_KEY on/off 회귀 점검
+- `./scripts/validate_backfill_10days.sh`: 최근 과거 10개 영업일 백필 결과를 pykrx `/leaders` 기준과 비교하여 matchRate 출력
 - `make qa`: 전체 API 스모크 + PUBLIC_KEY 회귀 점검
 - `make backend-test`: run backend API tests
 

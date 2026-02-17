@@ -12,7 +12,10 @@ import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
 @Service
 public class DailySummaryService {
@@ -20,10 +23,15 @@ public class DailySummaryService {
 
   private final DailySummaryRepository repo;
   private final MarketDataClient marketData;
+  private final RestClient pykrxHttp;
 
-  public DailySummaryService(DailySummaryRepository repo, MarketDataClient marketData) {
+  public DailySummaryService(
+      DailySummaryRepository repo,
+      MarketDataClient marketData,
+      @Value("${marketdata.baseUrl:http://marketdata:8000}") String marketDataBaseUrl) {
     this.repo = repo;
     this.marketData = marketData;
+    this.pykrxHttp = RestClient.builder().baseUrl(marketDataBaseUrl).build();
   }
 
   public List<DailySummary> list(LocalDate from, LocalDate to) {
@@ -126,27 +134,28 @@ public class DailySummaryService {
     int lowConfidence = 0;
     int fail = 0;
 
-    LocalDate today = todaySeoul();
     LocalDate cur = from;
     while (!cur.isAfter(to)) {
       try {
         DailySummary saved = generate(cur);
         String notes = saved.getRawNotes() == null ? "" : saved.getRawNotes();
-        boolean naverSource = notes.contains("Source: naver(");
-        if (naverSource && !cur.equals(today)) {
+        String sourceUsed = sourceUsedFromNotes(notes);
+        String confidence = confidenceFor(sourceUsed);
+        if ("low".equals(confidence)) {
+          String reason =
+              "naver".equals(sourceUsed)
+                  ? "historical accuracy limited for current naver v1 source"
+                  : "fallback source used due to marketdata fetch failure";
           results.add(
-              new BackfillResultDto(
-                  cur,
-                  "low_confidence",
-                  "historical accuracy limited for current naver v1 source"));
+              new BackfillResultDto(cur, "low_confidence", reason, sourceUsed, confidence));
           lowConfidence++;
         } else {
-          results.add(new BackfillResultDto(cur, "success", ""));
+          results.add(new BackfillResultDto(cur, "success", "", sourceUsed, confidence));
           success++;
         }
       } catch (Exception e) {
         String reason = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ":" + e.getMessage());
-        results.add(new BackfillResultDto(cur, "fail", reason));
+        results.add(new BackfillResultDto(cur, "fail", reason, "fallback", "low"));
         fail++;
       }
       cur = cur.plusDays(1);
@@ -157,6 +166,14 @@ public class DailySummaryService {
   }
 
   private DailyMarketBrief loadBriefWithRetry(LocalDate date, int maxRetries) {
+    LocalDate today = todaySeoul();
+    if (date.isBefore(today)) {
+      Optional<DailyMarketBrief> pykrx = loadPykrxLeaders(date);
+      if (pykrx.isPresent()) {
+        return pykrx.get();
+      }
+    }
+
     String lastReason = "unknown";
 
     for (int attempt = 0; attempt <= maxRetries; attempt++) {
@@ -184,6 +201,62 @@ public class DailySummaryService {
         "fallback",
         "marketdata unavailable after retries; reason=" + lastReason);
   }
+
+  private Optional<DailyMarketBrief> loadPykrxLeaders(LocalDate date) {
+    try {
+      PykrxLeadersResponse res =
+          pykrxHttp
+              .get()
+              .uri(uriBuilder -> uriBuilder.path("/leaders").queryParam("date", date).build())
+              .accept(MediaType.APPLICATION_JSON)
+              .retrieve()
+              .body(PykrxLeadersResponse.class);
+
+      if (res == null || isBlank(res.topGainer()) || isBlank(res.topLoser())) {
+        return Optional.empty();
+      }
+
+      return Optional.of(
+          new DailyMarketBrief(
+              res.topGainer(),
+              res.topLoser(),
+              "-",
+              "-",
+              "-",
+              "pykrx",
+              res.notes()));
+    } catch (Exception e) {
+      log.info(
+          "pykrx leaders unavailable: date={}, reason={}",
+          date,
+          e.getClass().getSimpleName() + ":" + (e.getMessage() == null ? "" : e.getMessage()));
+      return Optional.empty();
+    }
+  }
+
+  private String sourceUsedFromNotes(String notes) {
+    if (notes.contains("Source: pykrx") || notes.contains("Source: pykrx(")) {
+      return "pykrx";
+    }
+    if (notes.contains("Source: naver(")) {
+      return "naver";
+    }
+    return "fallback";
+  }
+
+  private String confidenceFor(String sourceUsed) {
+    if ("pykrx".equals(sourceUsed)) {
+      return "high";
+    }
+    return "low";
+  }
+
+  private static boolean isBlank(String s) {
+    return s == null || s.isBlank();
+  }
+
+  private record PykrxLeadersResponse(
+      String date, String topGainer, String topLoser, String source, String notes) {}
 
   public LocalDate todaySeoul() {
     return LocalDate.now(ZoneId.of("Asia/Seoul"));

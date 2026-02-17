@@ -201,6 +201,9 @@
 
 기간 내 날짜를 순회하며 요약 생성(upsert) 수행.
 
+백필 날짜가 `today(Asia/Seoul)` 이전이면 pykrx sidecar `/leaders?date=YYYY-MM-DD`를 우선 사용하고,
+pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
+
 #### 성공 응답 (200)
 
 ```json
@@ -212,10 +215,28 @@
   "lowConfidenceCount": 4,
   "failCount": 0,
   "results": [
-    { "date": "2026-02-01", "status": "low_confidence", "reason": "historical accuracy limited for current naver v1 source" }
+    {
+      "date": "2026-02-01",
+      "status": "success",
+      "reason": "",
+      "sourceUsed": "pykrx",
+      "confidence": "high"
+    },
+    {
+      "date": "2026-02-02",
+      "status": "low_confidence",
+      "reason": "historical accuracy limited for current naver v1 source",
+      "sourceUsed": "naver",
+      "confidence": "low"
+    }
   ]
 }
 ```
+
+`results[*]` 필드:
+
+- `sourceUsed`: `pykrx | naver | fallback`
+- `confidence`: `high | low` (`pykrx`면 `high`, 그 외 `low`)
 
 ---
 
