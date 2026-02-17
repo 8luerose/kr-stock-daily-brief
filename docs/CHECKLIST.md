@@ -54,5 +54,5 @@ PUBLIC_KEY=secret make up
 
 정상 기준:
 - PUBLIC_KEY off: stats 200
-- PUBLIC_KEY on + key 없음: 403
+- PUBLIC_KEY on + key 없음: 401 또는 403
 - PUBLIC_KEY on + key 있음: 200

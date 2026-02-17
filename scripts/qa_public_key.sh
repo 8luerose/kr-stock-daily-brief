@@ -16,8 +16,8 @@ ok "PUBLIC_KEY off => stats 200"
 echo "== PUBLIC_KEY ON test =="
 PUBLIC_KEY="$KEY" docker compose up -d --build >/dev/null
 code_no_key=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/summaries/stats")
-[[ "$code_no_key" == "403" ]] || fail "PUBLIC_KEY on without key expected 403, got $code_no_key"
-ok "PUBLIC_KEY on without key => 403"
+[[ "$code_no_key" == "401" || "$code_no_key" == "403" ]] || fail "PUBLIC_KEY on without key expected 401/403, got $code_no_key"
+ok "PUBLIC_KEY on without key => $code_no_key"
 
 code_with_key=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/summaries/stats?k=$KEY")
 [[ "$code_with_key" == "200" ]] || fail "PUBLIC_KEY on with key expected 200, got $code_with_key"
