@@ -1,4 +1,4 @@
 fastapi==0.115.8
 uvicorn[standard]==0.30.6
-finance-datareader==0.9.102
-pandas==2.2.3
+pykrx==1.2.4
+pandas==2.3.3
