@@ -33,9 +33,9 @@ public class PykrxMarketDataClient implements MarketDataClient {
           new DailyMarketBrief(
               res.topGainer(),
               res.topLoser(),
-              "-",
-              "-",
-              "-",
+              res.mostMentioned(),
+              res.kospiPick(),
+              res.kosdaqPick(),
               res.source(),
               res.notes()));
     } catch (Exception e) {
@@ -51,5 +51,13 @@ public class PykrxMarketDataClient implements MarketDataClient {
     }
   }
 
-  public record PykrxLeadersResponse(String date, String topGainer, String topLoser, String source, String notes) {}
+  public record PykrxLeadersResponse(
+      String date,
+      String topGainer,
+      String topLoser,
+      String mostMentioned,
+      String kospiPick,
+      String kosdaqPick,
+      String source,
+      String notes) {}
 }

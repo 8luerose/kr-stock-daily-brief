@@ -85,39 +85,35 @@ print((results[0].get("confidence") if results else "") or "")
 PY
 )"
 
-  backfill_pair="$(python3 - "$summary_json" <<'PY'
-import json
-import sys
-
-obj = json.load(open(sys.argv[1], encoding="utf-8"))
-print(f"{obj.get('topGainer','')}\t{obj.get('topLoser','')}")
+  backfill_row="$(python3 - "$summary_json" <<'PY'
+import json,sys
+obj=json.load(open(sys.argv[1],encoding='utf-8'))
+vals=[obj.get('topGainer',''),obj.get('topLoser',''),obj.get('mostMentioned',''),obj.get('kospiPick',''),obj.get('kosdaqPick','')]
+print('\t'.join(vals))
 PY
 )"
 
-  pykrx_pair="$(python3 - "$pykrx_json" <<'PY'
-import json
-import sys
-
-obj = json.load(open(sys.argv[1], encoding="utf-8"))
-print(f"{obj.get('topGainer','')}\t{obj.get('topLoser','')}")
+  ref_row="$(python3 - "$pykrx_json" <<'PY'
+import json,sys
+obj=json.load(open(sys.argv[1],encoding='utf-8'))
+vals=[obj.get('topGainer',''),obj.get('topLoser',''),obj.get('mostMentioned',''),obj.get('kospiPick',''),obj.get('kosdaqPick','')]
+print('\t'.join(vals))
 PY
 )"
 
-  backfill_gainer="${backfill_pair%%$'\t'*}"
-  backfill_loser="${backfill_pair#*$'\t'}"
-  pykrx_gainer="${pykrx_pair%%$'\t'*}"
-  pykrx_loser="${pykrx_pair#*$'\t'}"
-
-  if [ "$backfill_gainer" = "$pykrx_gainer" ] && [ "$backfill_loser" = "$pykrx_loser" ]; then
+  if [ "$backfill_row" = "$ref_row" ]; then
     matched=$((matched + 1))
     verdict="MATCH"
   else
     verdict="MISMATCH"
   fi
 
+  IFS=$'\t' read -r b_g b_l b_m b_kp b_kd <<< "$backfill_row"
+  IFS=$'\t' read -r r_g r_l r_m r_kp r_kd <<< "$ref_row"
+
   echo "[$d] $verdict sourceUsed=$source_used confidence=$confidence"
-  echo "  backfill: topGainer='$backfill_gainer' topLoser='$backfill_loser'"
-  echo "  pykrx:    topGainer='$pykrx_gainer' topLoser='$pykrx_loser'"
+  echo "  backfill: topGainer='$b_g' topLoser='$b_l' mostMentioned='$b_m' kospiPick='$b_kp' kosdaqPick='$b_kd'"
+  echo "  ref:      topGainer='$r_g' topLoser='$r_l' mostMentioned='$r_m' kospiPick='$r_kp' kosdaqPick='$r_kd'"
 done
 
 match_rate="$(python3 - "$matched" "$compared" <<'PY'

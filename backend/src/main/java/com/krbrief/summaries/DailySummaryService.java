@@ -220,9 +220,9 @@ public class DailySummaryService {
           new DailyMarketBrief(
               res.topGainer(),
               res.topLoser(),
-              "-",
-              "-",
-              "-",
+              blankToDash(res.mostMentioned()),
+              blankToDash(res.kospiPick()),
+              blankToDash(res.kosdaqPick()),
               "pykrx",
               res.notes()));
     } catch (Exception e) {
@@ -258,8 +258,19 @@ public class DailySummaryService {
     return s == null || s.isBlank();
   }
 
+  private static String blankToDash(String s) {
+    return isBlank(s) ? "-" : s;
+  }
+
   private record PykrxLeadersResponse(
-      String date, String topGainer, String topLoser, String source, String notes) {}
+      String date,
+      String topGainer,
+      String topLoser,
+      String mostMentioned,
+      String kospiPick,
+      String kosdaqPick,
+      String source,
+      String notes) {}
 
   public LocalDate todaySeoul() {
     return LocalDate.now(ZoneId.of("Asia/Seoul"));
