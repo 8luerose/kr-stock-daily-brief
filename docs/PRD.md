@@ -1,6 +1,6 @@
 # PRD — 한국 주식 시장 일일 요약 프로그램 (kr-stock-daily-brief)
 
-최종 업데이트: 2026-02-16  
+최종 업데이트: 2026-02-17  
 문서 소유: 개발 스레드(한국 주식 시장 요약 프로그램 개발)
 
 ---
@@ -88,8 +88,18 @@
 - `PUBLIC_KEY`가 설정되면 API/UI 접근에 `k` 파라미터 검증을 적용해야 한다.
 
 ### FR-6. 데이터 누적
-- 삭제 없이 날짜 단위 누적 저장되어야 한다.
+- 날짜 단위 누적 저장되어야 한다.
 - 동일 날짜 재생성 시 업데이트로 처리한다.
+
+### FR-7. 요약 삭제
+- 사용자는 특정 날짜 요약을 삭제할 수 있어야 한다.
+- 삭제 후 달력 dot/통계/인사이트가 즉시 반영되어야 한다.
+- 삭제는 감사 추적이 가능하도록 로그를 남겨야 한다.
+
+### FR-8. 과거 데이터 불러오기(백필)
+- 사용자는 기간 지정으로 과거 날짜를 일괄 생성/보강할 수 있어야 한다.
+- 백필 결과는 날짜별 성공/실패/원인으로 리포트되어야 한다.
+- 데이터 소스 제약(정확도/호출 제한)을 명시적으로 표시해야 한다.
 
 ---
 
@@ -121,18 +131,46 @@
 - mostMentioned: 상위 리스트 내 거래량 최대 종목(대체 규칙)
 - KOSPI/KOSDAQ pick: 각 시장 상승 리스트 내 거래량 최대
 
-### 7.3 리스크
-- HTML 구조 변경 시 파싱 실패 가능
-- 과거 특정 날짜를 정밀 재현하는 데 한계
+### 7.3 Generate 기능 정의
+- Generate는 "요약을 새로 생성하거나(없으면 insert) 다시 계산해 갱신하는(upsert)" 기능이다.
+- 입력 날짜(또는 오늘, Asia/Seoul 기준)에 대해 데이터 소스에서 요약 후보를 가져와 저장한다.
+- 현재 데이터 수집 소스는 기본적으로 Naver 기반이며, 소스 실패 시 fallback 규칙을 적용한다.
+
+### 7.4 rawNotes 정의
+- `rawNotes`는 요약 생성의 근거/메타 정보를 담는 필드다.
+- 예: `Source: naver(finance.naver.com)`, 규칙 버전, fallback 사유, 데이터 소스 실패 이유.
+- 사용자에게 디버깅 및 신뢰도 판단 근거를 제공한다.
+
+### 7.5 failed fetch 정의
+- failed fetch는 외부 데이터 소스 호출 실패(응답 없음, 파싱 실패, 네트워크 오류 등)를 의미한다.
+- 시스템은 재시도 후 실패 원인을 `rawNotes` 및 로그로 남긴다.
+- API는 가능한 경우 정상 응답을 유지하되, 데이터 품질 저하 상태임을 명시한다.
+
+### 7.6 과거 데이터(백필) 확보 전략
+- 1안(현재 우선): 날짜 루프를 돌며 v1 소스로 백필 시도, 실패일은 리포트에 누락/원인 표시
+- 2안(정확도 강화): pykrx/KRX/기타 공식 소스 연계(라이선스/호출정책 확인 필요)
+- 3안(혼합): 최근 구간은 v1, 특정 검증 구간은 보강 소스로 재생성
+
+참고 조사(웹/문서):
+- pykrx GitHub 문서에서 KRX/Naver 스크래핑 기반 라이브러리 성격 확인
+- 공개 웹 검색 API 키 제한으로 일부 자동 탐색은 제약이 있어, 구현 시 소스별 접근성 검증을 병행
 
 ---
 
 ## 8. API 요약
 
+현재 구현:
+- `GET /api/summaries/stats`
+- `GET /api/summaries/insights?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- `GET /api/summaries/latest`
 - `GET /api/summaries/{date}`
 - `POST /api/summaries/{date}/generate`
 - `POST /api/summaries/generate/today`
+
+계획 추가:
+- `DELETE /api/summaries/{date}` (요약 삭제)
+- `POST /api/summaries/backfill?from=YYYY-MM-DD&to=YYYY-MM-DD` (과거 일괄 생성)
 
 (상세는 `docs/API_SPEC.md` 참조)
 
@@ -176,7 +214,36 @@
 
 ---
 
-## 13. 문서 갱신 규칙
+## 13. 다음 구현 계획 (요청 반영)
+
+### 단계 1: API/백엔드
+1. 삭제 기능
+   - `DELETE /api/summaries/{date}` 구현
+   - 삭제 후 stats/insights 재계산 즉시 반영
+2. 과거 백필 기능
+   - `POST /api/summaries/backfill?from&to` 구현
+   - 날짜별 처리 결과(JSON) 리턴: success/fail/reason
+3. generate/failed fetch/rawNotes 설명 필드 정리
+   - API 문서 및 UI 도움말에 명시
+
+### 단계 2: 프론트
+1. 상세 패널에 삭제 버튼 추가
+2. 백필 실행 UI(기간 선택 + 실행 + 결과 표시)
+3. failed fetch/rawNotes 표시를 사용자 친화적으로 개선
+
+### 단계 3: 인프라/QA
+1. `make qa`로 API + PUBLIC_KEY 회귀 테스트 수행
+2. 브라우저 DOM/실동작 테스트(생성/삭제/백필) 체크리스트 반영
+3. 실패 케이스(잘못된 날짜/소스 실패) 리포트 검증
+
+완료 기준:
+- 삭제/백필 API 동작 + 프론트 버튼/화면 연동
+- API 문서/PRD/체크리스트 최신화
+- 자동 테스트 + 브라우저 수동 테스트 통과
+
+---
+
+## 14. 문서 갱신 규칙
 
 API/DB/요구사항 변경 시 반드시 함께 갱신:
 - `docs/PRD.md`
