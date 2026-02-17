@@ -72,6 +72,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showNotes, setShowNotes] = useState(false);
+  const [backfillFrom, setBackfillFrom] = useState("2026-02-01");
+  const [backfillTo, setBackfillTo] = useState("2026-02-05");
+  const [backfillResult, setBackfillResult] = useState(null);
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
@@ -172,6 +175,40 @@ export default function App() {
       setSummary(s);
 
       // Refresh month overview so the dot appears immediately.
+      await loadMonthOverview(month);
+      await loadStats();
+      await loadInsights(month);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function archiveSelected() {
+    setLoading(true);
+    setError("");
+    try {
+      await apiFetch(`/api/summaries/${selected}/archive`, { method: "PUT" });
+      setSummary(null);
+      await loadMonthOverview(month);
+      await loadStats();
+      await loadInsights(month);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runBackfill() {
+    setLoading(true);
+    setError("");
+    try {
+      const r = await apiFetch(`/api/summaries/backfill?from=${backfillFrom}&to=${backfillTo}`, {
+        method: "POST"
+      });
+      setBackfillResult(r);
       await loadMonthOverview(month);
       await loadStats();
       await loadInsights(month);
@@ -326,14 +363,32 @@ export default function App() {
         <section className="card detail">
           <div className="detailHead">
             <div className="detailTitle">{selected}</div>
-            <button className="btn" onClick={() => generate(selected)} disabled={loading}>
-              Generate (selected)
-            </button>
+            <div className="actions">
+              <button className="btn" onClick={() => generate(selected)} disabled={loading}>
+                Generate (selected)
+              </button>
+              <button className="btn ghost" onClick={archiveSelected} disabled={loading}>
+                Archive (selected)
+              </button>
+            </div>
           </div>
 
           {cfg.gateEnabled && !k ? (
             <div className="hint">
               This UI is gated. Add <code>?k=PUBLIC_KEY</code> to the URL.
+            </div>
+          ) : null}
+
+          <div className="backfillBar">
+            <input type="date" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
+            <input type="date" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
+            <button className="btn ghost" onClick={runBackfill} disabled={loading}>
+              Backfill run
+            </button>
+          </div>
+          {backfillResult ? (
+            <div className="hint">
+              backfill: success {backfillResult.successCount}, fail {backfillResult.failCount}
             </div>
           ) : null}
 

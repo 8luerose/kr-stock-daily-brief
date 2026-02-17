@@ -78,7 +78,24 @@ code=$(status_code GET "$BASE_URL/api/summaries?from=$FROM&to=$TO")
 head -c 1 /tmp/krbrief_resp.json | grep -q '\[' || fail "list expected array JSON"
 pass "GET /api/summaries?from&to"
 
-# 8) Negative test: invalid date
+# 8) PUT /api/summaries/{date}/archive (soft delete)
+code=$(status_code PUT "$BASE_URL/api/summaries/$DATE_TODAY/archive")
+[[ "$code" == "200" ]] || fail "archive expected 200, got $code"
+contains_field /tmp/krbrief_resp.json archivedAt || fail "archive missing archivedAt"
+pass "PUT /api/summaries/{date}/archive"
+
+# restore same date by regenerate
+code=$(status_code POST "$BASE_URL/api/summaries/$DATE_TODAY/generate")
+[[ "$code" == "200" ]] || fail "regen after archive expected 200, got $code"
+pass "POST /api/summaries/{date}/generate after archive"
+
+# 9) POST /api/summaries/backfill
+code=$(status_code POST "$BASE_URL/api/summaries/backfill?from=$FROM&to=$TO")
+[[ "$code" == "200" ]] || fail "backfill expected 200, got $code"
+contains_field /tmp/krbrief_resp.json successCount || fail "backfill missing successCount"
+pass "POST /api/summaries/backfill"
+
+# 10) Negative test: invalid date
 code=$(status_code GET "$BASE_URL/api/summaries/2026-02-29")
 [[ "$code" == "400" ]] || fail "invalid date expected 400, got $code"
 contains_field /tmp/krbrief_resp.json error || fail "invalid date missing error field"

@@ -13,6 +13,7 @@ public record SummaryDto(
     String rawNotes,
     Instant createdAt,
     Instant updatedAt,
+    Instant archivedAt,
     // Back-compat fields for the current UI.
     String content,
     Instant generatedAt) {
@@ -27,6 +28,7 @@ public record SummaryDto(
         s.getRawNotes(),
         s.getCreatedAt(),
         s.getUpdatedAt(),
+        s.getArchivedAt(),
         s.renderContent(),
         s.getUpdatedAt());
   }

@@ -53,12 +53,16 @@ make generate-today
 - `GET /api/summaries/latest`
 - `GET /api/summaries/{date}`
 - `POST /api/summaries/{date}/generate`
+- `PUT /api/summaries/{date}/archive` (soft delete)
+- `POST /api/summaries/backfill?from=YYYY-MM-DD&to=YYYY-MM-DD`
 - `POST /api/summaries/generate/today`
 
 Notes:
 - Dates are ISO `YYYY-MM-DD`.
 - `POST .../generate` is idempotent: it upserts the summary for that date.
 - Market data fetch uses retry/fallback for resilience (fallback reason is recorded in `rawNotes`).
+- `rawNotes` stores source/rules/fallback reason (debug + trust trace).
+- failed fetch means external source retrieval/parsing failed; service retries, then falls back with reason.
 - Responses include structured fields (`topGainer`, `topLoser`, `mostMentioned`, `kospiPick`, `kosdaqPick`, `rawNotes`, `createdAt`, `updatedAt`) and also `content`/`generatedAt` for the current MVP UI.
 
 ## Scheduler

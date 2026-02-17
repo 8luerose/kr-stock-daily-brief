@@ -179,7 +179,46 @@
 
 ---
 
-## 7) 오늘(서울 기준) 생성/갱신
+## 7) 요약 보관(삭제 대체)
+
+### `PUT /api/summaries/{date}/archive`
+
+실수 복구를 위해 물리 삭제 대신 보관(soft delete) 처리.
+
+#### 성공 응답 (200)
+
+보관된 `SummaryDto` 반환 (`archivedAt` 채워짐)
+
+#### 실패 응답
+
+- 404 Not Found: 해당 날짜 데이터 없음
+
+---
+
+## 8) 과거 백필 생성
+
+### `POST /api/summaries/backfill?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+기간 내 날짜를 순회하며 요약 생성(upsert) 수행.
+
+#### 성공 응답 (200)
+
+```json
+{
+  "from": "2026-02-01",
+  "to": "2026-02-05",
+  "totalDays": 5,
+  "successCount": 5,
+  "failCount": 0,
+  "results": [
+    { "date": "2026-02-01", "status": "success", "reason": "" }
+  ]
+}
+```
+
+---
+
+## 9) 오늘(서울 기준) 생성/갱신
 
 ### `POST /api/summaries/generate/today`
 
@@ -202,5 +241,6 @@
 - `rawNotes: String | null`
 - `createdAt: Instant`
 - `updatedAt: Instant`
+- `archivedAt: Instant | null`
 - `content: String` (UI 호환 필드)
 - `generatedAt: Instant` (UI 호환 필드, 현재 `updatedAt`와 동일)

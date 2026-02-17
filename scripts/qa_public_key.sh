@@ -44,4 +44,11 @@ code_with_key=$(http_code "$BASE_URL/api/summaries/stats?k=$KEY")
 [[ "$code_with_key" == "200" ]] || fail "PUBLIC_KEY on with key expected 200, got $code_with_key"
 ok "PUBLIC_KEY on with key => 200"
 
+echo "== Restore PUBLIC_KEY OFF =="
+PUBLIC_KEY="" docker compose up -d --build >/dev/null
+wait_until_ready || fail "backend not ready after restore"
+code_restored=$(http_code "$BASE_URL/api/summaries/stats")
+[[ "$code_restored" == "200" ]] || fail "restore off expected 200, got $code_restored"
+ok "restored PUBLIC_KEY off => 200"
+
 echo "All PUBLIC_KEY QA checks passed."

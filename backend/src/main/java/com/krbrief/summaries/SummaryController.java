@@ -10,6 +10,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -67,6 +68,23 @@ public class SummaryController {
   public SummaryDto generate(
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
     return SummaryDto.from(service.generate(date));
+  }
+
+  @PutMapping("/{date:\\d{4}-\\d{2}-\\d{2}}/archive")
+  public ResponseEntity<SummaryDto> archive(
+      @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    return service.archive(date).map(s -> ResponseEntity.ok(SummaryDto.from(s)))
+        .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  @PostMapping("/backfill")
+  public BackfillResponseDto backfill(
+      @RequestParam("from") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam("to") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    if (from.isAfter(to)) {
+      throw new ResponseStatusException(BAD_REQUEST, "from_must_be_on_or_before_to");
+    }
+    return service.backfill(from, to);
   }
 
   @PostMapping("/generate/today")

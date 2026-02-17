@@ -40,6 +40,9 @@ public class DailySummary {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  @Column(name = "archived_at")
+  private Instant archivedAt;
+
   protected DailySummary() {}
 
   public DailySummary(LocalDate date) {
@@ -104,6 +107,14 @@ public class DailySummary {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public Instant getArchivedAt() {
+    return archivedAt;
+  }
+
+  public void setArchivedAt(Instant archivedAt) {
+    this.archivedAt = archivedAt;
   }
 
   @PrePersist

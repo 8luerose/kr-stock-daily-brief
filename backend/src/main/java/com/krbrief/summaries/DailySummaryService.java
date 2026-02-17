@@ -27,27 +27,27 @@ public class DailySummaryService {
   }
 
   public List<DailySummary> list(LocalDate from, LocalDate to) {
-    return repo.findAllByDateBetweenOrderByDateAsc(from, to);
+    return repo.findAllByDateBetweenAndArchivedAtIsNullOrderByDateAsc(from, to);
   }
 
   public Optional<DailySummary> get(LocalDate date) {
-    return repo.findById(date);
+    return repo.findByDateAndArchivedAtIsNull(date);
   }
 
   public Optional<DailySummary> latest() {
-    return repo.findTopByOrderByDateDesc();
+    return repo.findTopByArchivedAtIsNullOrderByDateDesc();
   }
 
   public SummaryStatsDto stats() {
-    Optional<DailySummary> latest = repo.findTopByOrderByDateDesc();
+    Optional<DailySummary> latest = repo.findTopByArchivedAtIsNullOrderByDateDesc();
     return new SummaryStatsDto(
-        repo.count(),
+        repo.countByArchivedAtIsNull(),
         latest.map(DailySummary::getDate).orElse(null),
         latest.map(DailySummary::getUpdatedAt).orElse(null));
   }
 
   public SummaryInsightsDto insights(LocalDate from, LocalDate to) {
-    List<DailySummary> rows = repo.findAllByDateBetweenOrderByDateAsc(from, to);
+    List<DailySummary> rows = repo.findAllByDateBetweenAndArchivedAtIsNullOrderByDateAsc(from, to);
     long totalDays = ChronoUnit.DAYS.between(from, to) + 1;
     long generatedDays = rows.size();
     long missingDays = Math.max(0, totalDays - generatedDays);
@@ -74,6 +74,7 @@ public class DailySummaryService {
   @Transactional
   public DailySummary generate(LocalDate date) {
     DailySummary s = repo.findById(date).orElseGet(() -> new DailySummary(date));
+    s.setArchivedAt(null);
 
     DailyMarketBrief brief = loadBriefWithRetry(date, 2);
 
@@ -107,6 +108,39 @@ public class DailySummaryService {
             + (brief.notes() == null ? "" : brief.notes() + "\n"));
 
     return repo.save(s);
+  }
+
+  @Transactional
+  public Optional<DailySummary> archive(LocalDate date) {
+    Optional<DailySummary> found = repo.findById(date);
+    if (found.isEmpty()) return Optional.empty();
+    DailySummary s = found.get();
+    s.setArchivedAt(java.time.Instant.now());
+    return Optional.of(repo.save(s));
+  }
+
+  @Transactional
+  public BackfillResponseDto backfill(LocalDate from, LocalDate to) {
+    java.util.ArrayList<BackfillResultDto> results = new java.util.ArrayList<>();
+    int success = 0;
+    int fail = 0;
+
+    LocalDate cur = from;
+    while (!cur.isAfter(to)) {
+      try {
+        generate(cur);
+        results.add(new BackfillResultDto(cur, "success", ""));
+        success++;
+      } catch (Exception e) {
+        String reason = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ":" + e.getMessage());
+        results.add(new BackfillResultDto(cur, "fail", reason));
+        fail++;
+      }
+      cur = cur.plusDays(1);
+    }
+
+    int total = success + fail;
+    return new BackfillResponseDto(from, to, total, success, fail, results);
   }
 
   private DailyMarketBrief loadBriefWithRetry(LocalDate date, int maxRetries) {
