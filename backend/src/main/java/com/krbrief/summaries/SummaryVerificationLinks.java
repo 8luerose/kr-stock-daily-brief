@@ -23,6 +23,11 @@ public record SummaryVerificationLinks(
     String mostMentionedDateSearch,
     String kospiPickDateSearch,
     String kosdaqPickDateSearch,
+    SummaryVerificationItem topGainerItem,
+    SummaryVerificationItem topLoserItem,
+    SummaryVerificationItem mostMentionedItem,
+    SummaryVerificationItem kospiPickItem,
+    SummaryVerificationItem kosdaqPickItem,
     String verificationLimitations) {
 
   private static final DateTimeFormatter NAVER_DATE = DateTimeFormatter.ofPattern("yyyy.MM.dd");
@@ -36,6 +41,11 @@ public record SummaryVerificationLinks(
       String kospiPick,
       String kosdaqPick) {
     String dateText = date == null ? "" : date.toString();
+    String topGainerDateLink = naverDateNewsSearch(topGainer, date);
+    String topLoserDateLink = naverDateNewsSearch(topLoser, date);
+    String mostMentionedDateLink = naverDateNewsSearch(mostMentioned, date);
+    String kospiPickDateLink = naverDateNewsSearch(kospiPick, date);
+    String kosdaqPickDateLink = naverDateNewsSearch(kosdaqPick, date);
     return new SummaryVerificationLinks(
         dateText,
         primaryKrxArtifact,
@@ -49,12 +59,61 @@ public record SummaryVerificationLinks(
         naverFinanceSearch(mostMentioned),
         naverFinanceSearch(kospiPick),
         naverFinanceSearch(kosdaqPick),
-        naverDateNewsSearch(topGainer, date),
-        naverDateNewsSearch(topLoser, date),
-        naverDateNewsSearch(mostMentioned, date),
-        naverDateNewsSearch(kospiPick, date),
-        naverDateNewsSearch(kosdaqPick, date),
+        topGainerDateLink,
+        topLoserDateLink,
+        mostMentionedDateLink,
+        kospiPickDateLink,
+        kosdaqPickDateLink,
+        officialComputableItem(
+            topGainer,
+            topGainerDateLink,
+            "KRX raw top gainer can be recomputed by sorting daily returns via pykrx. No stable public KRX deep-link exists per stock/date, so this uses a date-locked external cross-check link."),
+        officialComputableItem(
+            topLoser,
+            topLoserDateLink,
+            "KRX raw top loser can be recomputed by sorting daily returns via pykrx. No stable public KRX deep-link exists per stock/date, so this uses a date-locked external cross-check link."),
+        derivedRuleItem(
+            mostMentioned,
+            mostMentionedDateLink,
+            "Derived rule(v1): approximate by highest volume candidate from ranking pages. Not an official most-mentioned metric and cannot be exactly reconstructed from KRX alone."),
+        derivedRuleItem(
+            kospiPick,
+            kospiPickDateLink,
+            "Derived rule(v1): pick highest-volume KOSPI riser from crawled lists. Heuristic result; source list/parser changes can alter output."),
+        derivedRuleItem(
+            kosdaqPick,
+            kosdaqPickDateLink,
+            "Derived rule(v1): pick highest-volume KOSDAQ riser from crawled lists. Heuristic result; source list/parser changes can alter output."),
         "Primary verification uses KRX artifact endpoint. Naver date-locked links are secondary human cross-check only.");
+  }
+
+  private static SummaryVerificationItem officialComputableItem(String value, String directUrl, String note) {
+    return new SummaryVerificationItem(
+        cleanValue(value),
+        "official_computable",
+        "pykrx(KRX-based)",
+        nullToEmpty(directUrl),
+        note);
+  }
+
+  private static SummaryVerificationItem derivedRuleItem(String value, String directUrl, String note) {
+    return new SummaryVerificationItem(
+        cleanValue(value),
+        "derived_rule",
+        "naver_rule_v1",
+        nullToEmpty(directUrl),
+        note);
+  }
+
+  private static String cleanValue(String value) {
+    if (value == null || value.isBlank()) {
+      return "-";
+    }
+    return value;
+  }
+
+  private static String nullToEmpty(String value) {
+    return value == null ? "" : value;
   }
 
   private static String naverFinanceSearch(String keyword) {

@@ -22,6 +22,12 @@ class SummaryVerificationLinksTest {
     assertTrue(links.mostMentionedDateSearch().contains("ds=2026.02.15"));
     assertTrue(links.kospiPickDateSearch().contains("de=2026.02.15"));
     assertTrue(links.kosdaqPickDateSearch().contains("ds=2026.02.15"));
+    assertEquals("A", links.topGainerItem().value());
+    assertEquals("official_computable", links.topGainerItem().sourceType());
+    assertEquals("pykrx(KRX-based)", links.topGainerItem().sourceName());
+    assertTrue(links.topGainerItem().directUrl().contains("ds=2026.02.15"));
+    assertEquals("derived_rule", links.mostMentionedItem().sourceType());
+    assertEquals("naver_rule_v1", links.mostMentionedItem().sourceName());
   }
 
   @Test
@@ -34,6 +40,9 @@ class SummaryVerificationLinksTest {
     assertEquals("", links.mostMentionedDateSearch());
     assertEquals("", links.kospiPickDateSearch());
     assertEquals("", links.kosdaqPickDateSearch());
+    assertEquals("", links.topGainerItem().directUrl());
+    assertEquals("official_computable", links.topGainerItem().sourceType());
+    assertEquals("derived_rule", links.kosdaqPickItem().sourceType());
     assertTrue(links.topGainerSearch().contains("finance.naver.com/search"));
     assertTrue(links.topLoserSearch().contains("finance.naver.com/search"));
     assertTrue(links.mostMentionedSearch().contains("finance.naver.com/search"));

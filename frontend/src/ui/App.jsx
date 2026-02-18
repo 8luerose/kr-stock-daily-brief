@@ -29,15 +29,6 @@ function resolveApiLink(href, apiBaseUrl, k) {
   }
 }
 
-function SourceTier({ tier, text }) {
-  return (
-    <span className={`tier ${tier}`}>
-      <strong>{tier === "primary" ? "Primary" : "Secondary"}</strong>
-      <span>{text}</span>
-    </span>
-  );
-}
-
 function pickVerificationLink(v, datedKey, legacyKey) {
   return v?.[datedKey] || v?.[legacyKey] || "";
 }
@@ -77,6 +68,83 @@ function pickDateSpecificVerificationLink(v, datedKey, legacyKey, fieldValue, su
   }
 
   return pickVerificationLink(v, datedKey, legacyKey);
+}
+
+const VERIFICATION_FIELDS = [
+  {
+    key: "topGainer",
+    label: "Top Gainer",
+    datedKey: "topGainerDateSearch",
+    legacyKey: "topGainerSearch",
+    itemKey: "topGainerItem",
+    fallbackSourceType: "official_computable",
+    fallbackSourceName: "pykrx(KRX-based)",
+    fallbackNote:
+      "KRX data can be recomputed via pykrx, but no stable official deep-link is available for exact stock+date."
+  },
+  {
+    key: "topLoser",
+    label: "Top Loser",
+    datedKey: "topLoserDateSearch",
+    legacyKey: "topLoserSearch",
+    itemKey: "topLoserItem",
+    fallbackSourceType: "official_computable",
+    fallbackSourceName: "pykrx(KRX-based)",
+    fallbackNote:
+      "KRX data can be recomputed via pykrx, but no stable official deep-link is available for exact stock+date."
+  },
+  {
+    key: "mostMentioned",
+    label: "Most Mentioned",
+    datedKey: "mostMentionedDateSearch",
+    legacyKey: "mostMentionedSearch",
+    itemKey: "mostMentionedItem",
+    fallbackSourceType: "derived_rule",
+    fallbackSourceName: "naver_rule_v1",
+    fallbackNote: "Heuristic derived value, not an official exchange metric."
+  },
+  {
+    key: "kospiPick",
+    label: "KOSPI Pick",
+    datedKey: "kospiPickDateSearch",
+    legacyKey: "kospiPickSearch",
+    itemKey: "kospiPickItem",
+    fallbackSourceType: "derived_rule",
+    fallbackSourceName: "naver_rule_v1",
+    fallbackNote: "Heuristic derived value from crawler rules; exact reproducibility is limited."
+  },
+  {
+    key: "kosdaqPick",
+    label: "KOSDAQ Pick",
+    datedKey: "kosdaqPickDateSearch",
+    legacyKey: "kosdaqPickSearch",
+    itemKey: "kosdaqPickItem",
+    fallbackSourceType: "derived_rule",
+    fallbackSourceName: "naver_rule_v1",
+    fallbackNote: "Heuristic derived value from crawler rules; exact reproducibility is limited."
+  }
+];
+
+function buildVerificationRows(summary) {
+  const verification = summary?.verification;
+  return VERIFICATION_FIELDS.map((field) => {
+    const item = verification?.[field.itemKey];
+    const fallbackUrl = pickDateSpecificVerificationLink(
+      verification,
+      field.datedKey,
+      field.legacyKey,
+      summary?.[field.key],
+      summary?.date
+    );
+    return {
+      field: field.label,
+      value: item?.value || summary?.[field.key] || "",
+      sourceType: item?.sourceType || field.fallbackSourceType,
+      sourceName: item?.sourceName || field.fallbackSourceName,
+      directUrl: item?.directUrl || fallbackUrl,
+      note: item?.note || field.fallbackNote
+    };
+  });
 }
 
 function isoDate(d) {
@@ -490,6 +558,11 @@ export default function App() {
 
           {!loading && summary ? (
             <div className="summary">
+              {(() => {
+                const verificationRows = buildVerificationRows(summary);
+                const verificationDate = summary.verification?.date || summary.date;
+                return (
+                  <>
               <div className="meta">Generated at: {summary.generatedAt}</div>
 
               <div className="kvGrid">
@@ -523,112 +596,64 @@ export default function App() {
               </div>
 
               <div className="notesWrap">
-                <h4>검증 링크</h4>
-                <ul className="verifyLinks">
-                  <li>
-                    <SourceTier tier="primary" text={summary.verification?.primarySourceTier || "KRX official"} />
-                  </li>
-                  <li>
-                    KRX 검증 아티팩트 ({summary.date}):{" "}
-                    <LinkOrDash
-                      href={resolveApiLink(summary.verification?.primaryKrxArtifact, cfg.apiBaseUrl, k)}
-                      label="열기"
-                    />
-                  </li>
-                  <li>
-                    KRX 아티팩트 상태: {valueOrDash(krxArtifact?.status)}
-                  </li>
-                  <li>
-                    KRX 아티팩트 사유: {valueOrDash(krxArtifact?.unverifiedReason || krxArtifactError)}
-                  </li>
-                  <li>
+                <h4>검증 (날짜-필드-소스 직접 비교)</h4>
+                <div className="verifyMeta">
+                  <div>날짜: {valueOrDash(verificationDate)}</div>
+                  <div>
+                    KRX 검증 아티팩트: <LinkOrDash href={resolveApiLink(summary.verification?.primaryKrxArtifact, cfg.apiBaseUrl, k)} label="열기" />
+                  </div>
+                  <div>KRX 아티팩트 상태: {valueOrDash(krxArtifact?.status)}</div>
+                  <div>KRX 아티팩트 사유: {valueOrDash(krxArtifact?.unverifiedReason || krxArtifactError)}</div>
+                  <div>
                     KRX 데이터셋: {valueOrDash(krxArtifact?.rawSourceIdentity?.datasetName)} ({valueOrDash(krxArtifact?.rawSourceIdentity?.datasetCode)})
-                  </li>
-                  <li>
+                  </div>
+                  <div>
                     KRX 공식 포털: <LinkOrDash href={summary.verification?.krxDataPortal} label="열기" />
-                  </li>
-                  <li>
-                    KRX 마켓 오버뷰(공식): <LinkOrDash href={summary.verification?.krxMarketOverview} label="열기" />
-                  </li>
-                  <li>
+                  </div>
+                  <div>
+                    KRX 마켓 오버뷰: <LinkOrDash href={summary.verification?.krxMarketOverview} label="열기" />
+                  </div>
+                  <div>
                     pykrx 저장소: <LinkOrDash href={summary.verification?.pykrxRepo} label="열기" />
-                  </li>
-                  <li>
-                    <SourceTier
-                      tier="secondary"
-                      text={summary.verification?.secondarySourceTier || "Naver date-locked links (human cross-check only)"}
-                    />
-                  </li>
-                  <li>
-                    Top Gainer 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
-                    <LinkOrDash
-                      href={pickDateSpecificVerificationLink(
-                        summary.verification,
-                        "topGainerDateSearch",
-                        "topGainerSearch",
-                        summary.topGainer,
-                        summary.date
-                      )}
-                      label={valueOrDash(summary.topGainer)}
-                    />
-                  </li>
-                  <li>
-                    Top Loser 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
-                    <LinkOrDash
-                      href={pickDateSpecificVerificationLink(
-                        summary.verification,
-                        "topLoserDateSearch",
-                        "topLoserSearch",
-                        summary.topLoser,
-                        summary.date
-                      )}
-                      label={valueOrDash(summary.topLoser)}
-                    />
-                  </li>
-                  <li>
-                    Most Mentioned 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
-                    <LinkOrDash
-                      href={pickDateSpecificVerificationLink(
-                        summary.verification,
-                        "mostMentionedDateSearch",
-                        "mostMentionedSearch",
-                        summary.mostMentioned,
-                        summary.date
-                      )}
-                      label={valueOrDash(summary.mostMentioned)}
-                    />
-                  </li>
-                  <li>
-                    KOSPI Pick 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
-                    <LinkOrDash
-                      href={pickDateSpecificVerificationLink(
-                        summary.verification,
-                        "kospiPickDateSearch",
-                        "kospiPickSearch",
-                        summary.kospiPick,
-                        summary.date
-                      )}
-                      label={valueOrDash(summary.kospiPick)}
-                    />
-                  </li>
-                  <li>
-                    KOSDAQ Pick 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
-                    <LinkOrDash
-                      href={pickDateSpecificVerificationLink(
-                        summary.verification,
-                        "kosdaqPickDateSearch",
-                        "kosdaqPickSearch",
-                        summary.kosdaqPick,
-                        summary.date
-                      )}
-                      label={valueOrDash(summary.kosdaqPick)}
-                    />
-                  </li>
-                  <li>
-                    제한사항: {valueOrDash(summary.verification?.verificationLimitations)}
-                  </li>
-                </ul>
+                  </div>
+                  <div>제한사항: {valueOrDash(summary.verification?.verificationLimitations)}</div>
+                </div>
+                <div className="verifyTableWrap">
+                  <table className="verifyTable">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Field</th>
+                        <th>Value</th>
+                        <th>sourceType</th>
+                        <th>sourceName</th>
+                        <th>directUrl</th>
+                        <th>Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {verificationRows.map((row) => (
+                        <tr key={row.field}>
+                          <td>{valueOrDash(verificationDate)}</td>
+                          <td>{row.field}</td>
+                          <td>{valueOrDash(row.value)}</td>
+                          <td>
+                            <code>{valueOrDash(row.sourceType)}</code>
+                          </td>
+                          <td>{valueOrDash(row.sourceName)}</td>
+                          <td>
+                            <LinkOrDash href={row.directUrl} label={row.directUrl ? "열기" : "-"} />
+                          </td>
+                          <td>{valueOrDash(row.note)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+                  </>
+                );
+              })()}
             </div>
           ) : null}
         </section>
