@@ -64,6 +64,13 @@ public class SummaryController {
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
+  @GetMapping("/{date:\\d{4}-\\d{2}-\\d{2}}/verification/krx")
+  public ResponseEntity<KrxVerificationArtifactDto> getKrxVerificationArtifact(
+      @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    return service.krxVerificationArtifact(date).map(ResponseEntity::ok)
+        .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
   @PostMapping("/{date:\\d{4}-\\d{2}-\\d{2}}/generate")
   public SummaryDto generate(
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {

@@ -13,6 +13,31 @@ function LinkOrDash({ href, label }) {
   );
 }
 
+function resolveApiLink(href, apiBaseUrl, k) {
+  if (!href) return "";
+  if (href.startsWith("http://") || href.startsWith("https://")) {
+    return href;
+  }
+  try {
+    const url = new URL(apiBaseUrl + href);
+    if (k) {
+      url.searchParams.set("k", k);
+    }
+    return url.toString();
+  } catch {
+    return href;
+  }
+}
+
+function SourceTier({ tier, text }) {
+  return (
+    <span className={`tier ${tier}`}>
+      <strong>{tier === "primary" ? "Primary" : "Secondary"}</strong>
+      <span>{text}</span>
+    </span>
+  );
+}
+
 function pickVerificationLink(v, datedKey, legacyKey) {
   return v?.[datedKey] || v?.[legacyKey] || "";
 }
@@ -111,6 +136,8 @@ export default function App() {
 
   // Current day detail
   const [summary, setSummary] = useState(null);
+  const [krxArtifact, setKrxArtifact] = useState(null);
+  const [krxArtifactError, setKrxArtifactError] = useState("");
 
   // Dashboard stats
   const [stats, setStats] = useState(null);
@@ -150,12 +177,24 @@ export default function App() {
   async function load(dateStr) {
     setLoading(true);
     setError("");
+    setKrxArtifact(null);
+    setKrxArtifactError("");
     try {
       const s = await apiFetch(`/api/summaries/${dateStr}`);
       setSummary(s);
+
+      try {
+        const artifact = await apiFetch(`/api/summaries/${dateStr}/verification/krx`);
+        setKrxArtifact(artifact);
+      } catch (artifactErr) {
+        setKrxArtifact(null);
+        setKrxArtifactError(artifactErr.message || String(artifactErr));
+      }
     } catch (e) {
       // 404 = no summary yet
-      if (String(e.message).includes("404")) setSummary(null);
+      if (String(e.message).includes("404")) {
+        setSummary(null);
+      }
       else setError(e.message || String(e));
     } finally {
       setLoading(false);
@@ -487,13 +526,38 @@ export default function App() {
                 <h4>검증 링크</h4>
                 <ul className="verifyLinks">
                   <li>
-                    KRX 데이터 포털(공식): <LinkOrDash href={summary.verification?.krxDataPortal} label="열기" />
+                    <SourceTier tier="primary" text={summary.verification?.primarySourceTier || "KRX official"} />
+                  </li>
+                  <li>
+                    KRX 검증 아티팩트 ({summary.date}):{" "}
+                    <LinkOrDash
+                      href={resolveApiLink(summary.verification?.primaryKrxArtifact, cfg.apiBaseUrl, k)}
+                      label="열기"
+                    />
+                  </li>
+                  <li>
+                    KRX 아티팩트 상태: {valueOrDash(krxArtifact?.status)}
+                  </li>
+                  <li>
+                    KRX 아티팩트 사유: {valueOrDash(krxArtifact?.unverifiedReason || krxArtifactError)}
+                  </li>
+                  <li>
+                    KRX 데이터셋: {valueOrDash(krxArtifact?.rawSourceIdentity?.datasetName)} ({valueOrDash(krxArtifact?.rawSourceIdentity?.datasetCode)})
+                  </li>
+                  <li>
+                    KRX 공식 포털: <LinkOrDash href={summary.verification?.krxDataPortal} label="열기" />
                   </li>
                   <li>
                     KRX 마켓 오버뷰(공식): <LinkOrDash href={summary.verification?.krxMarketOverview} label="열기" />
                   </li>
                   <li>
                     pykrx 저장소: <LinkOrDash href={summary.verification?.pykrxRepo} label="열기" />
+                  </li>
+                  <li>
+                    <SourceTier
+                      tier="secondary"
+                      text={summary.verification?.secondarySourceTier || "Naver date-locked links (human cross-check only)"}
+                    />
                   </li>
                   <li>
                     Top Gainer 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}

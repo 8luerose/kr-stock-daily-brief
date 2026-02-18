@@ -50,6 +50,60 @@ public class DailySummaryService {
     return repo.findTopByArchivedAtIsNullOrderByDateDesc();
   }
 
+  public Optional<KrxVerificationArtifactDto> krxVerificationArtifact(LocalDate date) {
+    Optional<DailySummary> found = repo.findByDateAndArchivedAtIsNull(date);
+    if (found.isEmpty()) {
+      return Optional.empty();
+    }
+
+    DailySummary row = found.get();
+    Optional<DailyMarketBrief> reference = loadPykrxLeaders(date);
+    String status = "unverified";
+    String reason = "krx_reference_unavailable: failed to fetch pykrx leaders for " + date;
+    String refTopGainer = "";
+    String refTopLoser = "";
+
+    if (reference.isPresent()) {
+      DailyMarketBrief ref = reference.get();
+      refTopGainer = nullToEmpty(ref.topGainer());
+      refTopLoser = nullToEmpty(ref.topLoser());
+      boolean gainerMatched = same(row.getTopGainer(), ref.topGainer());
+      boolean loserMatched = same(row.getTopLoser(), ref.topLoser());
+      status = gainerMatched && loserMatched ? "verified" : "unverified";
+      reason =
+          status.equals("verified")
+              ? ""
+              : "mismatch: topGainer or topLoser differs from KRX reference";
+    }
+
+    return Optional.of(
+        new KrxVerificationArtifactDto(
+            date,
+            java.time.Instant.now(),
+            status,
+            reason,
+            new KrxVerificationArtifactDto.SourceIdentity(
+                "KRX 전종목 등락률",
+                "MDCSTAT01501",
+                "https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101"),
+            new KrxVerificationArtifactDto.ComputationBasis(
+                "등락률(%)",
+                "topGainer = max(등락률)",
+                "topLoser = min(등락률)",
+                "KRX 등락률 데이터셋 기준. 참조값은 pykrx leaders 브리지를 통해 수집됨."),
+            List.of(
+                new KrxVerificationArtifactDto.VerificationEvidenceRecord(
+                    "topGainer",
+                    nullToEmpty(row.getTopGainer()),
+                    refTopGainer,
+                    !refTopGainer.isBlank() && same(row.getTopGainer(), refTopGainer)),
+                new KrxVerificationArtifactDto.VerificationEvidenceRecord(
+                    "topLoser",
+                    nullToEmpty(row.getTopLoser()),
+                    refTopLoser,
+                    !refTopLoser.isBlank() && same(row.getTopLoser(), refTopLoser)))));
+  }
+
   public SummaryStatsDto stats() {
     Optional<DailySummary> latest = repo.findTopByArchivedAtIsNullOrderByDateDesc();
     return new SummaryStatsDto(
@@ -393,6 +447,10 @@ public class DailySummaryService {
 
   private static String blankToDash(String s) {
     return isBlank(s) ? "-" : s;
+  }
+
+  private static String nullToEmpty(String s) {
+    return s == null ? "" : s;
   }
 
   private record VerificationResult(boolean ok, String reason) {}

@@ -7,6 +7,9 @@ import java.time.format.DateTimeFormatter;
 
 public record SummaryVerificationLinks(
     String date,
+    String primaryKrxArtifact,
+    String primarySourceTier,
+    String secondarySourceTier,
     String krxDataPortal,
     String krxMarketOverview,
     String pykrxRepo,
@@ -26,6 +29,7 @@ public record SummaryVerificationLinks(
 
   public static SummaryVerificationLinks from(
       LocalDate date,
+      String primaryKrxArtifact,
       String topGainer,
       String topLoser,
       String mostMentioned,
@@ -34,6 +38,9 @@ public record SummaryVerificationLinks(
     String dateText = date == null ? "" : date.toString();
     return new SummaryVerificationLinks(
         dateText,
+        primaryKrxArtifact,
+        "Primary=KRX official verification artifact",
+        "Secondary=Naver date-locked links (human cross-check only)",
         "https://data.krx.co.kr/",
         "https://data.krx.co.kr/contents/MDC/MAIN/main/index.cmd",
         "https://github.com/sharebook-kr/pykrx",
@@ -47,7 +54,7 @@ public record SummaryVerificationLinks(
         naverDateNewsSearch(mostMentioned, date),
         naverDateNewsSearch(kospiPick, date),
         naverDateNewsSearch(kosdaqPick, date),
-        "KRX official pages are linked as primary sources. Exact stock+date deep-link is not available on a stable public KRX URL, so per-field links use date-locked Naver news search as fallback.");
+        "Primary verification uses KRX artifact endpoint. Naver date-locked links are secondary human cross-check only.");
   }
 
   private static String naverFinanceSearch(String keyword) {

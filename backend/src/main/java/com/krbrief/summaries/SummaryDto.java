@@ -32,6 +32,7 @@ public record SummaryDto(
         s.getArchivedAt(),
         SummaryVerificationLinks.from(
             s.getDate(),
+            s.getDate() == null ? "" : "/api/summaries/" + s.getDate() + "/verification/krx",
             s.getTopGainer(),
             s.getTopLoser(),
             s.getMostMentioned(),

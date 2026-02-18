@@ -43,6 +43,9 @@ class SummaryApiTest {
         .andExpect(jsonPath("$.date").value("2026-02-15"))
         .andExpect(jsonPath("$.topGainer").value("TOP_GAINER_2026-02-15"))
         .andExpect(jsonPath("$.verification.date").value("2026-02-15"))
+        .andExpect(jsonPath("$.verification.primaryKrxArtifact").value("/api/summaries/2026-02-15/verification/krx"))
+        .andExpect(jsonPath("$.verification.primarySourceTier").value(org.hamcrest.Matchers.containsString("Primary=KRX")))
+        .andExpect(jsonPath("$.verification.secondarySourceTier").value(org.hamcrest.Matchers.containsString("Secondary=Naver")))
         .andExpect(jsonPath("$.verification.krxDataPortal").value("https://data.krx.co.kr/"))
         .andExpect(jsonPath("$.verification.topGainerDateSearch").value(org.hamcrest.Matchers.containsString("ds=2026.02.15")))
         .andExpect(jsonPath("$.verification.topLoserDateSearch").value(org.hamcrest.Matchers.containsString("de=2026.02.15")))
@@ -56,6 +59,16 @@ class SummaryApiTest {
     mvc.perform(get("/api/summaries/2026-02-15"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.date").value("2026-02-15"));
+
+    mvc.perform(get("/api/summaries/2026-02-15/verification/krx"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.tradeDate").value("2026-02-15"))
+        .andExpect(jsonPath("$.status").value("unverified"))
+        .andExpect(jsonPath("$.unverifiedReason").value(org.hamcrest.Matchers.containsString("krx_reference_unavailable")))
+        .andExpect(jsonPath("$.rawSourceIdentity.datasetCode").value("MDCSTAT01501"))
+        .andExpect(jsonPath("$.computedTopGainerTopLoserBasis.metric").value("등락률(%)"))
+        .andExpect(jsonPath("$.evidenceRecords[0].field").value("topGainer"))
+        .andExpect(jsonPath("$.evidenceRecords[1].field").value("topLoser"));
   }
 
   @Test

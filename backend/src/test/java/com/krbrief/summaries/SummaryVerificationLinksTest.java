@@ -12,8 +12,11 @@ class SummaryVerificationLinksTest {
   void buildsDateLockedLinksForAllFields() {
     SummaryVerificationLinks links =
         SummaryVerificationLinks.from(
-            LocalDate.of(2026, 2, 15), "A", "B", "C", "D", "E");
+            LocalDate.of(2026, 2, 15), "/api/summaries/2026-02-15/verification/krx", "A", "B", "C", "D", "E");
 
+    assertEquals("/api/summaries/2026-02-15/verification/krx", links.primaryKrxArtifact());
+    assertTrue(links.primarySourceTier().contains("Primary=KRX"));
+    assertTrue(links.secondarySourceTier().contains("Secondary=Naver"));
     assertTrue(links.topGainerDateSearch().contains("ds=2026.02.15"));
     assertTrue(links.topLoserDateSearch().contains("de=2026.02.15"));
     assertTrue(links.mostMentionedDateSearch().contains("ds=2026.02.15"));
@@ -23,7 +26,7 @@ class SummaryVerificationLinksTest {
 
   @Test
   void keepsLegacySearchLinksWhenDateMissing() {
-    SummaryVerificationLinks links = SummaryVerificationLinks.from(null, "A", "B", "C", "D", "E");
+    SummaryVerificationLinks links = SummaryVerificationLinks.from(null, "", "A", "B", "C", "D", "E");
 
     assertEquals("", links.date());
     assertEquals("", links.topGainerDateSearch());
