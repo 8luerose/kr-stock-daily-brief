@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,14 +25,17 @@ public class DailySummaryService {
   private final DailySummaryRepository repo;
   private final MarketDataClient marketData;
   private final RestClient pykrxHttp;
+  private final String provider;
 
   public DailySummaryService(
       DailySummaryRepository repo,
       MarketDataClient marketData,
-      @Value("${marketdata.baseUrl:http://marketdata:8000}") String marketDataBaseUrl) {
+      @Value("${marketdata.baseUrl:http://marketdata:8000}") String marketDataBaseUrl,
+      @Value("${marketdata.provider:placeholder}") String provider) {
     this.repo = repo;
     this.marketData = marketData;
     this.pykrxHttp = RestClient.builder().baseUrl(marketDataBaseUrl).build();
+    this.provider = provider;
   }
 
   public List<DailySummary> list(LocalDate from, LocalDate to) {
@@ -84,7 +88,7 @@ public class DailySummaryService {
     DailySummary s = repo.findById(date).orElseGet(() -> new DailySummary(date));
     s.setArchivedAt(null);
 
-    DailyMarketBrief brief = loadBriefWithRetry(date, 2);
+    DailyMarketBrief brief = loadBriefWithVerification(date, 2);
 
     // If provider returns '-' (best-effort), fall back to deterministic placeholders.
     String topGainer =
@@ -165,6 +169,78 @@ public class DailySummaryService {
     return new BackfillResponseDto(from, to, total, success, lowConfidence, fail, results);
   }
 
+  private DailyMarketBrief loadBriefWithVerification(LocalDate date, int maxRetries) {
+    if ("placeholder".equalsIgnoreCase(provider)) {
+      return loadBriefWithRetry(date, maxRetries);
+    }
+
+    Optional<DailyMarketBrief> reference = loadReferenceBrief(date, maxRetries);
+    if (reference.isEmpty()) {
+      throw new IllegalStateException(
+          "verification_reference_unavailable: cannot fetch date-specific leaders for " + date);
+    }
+
+    List<String> primaryReasons = new ArrayList<>();
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      Optional<DailyMarketBrief> candidate = loadPrimaryCandidate(date, maxRetries);
+      if (candidate.isPresent()) {
+        VerificationResult v = verify(candidate.get(), reference.get());
+        if (v.ok()) {
+          return appendVerification(candidate.get(), "primary", attempt, true, v.reason());
+        }
+        primaryReasons.add("attempt=" + attempt + ": " + v.reason());
+      } else {
+        primaryReasons.add("attempt=" + attempt + ": empty_response");
+      }
+    }
+
+    List<String> fallbackReasons = new ArrayList<>();
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      Optional<DailyMarketBrief> candidate = loadPykrxLeaders(date);
+      if (candidate.isPresent()) {
+        VerificationResult v = verify(candidate.get(), reference.get());
+        if (v.ok()) {
+          return appendVerification(candidate.get(), "fallback(pykrx)", attempt, true, v.reason());
+        }
+        fallbackReasons.add("attempt=" + attempt + ": " + v.reason());
+      } else {
+        fallbackReasons.add("attempt=" + attempt + ": empty_response");
+      }
+    }
+
+    throw new IllegalStateException(
+        "verification_failed: primary="
+            + String.join("; ", primaryReasons)
+            + " | fallback="
+            + String.join("; ", fallbackReasons));
+  }
+
+  private Optional<DailyMarketBrief> loadReferenceBrief(LocalDate date, int maxRetries) {
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      Optional<DailyMarketBrief> pykrx = loadPykrxLeaders(date);
+      if (pykrx.isPresent()) return pykrx;
+    }
+    return Optional.empty();
+  }
+
+  private Optional<DailyMarketBrief> loadPrimaryCandidate(LocalDate date, int maxRetries) {
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        Optional<DailyMarketBrief> found = marketData.getDailyBrief(date);
+        if (found.isPresent()) {
+          return found;
+        }
+      } catch (Exception e) {
+        log.warn(
+            "primary marketdata fetch failed: date={}, attempt={}, reason={}",
+            date,
+            attempt,
+            e.getClass().getSimpleName() + ":" + (e.getMessage() == null ? "" : e.getMessage()));
+      }
+    }
+    return Optional.empty();
+  }
+
   private DailyMarketBrief loadBriefWithRetry(LocalDate date, int maxRetries) {
     LocalDate today = todaySeoul();
     if (date.isBefore(today)) {
@@ -234,6 +310,63 @@ public class DailySummaryService {
     }
   }
 
+  private VerificationResult verify(DailyMarketBrief candidate, DailyMarketBrief reference) {
+    List<String> diffs = new ArrayList<>();
+
+    if (!same(candidate.topGainer(), reference.topGainer())) {
+      diffs.add("topGainer candidate='" + candidate.topGainer() + "' ref='" + reference.topGainer() + "'");
+    }
+    if (!same(candidate.topLoser(), reference.topLoser())) {
+      diffs.add("topLoser candidate='" + candidate.topLoser() + "' ref='" + reference.topLoser() + "'");
+    }
+    if (!same(candidate.mostMentioned(), reference.mostMentioned())) {
+      diffs.add(
+          "mostMentioned candidate='"
+              + candidate.mostMentioned()
+              + "' ref='"
+              + reference.mostMentioned()
+              + "'");
+    }
+    if (!same(candidate.kospiPick(), reference.kospiPick())) {
+      diffs.add("kospiPick candidate='" + candidate.kospiPick() + "' ref='" + reference.kospiPick() + "'");
+    }
+    if (!same(candidate.kosdaqPick(), reference.kosdaqPick())) {
+      diffs.add(
+          "kosdaqPick candidate='" + candidate.kosdaqPick() + "' ref='" + reference.kosdaqPick() + "'");
+    }
+
+    if (diffs.isEmpty()) {
+      return new VerificationResult(true, "match=100%");
+    }
+    return new VerificationResult(false, String.join(", ", diffs));
+  }
+
+  private DailyMarketBrief appendVerification(
+      DailyMarketBrief brief, String stage, int attempt, boolean matched, String reason) {
+    String extra =
+        "verification: stage="
+            + stage
+            + ", attempt="
+            + attempt
+            + ", matched="
+            + matched
+            + ", reason="
+            + reason;
+    String notes = brief.notes() == null || brief.notes().isBlank() ? extra : brief.notes() + "\n" + extra;
+    return new DailyMarketBrief(
+        brief.topGainer(),
+        brief.topLoser(),
+        brief.mostMentioned(),
+        brief.kospiPick(),
+        brief.kosdaqPick(),
+        brief.source(),
+        notes);
+  }
+
+  private boolean same(String a, String b) {
+    return (a == null ? "" : a.trim()).equals(b == null ? "" : b.trim());
+  }
+
   private String sourceUsedFromNotes(String notes) {
     if (notes.contains("Source: pykrx") || notes.contains("Source: pykrx(")) {
       return "pykrx";
@@ -261,6 +394,8 @@ public class DailySummaryService {
   private static String blankToDash(String s) {
     return isBlank(s) ? "-" : s;
   }
+
+  private record VerificationResult(boolean ok, String reason) {}
 
   private record PykrxLeadersResponse(
       String date,
