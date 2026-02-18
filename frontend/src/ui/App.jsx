@@ -17,6 +17,43 @@ function pickVerificationLink(v, datedKey, legacyKey) {
   return v?.[datedKey] || v?.[legacyKey] || "";
 }
 
+function isIsoDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value || "");
+}
+
+function toNaverDateNewsSearch(keyword, iso) {
+  if (!keyword || !String(keyword).trim() || keyword === "-" || !isIsoDate(iso)) {
+    return "";
+  }
+  const datePart = iso.replaceAll("-", ".");
+  const params = new URLSearchParams({
+    where: "news",
+    sm: "tab_opt",
+    sort: "0",
+    photo: "0",
+    field: "0",
+    pd: "3",
+    ds: datePart,
+    de: datePart,
+    query: `${keyword} 주가`
+  });
+  return `https://search.naver.com/search.naver?${params.toString()}`;
+}
+
+function pickDateSpecificVerificationLink(v, datedKey, legacyKey, fieldValue, summaryDate) {
+  const explicitDateLink = v?.[datedKey];
+  if (explicitDateLink) {
+    return explicitDateLink;
+  }
+
+  const dateLockedFromFrontend = toNaverDateNewsSearch(fieldValue, v?.date || summaryDate);
+  if (dateLockedFromFrontend) {
+    return dateLockedFromFrontend;
+  }
+
+  return pickVerificationLink(v, datedKey, legacyKey);
+}
+
 function isoDate(d) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -461,35 +498,65 @@ export default function App() {
                   <li>
                     Top Gainer 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
                     <LinkOrDash
-                      href={pickVerificationLink(summary.verification, "topGainerDateSearch", "topGainerSearch")}
+                      href={pickDateSpecificVerificationLink(
+                        summary.verification,
+                        "topGainerDateSearch",
+                        "topGainerSearch",
+                        summary.topGainer,
+                        summary.date
+                      )}
                       label={valueOrDash(summary.topGainer)}
                     />
                   </li>
                   <li>
                     Top Loser 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
                     <LinkOrDash
-                      href={pickVerificationLink(summary.verification, "topLoserDateSearch", "topLoserSearch")}
+                      href={pickDateSpecificVerificationLink(
+                        summary.verification,
+                        "topLoserDateSearch",
+                        "topLoserSearch",
+                        summary.topLoser,
+                        summary.date
+                      )}
                       label={valueOrDash(summary.topLoser)}
                     />
                   </li>
                   <li>
                     Most Mentioned 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
                     <LinkOrDash
-                      href={pickVerificationLink(summary.verification, "mostMentionedDateSearch", "mostMentionedSearch")}
+                      href={pickDateSpecificVerificationLink(
+                        summary.verification,
+                        "mostMentionedDateSearch",
+                        "mostMentionedSearch",
+                        summary.mostMentioned,
+                        summary.date
+                      )}
                       label={valueOrDash(summary.mostMentioned)}
                     />
                   </li>
                   <li>
                     KOSPI Pick 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
                     <LinkOrDash
-                      href={pickVerificationLink(summary.verification, "kospiPickDateSearch", "kospiPickSearch")}
+                      href={pickDateSpecificVerificationLink(
+                        summary.verification,
+                        "kospiPickDateSearch",
+                        "kospiPickSearch",
+                        summary.kospiPick,
+                        summary.date
+                      )}
                       label={valueOrDash(summary.kospiPick)}
                     />
                   </li>
                   <li>
                     KOSDAQ Pick 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
                     <LinkOrDash
-                      href={pickVerificationLink(summary.verification, "kosdaqPickDateSearch", "kosdaqPickSearch")}
+                      href={pickDateSpecificVerificationLink(
+                        summary.verification,
+                        "kosdaqPickDateSearch",
+                        "kosdaqPickSearch",
+                        summary.kosdaqPick,
+                        summary.date
+                      )}
                       label={valueOrDash(summary.kosdaqPick)}
                     />
                   </li>
