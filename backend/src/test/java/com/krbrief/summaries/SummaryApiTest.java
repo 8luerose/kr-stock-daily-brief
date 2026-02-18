@@ -42,6 +42,11 @@ class SummaryApiTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.date").value("2026-02-15"))
         .andExpect(jsonPath("$.topGainer").value("TOP_GAINER_2026-02-15"))
+        .andExpect(jsonPath("$.verification.date").value("2026-02-15"))
+        .andExpect(jsonPath("$.verification.krxDataPortal").value("https://data.krx.co.kr/"))
+        .andExpect(jsonPath("$.verification.topGainerDateSearch").value(org.hamcrest.Matchers.containsString("ds=2026.02.15")))
+        .andExpect(jsonPath("$.verification.topLoserDateSearch").value(org.hamcrest.Matchers.containsString("de=2026.02.15")))
+        .andExpect(jsonPath("$.verification.verificationLimitations").value(org.hamcrest.Matchers.containsString("KRX official pages")))
         .andExpect(jsonPath("$.content").exists())
         .andExpect(jsonPath("$.generatedAt").exists());
 

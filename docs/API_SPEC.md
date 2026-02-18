@@ -103,6 +103,23 @@
     "rawNotes": "Source: naver(finance.naver.com)...",
     "createdAt": "2026-02-16T08:11:13.000Z",
     "updatedAt": "2026-02-16T08:11:13.000Z",
+    "verification": {
+      "date": "2026-02-16",
+      "krxDataPortal": "https://data.krx.co.kr/",
+      "krxMarketOverview": "https://data.krx.co.kr/contents/MDC/MAIN/main/index.cmd",
+      "pykrxRepo": "https://github.com/sharebook-kr/pykrx",
+      "topGainerSearch": "https://finance.naver.com/search/search.naver?query=SK%EC%A6%9D%EA%B6%8C%EC%9A%B0",
+      "topLoserSearch": "https://finance.naver.com/search/search.naver?query=%EC%BD%94%ED%8D%BC%EC%8A%A4%EC%BD%94%EB%A6%AC%EC%95%84",
+      "mostMentionedSearch": "https://finance.naver.com/search/search.naver?query=SK%EC%A6%9D%EA%B6%8C",
+      "kospiPickSearch": "https://finance.naver.com/search/search.naver?query=SK%EC%A6%9D%EA%B6%8C",
+      "kosdaqPickSearch": "https://finance.naver.com/search/search.naver?query=%EC%A2%8B%EC%9D%80%EC%82%AC%EB%9E%8C%EB%93%A4",
+      "topGainerDateSearch": "https://search.naver.com/search.naver?...&pd=3&ds=2026.02.16&de=2026.02.16&query=SK%EC%A6%9D%EA%B6%8C%EC%9A%B0%20%EC%A3%BC%EA%B0%80",
+      "topLoserDateSearch": "https://search.naver.com/search.naver?...&pd=3&ds=2026.02.16&de=2026.02.16&query=%EC%BD%94%ED%8D%BC%EC%8A%A4%EC%BD%94%EB%A6%AC%EC%95%84%20%EC%A3%BC%EA%B0%80",
+      "mostMentionedDateSearch": "https://search.naver.com/search.naver?...&pd=3&ds=2026.02.16&de=2026.02.16&query=SK%EC%A6%9D%EA%B6%8C%20%EC%A3%BC%EA%B0%80",
+      "kospiPickDateSearch": "https://search.naver.com/search.naver?...&pd=3&ds=2026.02.16&de=2026.02.16&query=SK%EC%A6%9D%EA%B6%8C%20%EC%A3%BC%EA%B0%80",
+      "kosdaqPickDateSearch": "https://search.naver.com/search.naver?...&pd=3&ds=2026.02.16&de=2026.02.16&query=%EC%A2%8B%EC%9D%80%EC%82%AC%EB%9E%8C%EB%93%A4%20%EC%A3%BC%EA%B0%80",
+      "verificationLimitations": "KRX official pages are linked as primary sources. Exact stock+date deep-link is not available on a stable public KRX URL, so per-field links use date-locked Naver news search as fallback."
+    },
     "content": "Daily summary for 2026-02-16...",
     "generatedAt": "2026-02-16T08:11:13.000Z"
   }
@@ -264,5 +281,24 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 - `createdAt: Instant`
 - `updatedAt: Instant`
 - `archivedAt: Instant | null`
+- `verification: SummaryVerificationLinks`
 - `content: String` (UI 호환 필드)
 - `generatedAt: Instant` (UI 호환 필드, 현재 `updatedAt`와 동일)
+
+`SummaryVerificationLinks`:
+
+- `date: LocalDate` (검증 대상 날짜)
+- `krxDataPortal: String` (공식 KRX 데이터 포털)
+- `krxMarketOverview: String` (공식 KRX 마켓 오버뷰)
+- `pykrxRepo: String` (데이터 산출 방식 참고용)
+- `topGainerSearch|topLoserSearch|mostMentionedSearch|kospiPickSearch|kosdaqPickSearch: String`
+  (레거시 호환용 검색 링크)
+- `topGainerDateSearch|topLoserDateSearch|mostMentionedDateSearch|kospiPickDateSearch|kosdaqPickDateSearch: String`
+  (날짜 고정 검증 링크: `ds=YYYY.MM.DD&de=YYYY.MM.DD`)
+- `verificationLimitations: String` (공식 링크의 한계/폴백 근거)
+
+검증 가이드:
+
+1. 먼저 `krxDataPortal`/`krxMarketOverview`(공식 KRX)에서 당일 시장 지표를 확인한다.
+2. 각 필드는 `*DateSearch` 링크를 열어 동일 날짜(`ds`,`de`)로 고정된 검색 결과에서 종목/뉴스를 대조한다.
+3. KRX에서 종목+날짜 단일 딥링크가 안정적으로 제공되지 않아, 종목 단위는 날짜 고정 검색 링크를 폴백으로 사용한다.

@@ -13,6 +13,10 @@ function LinkOrDash({ href, label }) {
   );
 }
 
+function pickVerificationLink(v, datedKey, legacyKey) {
+  return v?.[datedKey] || v?.[legacyKey] || "";
+}
+
 function isoDate(d) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -446,25 +450,51 @@ export default function App() {
                 <h4>검증 링크</h4>
                 <ul className="verifyLinks">
                   <li>
-                    KRX 데이터 포털: <LinkOrDash href={summary.verification?.krxDataPortal} label="열기" />
+                    KRX 데이터 포털(공식): <LinkOrDash href={summary.verification?.krxDataPortal} label="열기" />
+                  </li>
+                  <li>
+                    KRX 마켓 오버뷰(공식): <LinkOrDash href={summary.verification?.krxMarketOverview} label="열기" />
                   </li>
                   <li>
                     pykrx 저장소: <LinkOrDash href={summary.verification?.pykrxRepo} label="열기" />
                   </li>
                   <li>
-                    Top Gainer 검색: <LinkOrDash href={summary.verification?.topGainerSearch} label={valueOrDash(summary.topGainer)} />
+                    Top Gainer 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
+                    <LinkOrDash
+                      href={pickVerificationLink(summary.verification, "topGainerDateSearch", "topGainerSearch")}
+                      label={valueOrDash(summary.topGainer)}
+                    />
                   </li>
                   <li>
-                    Top Loser 검색: <LinkOrDash href={summary.verification?.topLoserSearch} label={valueOrDash(summary.topLoser)} />
+                    Top Loser 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
+                    <LinkOrDash
+                      href={pickVerificationLink(summary.verification, "topLoserDateSearch", "topLoserSearch")}
+                      label={valueOrDash(summary.topLoser)}
+                    />
                   </li>
                   <li>
-                    Most Mentioned 검색: <LinkOrDash href={summary.verification?.mostMentionedSearch} label={valueOrDash(summary.mostMentioned)} />
+                    Most Mentioned 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
+                    <LinkOrDash
+                      href={pickVerificationLink(summary.verification, "mostMentionedDateSearch", "mostMentionedSearch")}
+                      label={valueOrDash(summary.mostMentioned)}
+                    />
                   </li>
                   <li>
-                    KOSPI Pick 검색: <LinkOrDash href={summary.verification?.kospiPickSearch} label={valueOrDash(summary.kospiPick)} />
+                    KOSPI Pick 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
+                    <LinkOrDash
+                      href={pickVerificationLink(summary.verification, "kospiPickDateSearch", "kospiPickSearch")}
+                      label={valueOrDash(summary.kospiPick)}
+                    />
                   </li>
                   <li>
-                    KOSDAQ Pick 검색: <LinkOrDash href={summary.verification?.kosdaqPickSearch} label={valueOrDash(summary.kosdaqPick)} />
+                    KOSDAQ Pick 날짜고정 검색 ({summary.verification?.date || summary.date}):{" "}
+                    <LinkOrDash
+                      href={pickVerificationLink(summary.verification, "kosdaqPickDateSearch", "kosdaqPickSearch")}
+                      label={valueOrDash(summary.kosdaqPick)}
+                    />
+                  </li>
+                  <li>
+                    제한사항: {valueOrDash(summary.verification?.verificationLimitations)}
                   </li>
                 </ul>
               </div>

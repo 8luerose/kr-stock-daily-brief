@@ -65,7 +65,14 @@ Notes:
 - `rawNotes` stores source/rules/fallback reason (debug + trust trace).
 - failed fetch means external source retrieval/parsing failed; service retries, then falls back with reason.
 - Responses include structured fields (`topGainer`, `topLoser`, `mostMentioned`, `kospiPick`, `kosdaqPick`, `rawNotes`, `createdAt`, `updatedAt`) and also `content`/`generatedAt` for the current MVP UI.
+- Responses also include `verification` links. Use `verification.*DateSearch` links for date-locked checks (`ds/de=YYYY.MM.DD`), and treat KRX links as the official primary entry points.
 - Backfill result rows include `sourceUsed` (`pykrx|fdr|naver|fallback`) and `confidence` (`high|low`).
+
+### Date-specific verification quick guide
+
+- Primary source: open `verification.krxDataPortal` or `verification.krxMarketOverview`.
+- Field cross-check: open `verification.topGainerDateSearch`, `verification.topLoserDateSearch`, `verification.mostMentionedDateSearch`, `verification.kospiPickDateSearch`, `verification.kosdaqPickDateSearch`.
+- Limitation: KRX does not expose a stable public single-URL deep link for `stock + exact date` for every field, so the API returns official KRX entry links plus date-locked fallback search links.
 
 ## Scheduler
 

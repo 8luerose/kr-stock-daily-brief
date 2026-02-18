@@ -31,7 +31,12 @@ public record SummaryDto(
         s.getUpdatedAt(),
         s.getArchivedAt(),
         SummaryVerificationLinks.from(
-            s.getTopGainer(), s.getTopLoser(), s.getMostMentioned(), s.getKospiPick(), s.getKosdaqPick()),
+            s.getDate(),
+            s.getTopGainer(),
+            s.getTopLoser(),
+            s.getMostMentioned(),
+            s.getKospiPick(),
+            s.getKosdaqPick()),
         s.renderContent(),
         s.getUpdatedAt());
   }
