@@ -37,7 +37,8 @@ public record SummaryDto(
             s.getTopLoser(),
             s.getMostMentioned(),
             s.getKospiPick(),
-            s.getKosdaqPick()),
+            s.getKosdaqPick(),
+            s.getRawNotes()),
         s.renderContent(),
         s.getUpdatedAt());
   }

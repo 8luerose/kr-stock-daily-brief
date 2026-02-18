@@ -58,6 +58,11 @@ public class PykrxMarketDataClient implements MarketDataClient {
       String mostMentioned,
       String kospiPick,
       String kosdaqPick,
+      String topGainerCode,
+      String topLoserCode,
+      String mostMentionedCode,
+      String kospiPickCode,
+      String kosdaqPickCode,
       String source,
       String notes) {}
 }

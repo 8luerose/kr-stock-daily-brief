@@ -9,44 +9,55 @@ import org.junit.jupiter.api.Test;
 class SummaryVerificationLinksTest {
 
   @Test
-  void buildsDateLockedLinksForAllFields() {
+  void buildsPrimaryArtifactAnchorsAndNoSearchLinks() {
     SummaryVerificationLinks links =
         SummaryVerificationLinks.from(
-            LocalDate.of(2026, 2, 15), "/api/summaries/2026-02-15/verification/krx", "A", "B", "C", "D", "E");
+            LocalDate.of(2026, 2, 15),
+            "/api/summaries/2026-02-15/verification/krx",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "codes: topGainer=111111, topLoser=222222, mostMentioned=333333, kospiPick=444444, kosdaqPick=555555");
 
-    assertEquals("/api/summaries/2026-02-15/verification/krx", links.primaryKrxArtifact());
-    assertTrue(links.primarySourceTier().contains("Primary=KRX"));
-    assertTrue(links.secondarySourceTier().contains("Secondary=Naver"));
-    assertTrue(links.topGainerDateSearch().contains("ds=2026.02.15"));
-    assertTrue(links.topLoserDateSearch().contains("de=2026.02.15"));
-    assertTrue(links.mostMentionedDateSearch().contains("ds=2026.02.15"));
-    assertTrue(links.kospiPickDateSearch().contains("de=2026.02.15"));
-    assertTrue(links.kosdaqPickDateSearch().contains("ds=2026.02.15"));
-    assertEquals("A", links.topGainerItem().value());
-    assertEquals("official_computable", links.topGainerItem().sourceType());
-    assertEquals("pykrx(KRX-based)", links.topGainerItem().sourceName());
-    assertTrue(links.topGainerItem().directUrl().contains("ds=2026.02.15"));
-    assertEquals("derived_rule", links.mostMentionedItem().sourceType());
-    assertEquals("naver_rule_v1", links.mostMentionedItem().sourceName());
+    assertEquals("", links.topGainerSearch());
+    assertEquals("", links.topLoserSearch());
+    assertEquals("", links.mostMentionedSearch());
+    assertEquals("", links.kospiPickSearch());
+    assertEquals("", links.kosdaqPickSearch());
+
+    assertTrue(links.topGainerItem().directUrl().contains("/verification/krx#topGainer"));
+    assertTrue(links.topLoserItem().directUrl().contains("/verification/krx#topLoser"));
+
+    assertTrue(links.topGainerDateSearch().contains("item/sise_day.naver?code=111111"));
+    assertTrue(links.topLoserDateSearch().contains("item/sise_day.naver?code=222222"));
+    assertTrue(links.mostMentionedDateSearch().contains("item/sise_day.naver?code=333333"));
+    assertTrue(links.kospiPickDateSearch().contains("item/sise_day.naver?code=444444"));
+    assertTrue(links.kosdaqPickDateSearch().contains("item/sise_day.naver?code=555555"));
   }
 
   @Test
-  void keepsLegacySearchLinksWhenDateMissing() {
-    SummaryVerificationLinks links = SummaryVerificationLinks.from(null, "", "A", "B", "C", "D", "E");
+  void handlesMissingCodesWithoutSearchFallback() {
+    SummaryVerificationLinks links =
+        SummaryVerificationLinks.from(
+            LocalDate.of(2026, 2, 15),
+            "/api/summaries/2026-02-15/verification/krx",
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "");
 
-    assertEquals("", links.date());
     assertEquals("", links.topGainerDateSearch());
     assertEquals("", links.topLoserDateSearch());
     assertEquals("", links.mostMentionedDateSearch());
     assertEquals("", links.kospiPickDateSearch());
     assertEquals("", links.kosdaqPickDateSearch());
-    assertEquals("", links.topGainerItem().directUrl());
-    assertEquals("official_computable", links.topGainerItem().sourceType());
-    assertEquals("derived_rule", links.kosdaqPickItem().sourceType());
-    assertTrue(links.topGainerSearch().contains("finance.naver.com/search"));
-    assertTrue(links.topLoserSearch().contains("finance.naver.com/search"));
-    assertTrue(links.mostMentionedSearch().contains("finance.naver.com/search"));
-    assertTrue(links.kospiPickSearch().contains("finance.naver.com/search"));
-    assertTrue(links.kosdaqPickSearch().contains("finance.naver.com/search"));
+
+    assertTrue(links.mostMentionedItem().directUrl().contains("/verification/krx#mostMentioned"));
+    assertTrue(links.kospiPickItem().directUrl().contains("/verification/krx#kospiPick"));
+    assertTrue(links.kosdaqPickItem().directUrl().contains("/verification/krx#kosdaqPick"));
   }
 }

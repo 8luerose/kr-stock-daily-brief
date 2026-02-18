@@ -33,40 +33,7 @@ function pickVerificationLink(v, datedKey, legacyKey) {
   return v?.[datedKey] || v?.[legacyKey] || "";
 }
 
-function isIsoDate(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value || "");
-}
-
-function toNaverDateNewsSearch(keyword, iso) {
-  if (!keyword || !String(keyword).trim() || keyword === "-" || !isIsoDate(iso)) {
-    return "";
-  }
-  const datePart = iso.replaceAll("-", ".");
-  const params = new URLSearchParams({
-    where: "news",
-    sm: "tab_opt",
-    sort: "0",
-    photo: "0",
-    field: "0",
-    pd: "3",
-    ds: datePart,
-    de: datePart,
-    query: `${keyword} 주가`
-  });
-  return `https://search.naver.com/search.naver?${params.toString()}`;
-}
-
-function pickDateSpecificVerificationLink(v, datedKey, legacyKey, fieldValue, summaryDate) {
-  const explicitDateLink = v?.[datedKey];
-  if (explicitDateLink) {
-    return explicitDateLink;
-  }
-
-  const dateLockedFromFrontend = toNaverDateNewsSearch(fieldValue, v?.date || summaryDate);
-  if (dateLockedFromFrontend) {
-    return dateLockedFromFrontend;
-  }
-
+function pickDateSpecificVerificationLink(v, datedKey, legacyKey) {
   return pickVerificationLink(v, datedKey, legacyKey);
 }
 
@@ -132,9 +99,7 @@ function buildVerificationRows(summary) {
     const fallbackUrl = pickDateSpecificVerificationLink(
       verification,
       field.datedKey,
-      field.legacyKey,
-      summary?.[field.key],
-      summary?.date
+      field.legacyKey
     );
     return {
       field: field.label,

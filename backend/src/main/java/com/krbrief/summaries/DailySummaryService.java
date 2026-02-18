@@ -346,6 +346,20 @@ public class DailySummaryService {
         return Optional.empty();
       }
 
+      String codeNotes =
+          "codes: topGainer="
+              + nullToEmpty(res.topGainerCode())
+              + ", topLoser="
+              + nullToEmpty(res.topLoserCode())
+              + ", mostMentioned="
+              + nullToEmpty(res.mostMentionedCode())
+              + ", kospiPick="
+              + nullToEmpty(res.kospiPickCode())
+              + ", kosdaqPick="
+              + nullToEmpty(res.kosdaqPickCode());
+
+      String notes = (res.notes() == null || res.notes().isBlank()) ? codeNotes : res.notes() + "\n" + codeNotes;
+
       return Optional.of(
           new DailyMarketBrief(
               res.topGainer(),
@@ -354,7 +368,7 @@ public class DailySummaryService {
               blankToDash(res.kospiPick()),
               blankToDash(res.kosdaqPick()),
               "pykrx",
-              res.notes()));
+              notes));
     } catch (Exception e) {
       log.info(
           "pykrx leaders unavailable: date={}, reason={}",
@@ -462,6 +476,11 @@ public class DailySummaryService {
       String mostMentioned,
       String kospiPick,
       String kosdaqPick,
+      String topGainerCode,
+      String topLoserCode,
+      String mostMentionedCode,
+      String kospiPickCode,
+      String kosdaqPickCode,
       String source,
       String notes) {}
 

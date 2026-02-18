@@ -74,6 +74,11 @@ def leaders(date: str):
         "mostMentioned": _name(most_ticker),
         "kospiPick": _name(kospi_pick_ticker) if kospi_pick_ticker != "-" else "-",
         "kosdaqPick": _name(kosdaq_pick_ticker) if kosdaq_pick_ticker != "-" else "-",
+        "topGainerCode": top_gainer_ticker,
+        "topLoserCode": top_loser_ticker,
+        "mostMentionedCode": most_ticker,
+        "kospiPickCode": kospi_pick_ticker if kospi_pick_ticker != "-" else "",
+        "kosdaqPickCode": kosdaq_pick_ticker if kosdaq_pick_ticker != "-" else "",
         "source": "pykrx(KRX historical change)",
         "notes": "Derived from get_market_price_change_by_ticker(prev,date,ALL); mostMentioned/kospiPick/kosdaqPick=volume-based.",
     }
