@@ -27,7 +27,7 @@ class SummaryLeaderExplanationsTest {
             LocalDate.of(2026, 2, 9), "테스트상승", "테스트하락", List.of(), "", links);
 
     assertEquals("info", explanations.topGainer().level());
-    assertTrue(explanations.topGainer().summary().contains("일반 랭킹"));
+    assertTrue(explanations.topGainer().summary().contains("일반 순위"));
     assertTrue(explanations.topGainer().evidenceLinks().stream().anyMatch(x -> x.contains("data.krx.co.kr")));
   }
 
@@ -59,7 +59,7 @@ class SummaryLeaderExplanationsTest {
 
     assertEquals("caution", explanations.topLoser().level());
     assertTrue(explanations.topLoser().summary().contains("주의"));
-    assertTrue(explanations.topLoser().summary().contains("기업행위 확정 근거"));
+    assertTrue(explanations.topLoser().summary().contains("감지 신호"));
   }
 
   @Test
@@ -88,7 +88,7 @@ class SummaryLeaderExplanationsTest {
             links);
 
     assertEquals("confirmed", explanations.topGainer().level());
-    assertTrue(explanations.topGainer().summary().contains("confirmed"));
+    assertTrue(explanations.topGainer().summary().contains("근거 링크가 확인"));
     assertTrue(
         explanations.topGainer().evidenceLinks().stream()
             .anyMatch(x -> x.equals("https://dart.fss.or.kr/example")));

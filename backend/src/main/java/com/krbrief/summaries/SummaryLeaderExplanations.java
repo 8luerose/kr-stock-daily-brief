@@ -49,19 +49,21 @@ final class SummaryLeaderExplanations {
       level = "confirmed";
       summary =
           normalizedName
-              + "은(는) 연속성 신호 "
+              + "은 관련 근거 링크가 확인되었습니다."
+              + " (감지 신호: "
               + signalText(flags)
-              + " 상태이며, 명시적으로 매칭된 근거 링크가 확인되어 확인 수준을 confirmed로 표기합니다.";
+              + ")";
     } else if (caution) {
       level = "caution";
       summary =
           normalizedName
-              + "은(는) 연속성 신호 "
+              + "은 값이 크게 튀는 신호가 있어 해석에 주의가 필요합니다."
+              + " (감지 신호: "
               + signalText(flags)
-              + "가 감지되어 수익률 해석에 주의가 필요합니다. 기업행위 확정 근거는 확인되지 않았습니다.";
+              + ")";
     } else {
       level = "info";
-      summary = normalizedName + "은(는) 가격/거래 연속성 이상 신호가 없어 일반 랭킹 결과로 표시됩니다.";
+      summary = normalizedName + "은 특별한 이상 신호가 없어 일반 순위로 표시했습니다.";
     }
 
     return new SummaryDto.LeaderExplanation(level, summary, new ArrayList<>(links));
