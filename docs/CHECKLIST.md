@@ -24,6 +24,7 @@ make generate-today
   - `rawTopGainer/rawTopLoser`
   - `filteredTopGainer/filteredTopLoser`
   - `anomalies[]`, `rankingWarning`
+  - `leaderExplanations.topGainer/topLoser` (`level`, `summary`, `evidenceLinks`)
 
 ## 3) 월 조회
 

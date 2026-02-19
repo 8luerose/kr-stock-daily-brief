@@ -22,6 +22,10 @@ then fallback provider (`MARKETDATA_PROVIDER`, default `naver`) if pykrx is unav
   - `rawTopGainer/rawTopLoser`
   - `filteredTopGainer/filteredTopLoser`
   - `anomalies[]` + `rankingWarning`
+  - `leaderExplanations.topGainer/topLoser` (`level`, `summary`, `evidenceLinks`)
+- Policy:
+  - Extreme return alone does not auto-exclude a mover.
+  - Explanations are deterministic (rule-based, no LLM token required).
 
 Note: verification links use direct Naver stock day pages (`item/sise_day.naver?code=...`) and KRX portal/artifact references.
 
@@ -70,6 +74,7 @@ Notes:
 - failed fetch means external source retrieval/parsing failed; service retries, then falls back with reason.
 - Responses include structured fields (`topGainer`, `topLoser`, `mostMentioned`, `kospiPick`, `kosdaqPick`, `rawNotes`, `createdAt`, `updatedAt`) and also `content`/`generatedAt` for the current MVP UI.
 - Responses also include anomaly-aware fields: `rawTopGainer`, `rawTopLoser`, `filteredTopGainer`, `filteredTopLoser`, `anomalies`, `rankingWarning`.
+- Responses include `leaderExplanations` for top gainer/loser with beginner-friendly one-line Korean summaries and evidence links.
 - Responses include `verification` links. `verification.*DateSearch` now points to direct Naver stock day pages by ticker code (no Naver search links).
 - Backfill result rows include `sourceUsed` (`pykrx|fdr|naver|fallback`) and `confidence` (`high|low`).
 

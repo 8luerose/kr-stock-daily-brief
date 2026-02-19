@@ -31,6 +31,7 @@
   - `filteredTopGainer`, `filteredTopLoser`
   - `anomalies[]` (`symbol`, `name`, `rate`, `flags`, `oneLineReason`)
   - `rankingWarning`
+  - `leaderExplanations` (`topGainer`, `topLoser` 각각 `level`, `summary`, `evidenceLinks`)
 
 ---
 
@@ -124,6 +125,23 @@
       "kospiPickDateSearch": "https://finance.naver.com/item/sise_day.naver?code=001510",
       "kosdaqPickDateSearch": "https://finance.naver.com/item/sise_day.naver?code=094820",
       "verificationLimitations": "Primary verification uses date-locked KRX artifact and portal links. Per-field links are direct Naver stock day pages by ticker code (no Naver search links)."
+    },
+    "leaderExplanations": {
+      "topGainer": {
+        "level": "caution",
+        "summary": "처음 계산 1위 종목은 변동폭이 매우 커서 확인이 필요합니다.",
+        "evidenceLinks": [
+          "/api/summaries/2026-02-16/verification/krx#topGainer",
+          "https://data.krx.co.kr/"
+        ]
+      },
+      "topLoser": {
+        "level": "info",
+        "summary": "가격/거래 연속성 이상 신호가 없어 일반 랭킹 결과로 표시됩니다.",
+        "evidenceLinks": [
+          "/api/summaries/2026-02-16/verification/krx#topLoser"
+        ]
+      }
     },
     "content": "Daily summary for 2026-02-16...",
     "generatedAt": "2026-02-16T08:11:13.000Z"
@@ -293,6 +311,10 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 - `updatedAt: Instant`
 - `archivedAt: Instant | null`
 - `verification: SummaryVerificationLinks`
+- `leaderExplanations: LeaderExplanations`
+  - `topGainer.level|topLoser.level: info | caution | confirmed`
+  - `topGainer.summary|topLoser.summary: String` (초보자용 한 줄 설명)
+  - `topGainer.evidenceLinks|topLoser.evidenceLinks: String[]`
 - `content: String` (UI 호환 필드)
 - `generatedAt: Instant` (UI 호환 필드, 현재 `updatedAt`와 동일)
 
