@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage:
-#   ./scripts/regression_dates.sh 2026-02-02 2026-02-09 2026-02-13
-#   BASE_URL=http://localhost:8080 ./scripts/regression_dates.sh
+# 사용법:
+#   ./scripts/날짜_자동점검.sh 2026-02-02 2026-02-09 2026-02-13
+#   BASE_URL=http://localhost:8080 ./scripts/날짜_자동점검.sh
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
 DATES=("$@")
