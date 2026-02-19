@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Usage:
-#   ./scripts/date_check.sh 2026-02-02 2026-02-09 2026-02-13
-#   BASE_URL=http://localhost:8080 ./scripts/date_check.sh
+#   ./scripts/recheck_past_dates.sh 2026-02-02 2026-02-09 2026-02-13
+#   BASE_URL=http://localhost:8080 ./scripts/recheck_past_dates.sh
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
 DATES=("$@")
@@ -14,7 +14,7 @@ fi
 pass=0
 fail=0
 
-echo "== Regression by fixed dates =="
+echo "== Recheck past dates (consistency check) =="
 echo "BASE_URL=$BASE_URL"
 echo "DATES=${DATES[*]}"
 

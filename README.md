@@ -114,7 +114,7 @@ curl "http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29&k=secret
 - `make latest`: get latest saved summary
 - `./scripts/qa_public_key.sh`: PUBLIC_KEY on/off 회귀 점검
 - `./scripts/validate_backfill_10days.sh`: 최근 과거 10개 영업일 백필 결과를 pykrx `/leaders` 기준과 비교하여 matchRate 출력
-- `./scripts/date_check.sh [YYYY-MM-DD ...]`: regenerate selected dates and automatically check values/explanations/source links
+- `./scripts/recheck_past_dates.sh [YYYY-MM-DD ...]`: re-run past dates and verify values/explanations/source links stay consistent
 - `make qa`: 전체 API 스모크 + PUBLIC_KEY 회귀 점검
 - `make backend-test`: run backend API tests
 
