@@ -603,23 +603,23 @@ export default function App() {
               </div>
 
               <div className="notesWrap">
-                <h4>Anomaly-aware 랭킹 투명성</h4>
+                <h4>랭킹 계산 근거</h4>
                 <div className="verifyMeta">
-                  <div>Raw Top Gainer: {valueOrDash(summary.rawTopGainer || summary.topGainer)}</div>
-                  <div>Raw Top Loser: {valueOrDash(summary.rawTopLoser || summary.topLoser)}</div>
-                  <div>Filtered Top Gainer: {valueOrDash(summary.filteredTopGainer || summary.topGainer)}</div>
-                  <div>Filtered Top Loser: {valueOrDash(summary.filteredTopLoser || summary.topLoser)}</div>
-                  <div>Fallback Warning: {valueOrDash(summary.rankingWarning)}</div>
+                  <div>가공 전 원본 상승 1위: {valueOrDash(summary.rawTopGainer || summary.topGainer)}</div>
+                  <div>가공 전 원본 하락 1위: {valueOrDash(summary.rawTopLoser || summary.topLoser)}</div>
+                  <div>이상치 규칙 적용 후 상승 1위: {valueOrDash(summary.filteredTopGainer || summary.topGainer)}</div>
+                  <div>이상치 규칙 적용 후 하락 1위: {valueOrDash(summary.filteredTopLoser || summary.topLoser)}</div>
+                  <div>주의/보정 안내: {valueOrDash(summary.rankingWarning)}</div>
                 </div>
                 <div className="verifyTableWrap">
                   <table className="verifyTable">
                     <thead>
                       <tr>
-                        <th>Symbol</th>
-                        <th>Name</th>
-                        <th>Rate</th>
-                        <th>Flags</th>
-                        <th>One-line Reason</th>
+                        <th>종목코드</th>
+                        <th>종목명</th>
+                        <th>등락률(%)</th>
+                        <th>감지 신호</th>
+                        <th>한 줄 설명</th>
                       </tr>
                     </thead>
                     <tbody>
