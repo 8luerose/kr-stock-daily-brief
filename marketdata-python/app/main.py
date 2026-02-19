@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from functools import lru_cache
 from fastapi import FastAPI, HTTPException
 from pykrx import stock
 
@@ -56,6 +57,7 @@ def _build_one_line_reason(rate: float, flags: list[str], zero_days: int) -> str
     return " / ".join(parts)
 
 
+@lru_cache(maxsize=4096)
 def _zero_volume_streak(ymd: str, ticker: str, lookback_days: int = 14) -> int:
     start = (datetime.strptime(ymd, "%Y%m%d") - timedelta(days=lookback_days)).strftime("%Y%m%d")
     try:
@@ -106,7 +108,14 @@ def leaders(date: str):
     anomalies = []
     anomaly_codes = set()
 
-    for ticker in df.index.tolist():
+    # Performance guard: anomaly deep-check on extreme movers only.
+    # (Checking all tickers calls OHLCV API thousands of times and can timeout.)
+    top_n = 20
+    candidate_codes = set(df["등락률"].nlargest(top_n).index.tolist())
+    candidate_codes.update(df["등락률"].nsmallest(top_n).index.tolist())
+    candidate_codes.update([top_gainer_ticker, top_loser_ticker])
+
+    for ticker in candidate_codes:
         row = df.loc[ticker]
         rate = _safe_float(row.get("등락률", 0.0))
         volume = _safe_int(row.get("거래량", 0))
@@ -118,11 +127,11 @@ def leaders(date: str):
         flags = []
         if prev_close <= 0:
             flags.append("prior_close_zero")
-        if zero_days >= 3 and (abs(rate) >= 30.0 or volume == 0):
+        if zero_days >= 2 and abs(rate) >= 25.0:
             flags.append("zero_volume_streak")
         if abs(rate) >= 80.0:
             flags.append("huge_gap")
-        if volume == 0 and abs(rate) >= 30.0:
+        if volume == 0 and abs(rate) >= 20.0:
             flags.append("suspicious_zero_volume_jump")
 
         if flags:
@@ -136,6 +145,8 @@ def leaders(date: str):
                     "oneLineReason": _build_one_line_reason(rate, flags, zero_days),
                 }
             )
+
+    anomalies.sort(key=lambda x: abs(float(x.get("rate", 0.0))), reverse=True)
 
     normal_df = df[~df.index.isin(anomaly_codes)]
     ranking_warning = ""
