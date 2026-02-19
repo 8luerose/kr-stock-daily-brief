@@ -16,7 +16,8 @@ def _parse_date(date_str: str) -> str:
 
 
 def _previous_business_day(ymd: str) -> str:
-    d = datetime.strptime(ymd, "%Y%m%d").date() - timedelta(days=7)
+    # Use immediate prior business day (D-1 business day), not a week-back anchor.
+    d = datetime.strptime(ymd, "%Y%m%d").date() - timedelta(days=1)
     return stock.get_nearest_business_day_in_a_week(d.strftime("%Y%m%d"))
 
 
