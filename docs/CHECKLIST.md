@@ -20,6 +20,10 @@ make generate-today
 
 정상 기준:
 - JSON 응답에 `topGainer`, `topLoser`, `source(rawNotes)` 포함
+- anomaly-aware 필드 확인:
+  - `rawTopGainer/rawTopLoser`
+  - `filteredTopGainer/filteredTopLoser`
+  - `anomalies[]`, `rankingWarning`
 
 ## 3) 월 조회
 

@@ -9,17 +9,21 @@ MVP: stores and serves daily summaries from MySQL, with a small UI to browse a m
 - DB: MySQL
 - Orchestration: Docker Compose + Makefile wrappers
 
-## Market Data (v1)
+## Market Data (current)
 
-Default `MARKETDATA_PROVIDER` is **naver**.
+Historical dates are generated with **pykrx sidecar** first (`marketdata-python /leaders`),
+then fallback provider (`MARKETDATA_PROVIDER`, default `naver`) if pykrx is unavailable.
 
-- Source: Naver Finance HTML pages (best-effort crawling)
-- v1 rules:
-  - Top gainer/loser: from Naver "상승/하락" ranking pages
-  - mostMentioned: approximated as highest volume among those ranking pages
-  - KOSPI/KOSDAQ pick: highest volume among KOSPI/KOSDAQ rising lists
+- Primary calculation:
+  - Top gainer/loser: `pykrx.get_market_price_change_by_ticker(prev_business_day, date, ALL)`
+  - mostMentioned: highest volume (derived rule)
+  - KOSPI/KOSDAQ pick: highest volume inside each market (derived rule)
+- Ranking transparency fields:
+  - `rawTopGainer/rawTopLoser`
+  - `filteredTopGainer/filteredTopLoser`
+  - `anomalies[]` + `rankingWarning`
 
-Note: this is internal-use and may break if Naver changes their HTML.
+Note: verification links use direct Naver stock day pages (`item/sise_day.naver?code=...`) and KRX portal/artifact references.
 
 ## Quickstart (Docker)
 
@@ -65,14 +69,15 @@ Notes:
 - `rawNotes` stores source/rules/fallback reason (debug + trust trace).
 - failed fetch means external source retrieval/parsing failed; service retries, then falls back with reason.
 - Responses include structured fields (`topGainer`, `topLoser`, `mostMentioned`, `kospiPick`, `kosdaqPick`, `rawNotes`, `createdAt`, `updatedAt`) and also `content`/`generatedAt` for the current MVP UI.
-- Responses also include `verification` links. Use `verification.*DateSearch` links for date-locked checks (`ds/de=YYYY.MM.DD`), and treat KRX links as the official primary entry points.
+- Responses also include anomaly-aware fields: `rawTopGainer`, `rawTopLoser`, `filteredTopGainer`, `filteredTopLoser`, `anomalies`, `rankingWarning`.
+- Responses include `verification` links. `verification.*DateSearch` now points to direct Naver stock day pages by ticker code (no Naver search links).
 - Backfill result rows include `sourceUsed` (`pykrx|fdr|naver|fallback`) and `confidence` (`high|low`).
 
 ### Date-specific verification quick guide
 
-- Primary source: open `verification.krxDataPortal` or `verification.krxMarketOverview`.
-- Field cross-check: open `verification.topGainerDateSearch`, `verification.topLoserDateSearch`, `verification.mostMentionedDateSearch`, `verification.kospiPickDateSearch`, `verification.kosdaqPickDateSearch`.
-- Limitation: KRX does not expose a stable public single-URL deep link for `stock + exact date` for every field, so the API returns official KRX entry links plus date-locked fallback search links.
+- Primary source: open `verification.primaryKrxArtifact` (date-locked evidence endpoint) and `verification.krxDataPortal`.
+- Field cross-check: open `verification.topGainerDateSearch`, `verification.topLoserDateSearch`, `verification.mostMentionedDateSearch`, `verification.kospiPickDateSearch`, `verification.kosdaqPickDateSearch` (direct Naver item/day links).
+- Limitation: KRX does not provide a stable public deep-link for every `stock + exact date` combination, so KRX is exposed as portal + artifact, with stock-level direct links provided by ticker-based Naver pages.
 
 ## Scheduler
 
