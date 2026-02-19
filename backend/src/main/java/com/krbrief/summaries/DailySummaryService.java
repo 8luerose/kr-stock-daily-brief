@@ -166,8 +166,9 @@ public class DailySummaryService {
             ? topLoser
             : brief.filteredTopLoser();
 
-    s.setTopGainer(topGainer);
-    s.setTopLoser(topLoser);
+    // Main ranking fields expose filtered values; raw values are preserved separately in DTO.
+    s.setTopGainer(filteredTopGainer);
+    s.setTopLoser(filteredTopLoser);
     s.setFilteredTopGainer(filteredTopGainer);
     s.setFilteredTopLoser(filteredTopLoser);
     s.setMostMentioned(
@@ -248,6 +249,12 @@ public class DailySummaryService {
     if (reference.isEmpty()) {
       throw new IllegalStateException(
           "verification_reference_unavailable: cannot fetch date-specific leaders for " + date);
+    }
+
+    // Historical summaries should prioritize the pykrx reference directly so
+    // anomaly filtering/reasons are preserved in persisted API responses.
+    if (date.isBefore(todaySeoul())) {
+      return appendVerification(reference.get(), "reference(pykrx)", 1, true, "historical_reference");
     }
 
     List<String> primaryReasons = new ArrayList<>();
