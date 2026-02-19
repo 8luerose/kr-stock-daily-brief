@@ -63,3 +63,15 @@ make qa
 - PUBLIC_KEY off: stats 200
 - PUBLIC_KEY on + key 없음: 401 또는 403
 - PUBLIC_KEY on + key 있음: 200
+
+## 6) 날짜 고정 회귀 점검(추천)
+
+```bash
+./scripts/regression_dates.sh 2026-02-02 2026-02-09 2026-02-13
+# 날짜 미지정 시 기본 3개 날짜 사용
+```
+
+정상 기준:
+- 각 날짜 generate 성공
+- `leaderExplanations.topGainer/topLoser.summary` 존재
+- 5개 출처 링크(`*DateSearch`)가 종목 직접 링크 형식으로 채워짐
