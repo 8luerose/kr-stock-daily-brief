@@ -288,6 +288,34 @@ body {
   margin-bottom: 4px;
 }
 
+.leaderExplanation {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.leaderExplanation.info {
+  color: var(--muted);
+}
+
+.leaderExplanation.caution {
+  color: #ffd7a8;
+}
+
+.leaderExplanation.confirmed {
+  color: #b7f7cf;
+}
+
+.leaderLinks {
+  margin-top: 4px;
+}
+
+.leaderLinks a {
+  color: #9ec5ff;
+  text-decoration: underline;
+}
+
 .notesWrap {
   margin-top: 10px;
 }

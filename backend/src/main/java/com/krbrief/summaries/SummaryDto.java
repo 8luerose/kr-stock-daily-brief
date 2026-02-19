@@ -22,10 +22,23 @@ public record SummaryDto(
     Instant updatedAt,
     Instant archivedAt,
     SummaryVerificationLinks verification,
+    LeaderExplanations leaderExplanations,
     // Back-compat fields for the current UI.
     String content,
     Instant generatedAt) {
   public static SummaryDto from(DailySummary s) {
+    SummaryVerificationLinks verification =
+        SummaryVerificationLinks.from(
+            s.getDate(),
+            s.getDate() == null ? "" : "/api/summaries/" + s.getDate() + "/verification/krx",
+            s.getTopGainer(),
+            s.getTopLoser(),
+            s.getMostMentioned(),
+            s.getKospiPick(),
+            s.getKosdaqPick(),
+            s.getRawNotes());
+    List<AnomalyDto> anomalies = SummaryAnomalyCodec.decode(s.getAnomaliesText());
+
     return new SummaryDto(
         s.getDate(),
         s.getTopGainer(),
@@ -35,7 +48,7 @@ public record SummaryDto(
         firstNonBlank(s.getFilteredTopGainer(), s.getTopGainer()),
         firstNonBlank(s.getFilteredTopLoser(), s.getTopLoser()),
         s.getRankingWarning(),
-        SummaryAnomalyCodec.decode(s.getAnomaliesText()),
+        anomalies,
         s.getMostMentioned(),
         s.getKospiPick(),
         s.getKosdaqPick(),
@@ -43,15 +56,9 @@ public record SummaryDto(
         s.getCreatedAt(),
         s.getUpdatedAt(),
         s.getArchivedAt(),
-        SummaryVerificationLinks.from(
-            s.getDate(),
-            s.getDate() == null ? "" : "/api/summaries/" + s.getDate() + "/verification/krx",
-            s.getTopGainer(),
-            s.getTopLoser(),
-            s.getMostMentioned(),
-            s.getKospiPick(),
-            s.getKosdaqPick(),
-            s.getRawNotes()),
+        verification,
+        SummaryLeaderExplanations.build(
+            s.getDate(), s.getTopGainer(), s.getTopLoser(), anomalies, s.getRawNotes(), verification),
         s.renderContent(),
         s.getUpdatedAt());
   }
@@ -69,4 +76,8 @@ public record SummaryDto(
       double rate,
       List<String> flags,
       String oneLineReason) {}
+
+  public record LeaderExplanations(LeaderExplanation topGainer, LeaderExplanation topLoser) {}
+
+  public record LeaderExplanation(String level, String summary, List<String> evidenceLinks) {}
 }

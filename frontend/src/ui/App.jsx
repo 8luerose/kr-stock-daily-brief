@@ -41,6 +41,15 @@ function pickDateSpecificVerificationLink(v, datedKey, legacyKey) {
   return pickVerificationLink(v, datedKey, legacyKey);
 }
 
+function getLeaderExplanation(summary, key) {
+  const node = summary?.leaderExplanations?.[key];
+  return {
+    level: node?.level || "info",
+    summary: node?.summary || "설명 데이터가 없습니다.",
+    evidenceLinks: asArray(node?.evidenceLinks)
+  };
+}
+
 const VERIFICATION_FIELDS = [
   {
     key: "topGainer",
@@ -530,6 +539,8 @@ export default function App() {
               {(() => {
                 const verificationRows = buildVerificationRows(summary);
                 const verificationDate = summary.verification?.date || summary.date;
+                const topGainerExplanation = getLeaderExplanation(summary, "topGainer");
+                const topLoserExplanation = getLeaderExplanation(summary, "topLoser");
                 return (
                   <>
               <div className="meta">Generated at: {summary.generatedAt}</div>
@@ -537,11 +548,45 @@ export default function App() {
               <div className="kvGrid">
                 <div className="kvItem">
                   <span>Top Gainer</span>
-                  <strong>{valueOrDash(summary.filteredTopGainer || summary.topGainer)}</strong>
+                  <strong>{valueOrDash(summary.topGainer)}</strong>
+                  <div className={`leaderExplanation ${topGainerExplanation.level}`}>
+                    <div>{topGainerExplanation.summary}</div>
+                    <div className="leaderLinks">
+                      근거 링크: {topGainerExplanation.evidenceLinks.length === 0 ? (
+                        "-"
+                      ) : (
+                        topGainerExplanation.evidenceLinks.map((href, idx) => (
+                          <React.Fragment key={href}>
+                            {idx > 0 ? " | " : ""}
+                            <a href={href} target="_blank" rel="noreferrer">
+                              링크 {idx + 1}
+                            </a>
+                          </React.Fragment>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="kvItem">
                   <span>Top Loser</span>
-                  <strong>{valueOrDash(summary.filteredTopLoser || summary.topLoser)}</strong>
+                  <strong>{valueOrDash(summary.topLoser)}</strong>
+                  <div className={`leaderExplanation ${topLoserExplanation.level}`}>
+                    <div>{topLoserExplanation.summary}</div>
+                    <div className="leaderLinks">
+                      근거 링크: {topLoserExplanation.evidenceLinks.length === 0 ? (
+                        "-"
+                      ) : (
+                        topLoserExplanation.evidenceLinks.map((href, idx) => (
+                          <React.Fragment key={href}>
+                            {idx > 0 ? " | " : ""}
+                            <a href={href} target="_blank" rel="noreferrer">
+                              링크 {idx + 1}
+                            </a>
+                          </React.Fragment>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="kvItem">
                   <span>Most Mentioned</span>

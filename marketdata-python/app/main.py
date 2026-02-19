@@ -134,8 +134,12 @@ def leaders(date: str):
         if volume == 0 and abs(rate) >= 20.0:
             flags.append("suspicious_zero_volume_jump")
 
-        if flags:
+        exclude_from_ranking = any(
+            f in flags for f in ["prior_close_zero", "zero_volume_streak", "suspicious_zero_volume_jump"]
+        )
+        if exclude_from_ranking:
             anomaly_codes.add(ticker)
+        if flags:
             anomalies.append(
                 {
                     "symbol": ticker,
@@ -177,8 +181,8 @@ def leaders(date: str):
         "rawTopLoser": _name(top_loser_ticker),
         "filteredTopGainer": _name(filtered_gainer_ticker),
         "filteredTopLoser": _name(filtered_loser_ticker),
-        "topGainer": _name(filtered_gainer_ticker),
-        "topLoser": _name(filtered_loser_ticker),
+        "topGainer": _name(top_gainer_ticker),
+        "topLoser": _name(top_loser_ticker),
         "mostMentioned": _name(most_ticker),
         "kospiPick": _name(kospi_pick_ticker) if kospi_pick_ticker != "-" else "-",
         "kosdaqPick": _name(kosdaq_pick_ticker) if kosdaq_pick_ticker != "-" else "-",

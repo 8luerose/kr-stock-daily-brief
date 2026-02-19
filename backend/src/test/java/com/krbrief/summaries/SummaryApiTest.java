@@ -66,6 +66,10 @@ class SummaryApiTest {
         .andExpect(jsonPath("$.verification.kospiPickItem.sourceType").value("derived_rule"))
         .andExpect(jsonPath("$.verification.kosdaqPickItem.sourceType").value("derived_rule"))
         .andExpect(jsonPath("$.verification.verificationLimitations").value(org.hamcrest.Matchers.containsString("KRX official pages")))
+        .andExpect(jsonPath("$.leaderExplanations.topGainer.level").exists())
+        .andExpect(jsonPath("$.leaderExplanations.topGainer.summary").exists())
+        .andExpect(jsonPath("$.leaderExplanations.topGainer.evidenceLinks").isArray())
+        .andExpect(jsonPath("$.leaderExplanations.topLoser.level").exists())
         .andExpect(jsonPath("$.content").exists())
         .andExpect(jsonPath("$.generatedAt").exists());
 

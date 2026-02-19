@@ -166,9 +166,8 @@ public class DailySummaryService {
             ? topLoser
             : brief.filteredTopLoser();
 
-    // Main ranking fields expose filtered values; raw values are preserved separately in DTO.
-    s.setTopGainer(filteredTopGainer);
-    s.setTopLoser(filteredTopLoser);
+    s.setTopGainer(topGainer);
+    s.setTopLoser(topLoser);
     s.setFilteredTopGainer(filteredTopGainer);
     s.setFilteredTopLoser(filteredTopLoser);
     s.setMostMentioned(
