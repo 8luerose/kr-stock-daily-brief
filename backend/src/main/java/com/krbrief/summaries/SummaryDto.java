@@ -2,11 +2,18 @@ package com.krbrief.summaries;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 public record SummaryDto(
     LocalDate date,
     String topGainer,
     String topLoser,
+    String rawTopGainer,
+    String rawTopLoser,
+    String filteredTopGainer,
+    String filteredTopLoser,
+    String rankingWarning,
+    List<AnomalyDto> anomalies,
     String mostMentioned,
     String kospiPick,
     String kosdaqPick,
@@ -23,6 +30,12 @@ public record SummaryDto(
         s.getDate(),
         s.getTopGainer(),
         s.getTopLoser(),
+        s.getTopGainer(),
+        s.getTopLoser(),
+        firstNonBlank(s.getFilteredTopGainer(), s.getTopGainer()),
+        firstNonBlank(s.getFilteredTopLoser(), s.getTopLoser()),
+        s.getRankingWarning(),
+        SummaryAnomalyCodec.decode(s.getAnomaliesText()),
         s.getMostMentioned(),
         s.getKospiPick(),
         s.getKosdaqPick(),
@@ -42,4 +55,18 @@ public record SummaryDto(
         s.renderContent(),
         s.getUpdatedAt());
   }
+
+  private static String firstNonBlank(String primary, String fallback) {
+    if (primary != null && !primary.isBlank()) {
+      return primary;
+    }
+    return fallback == null ? "" : fallback;
+  }
+
+  public record AnomalyDto(
+      String symbol,
+      String name,
+      double rate,
+      List<String> flags,
+      String oneLineReason) {}
 }

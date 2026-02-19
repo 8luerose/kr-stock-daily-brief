@@ -153,9 +153,23 @@ public class DailySummaryService {
         brief.topLoser() == null || brief.topLoser().isBlank() || "-".equals(brief.topLoser())
             ? "TOP_LOSER_" + date
             : brief.topLoser();
+    String filteredTopGainer =
+        brief.filteredTopGainer() == null
+                || brief.filteredTopGainer().isBlank()
+                || "-".equals(brief.filteredTopGainer())
+            ? topGainer
+            : brief.filteredTopGainer();
+    String filteredTopLoser =
+        brief.filteredTopLoser() == null
+                || brief.filteredTopLoser().isBlank()
+                || "-".equals(brief.filteredTopLoser())
+            ? topLoser
+            : brief.filteredTopLoser();
 
     s.setTopGainer(topGainer);
     s.setTopLoser(topLoser);
+    s.setFilteredTopGainer(filteredTopGainer);
+    s.setFilteredTopLoser(filteredTopLoser);
     s.setMostMentioned(
         brief.mostMentioned() == null || brief.mostMentioned().isBlank()
             ? "MOST_MENTIONED_" + date
@@ -172,6 +186,8 @@ public class DailySummaryService {
             + brief.source()
             + "\n"
             + (brief.notes() == null ? "" : brief.notes() + "\n"));
+    s.setRankingWarning(brief.rankingWarning());
+    s.setAnomaliesText(SummaryAnomalyCodec.encode(brief.anomalies()));
 
     return repo.save(s);
   }
@@ -362,13 +378,17 @@ public class DailySummaryService {
 
       return Optional.of(
           new DailyMarketBrief(
-              res.topGainer(),
-              res.topLoser(),
+              blankToDash(res.rawTopGainer(), res.topGainer()),
+              blankToDash(res.rawTopLoser(), res.topLoser()),
+              blankToDash(res.filteredTopGainer(), res.rawTopGainer(), res.topGainer()),
+              blankToDash(res.filteredTopLoser(), res.rawTopLoser(), res.topLoser()),
               blankToDash(res.mostMentioned()),
               blankToDash(res.kospiPick()),
               blankToDash(res.kosdaqPick()),
               "pykrx",
-              notes));
+              notes,
+              res.anomalies() == null ? java.util.List.of() : res.anomalies(),
+              nullToEmpty(res.rankingWarning())));
     } catch (Exception e) {
       log.info(
           "pykrx leaders unavailable: date={}, reason={}",
@@ -424,11 +444,15 @@ public class DailySummaryService {
     return new DailyMarketBrief(
         brief.topGainer(),
         brief.topLoser(),
+        brief.filteredTopGainer(),
+        brief.filteredTopLoser(),
         brief.mostMentioned(),
         brief.kospiPick(),
         brief.kosdaqPick(),
         brief.source(),
-        notes);
+        notes,
+        brief.anomalies(),
+        brief.rankingWarning());
   }
 
   private boolean same(String a, String b) {
@@ -467,20 +491,39 @@ public class DailySummaryService {
     return s == null ? "" : s;
   }
 
+  private static String blankToDash(String... values) {
+    for (String value : values) {
+      if (value != null && !value.isBlank()) {
+        return value;
+      }
+    }
+    return "-";
+  }
+
   private record VerificationResult(boolean ok, String reason) {}
 
   private record PykrxLeadersResponse(
       String date,
       String topGainer,
       String topLoser,
+      String rawTopGainer,
+      String rawTopLoser,
+      String filteredTopGainer,
+      String filteredTopLoser,
       String mostMentioned,
       String kospiPick,
       String kosdaqPick,
       String topGainerCode,
       String topLoserCode,
+      String rawTopGainerCode,
+      String rawTopLoserCode,
+      String filteredTopGainerCode,
+      String filteredTopLoserCode,
       String mostMentionedCode,
       String kospiPickCode,
       String kosdaqPickCode,
+      java.util.List<DailyMarketBrief.AnomalyCandidate> anomalies,
+      String rankingWarning,
       String source,
       String notes) {}
 

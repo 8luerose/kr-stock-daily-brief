@@ -22,6 +22,12 @@ public class DailySummary {
   @Column(name = "top_loser")
   private String topLoser;
 
+  @Column(name = "filtered_top_gainer")
+  private String filteredTopGainer;
+
+  @Column(name = "filtered_top_loser")
+  private String filteredTopLoser;
+
   @Column(name = "most_mentioned")
   private String mostMentioned;
 
@@ -33,6 +39,12 @@ public class DailySummary {
 
   @Column(name = "raw_notes", columnDefinition = "TEXT")
   private String rawNotes;
+
+  @Column(name = "ranking_warning", columnDefinition = "TEXT")
+  private String rankingWarning;
+
+  @Column(name = "anomalies_text", columnDefinition = "TEXT")
+  private String anomaliesText;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
@@ -69,6 +81,22 @@ public class DailySummary {
     this.topLoser = topLoser;
   }
 
+  public String getFilteredTopGainer() {
+    return filteredTopGainer;
+  }
+
+  public void setFilteredTopGainer(String filteredTopGainer) {
+    this.filteredTopGainer = filteredTopGainer;
+  }
+
+  public String getFilteredTopLoser() {
+    return filteredTopLoser;
+  }
+
+  public void setFilteredTopLoser(String filteredTopLoser) {
+    this.filteredTopLoser = filteredTopLoser;
+  }
+
   public String getMostMentioned() {
     return mostMentioned;
   }
@@ -99,6 +127,22 @@ public class DailySummary {
 
   public void setRawNotes(String rawNotes) {
     this.rawNotes = rawNotes;
+  }
+
+  public String getRankingWarning() {
+    return rankingWarning;
+  }
+
+  public void setRankingWarning(String rankingWarning) {
+    this.rankingWarning = rankingWarning;
+  }
+
+  public String getAnomaliesText() {
+    return anomaliesText;
+  }
+
+  public void setAnomaliesText(String anomaliesText) {
+    this.anomaliesText = anomaliesText;
   }
 
   public Instant getCreatedAt() {
@@ -134,6 +178,8 @@ public class DailySummary {
     sb.append("Daily summary for ").append(date).append("\n\n");
     sb.append("- Top gainer: ").append(nullToDash(topGainer)).append("\n");
     sb.append("- Top loser: ").append(nullToDash(topLoser)).append("\n");
+    sb.append("- Filtered top gainer: ").append(nullToDash(filteredTopGainer)).append("\n");
+    sb.append("- Filtered top loser: ").append(nullToDash(filteredTopLoser)).append("\n");
     sb.append("- Most mentioned: ").append(nullToDash(mostMentioned)).append("\n");
     sb.append("- KOSPI pick: ").append(nullToDash(kospiPick)).append("\n");
     sb.append("- KOSDAQ pick: ").append(nullToDash(kosdaqPick)).append("\n");

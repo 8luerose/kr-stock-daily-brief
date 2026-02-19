@@ -4,6 +4,10 @@ function valueOrDash(v) {
   return v && String(v).trim() ? v : "-";
 }
 
+function asArray(v) {
+  return Array.isArray(v) ? v : [];
+}
+
 function LinkOrDash({ href, label }) {
   if (!href) return <span>-</span>;
   return (
@@ -533,11 +537,11 @@ export default function App() {
               <div className="kvGrid">
                 <div className="kvItem">
                   <span>Top Gainer</span>
-                  <strong>{valueOrDash(summary.topGainer)}</strong>
+                  <strong>{valueOrDash(summary.filteredTopGainer || summary.topGainer)}</strong>
                 </div>
                 <div className="kvItem">
                   <span>Top Loser</span>
-                  <strong>{valueOrDash(summary.topLoser)}</strong>
+                  <strong>{valueOrDash(summary.filteredTopLoser || summary.topLoser)}</strong>
                 </div>
                 <div className="kvItem">
                   <span>Most Mentioned</span>
@@ -550,6 +554,47 @@ export default function App() {
                 <div className="kvItem">
                   <span>KOSDAQ Pick</span>
                   <strong>{valueOrDash(summary.kosdaqPick)}</strong>
+                </div>
+              </div>
+
+              <div className="notesWrap">
+                <h4>Anomaly-aware 랭킹 투명성</h4>
+                <div className="verifyMeta">
+                  <div>Raw Top Gainer: {valueOrDash(summary.rawTopGainer || summary.topGainer)}</div>
+                  <div>Raw Top Loser: {valueOrDash(summary.rawTopLoser || summary.topLoser)}</div>
+                  <div>Filtered Top Gainer: {valueOrDash(summary.filteredTopGainer || summary.topGainer)}</div>
+                  <div>Filtered Top Loser: {valueOrDash(summary.filteredTopLoser || summary.topLoser)}</div>
+                  <div>Fallback Warning: {valueOrDash(summary.rankingWarning)}</div>
+                </div>
+                <div className="verifyTableWrap">
+                  <table className="verifyTable">
+                    <thead>
+                      <tr>
+                        <th>Symbol</th>
+                        <th>Name</th>
+                        <th>Rate</th>
+                        <th>Flags</th>
+                        <th>One-line Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {asArray(summary.anomalies).length === 0 ? (
+                        <tr>
+                          <td colSpan={5}>-</td>
+                        </tr>
+                      ) : (
+                        asArray(summary.anomalies).map((a) => (
+                          <tr key={`${a.symbol}-${a.rate}`}>
+                            <td>{valueOrDash(a.symbol)}</td>
+                            <td>{valueOrDash(a.name)}</td>
+                            <td>{valueOrDash(a.rate)}</td>
+                            <td>{valueOrDash(asArray(a.flags).join(", "))}</td>
+                            <td>{valueOrDash(a.oneLineReason)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

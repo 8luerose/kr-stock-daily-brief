@@ -31,38 +31,69 @@ public class PykrxMarketDataClient implements MarketDataClient {
       if (res == null) return Optional.empty();
       return Optional.of(
           new DailyMarketBrief(
-              res.topGainer(),
-              res.topLoser(),
+              blankToDash(res.rawTopGainer(), res.topGainer()),
+              blankToDash(res.rawTopLoser(), res.topLoser()),
+              blankToDash(res.filteredTopGainer(), res.rawTopGainer(), res.topGainer()),
+              blankToDash(res.filteredTopLoser(), res.rawTopLoser(), res.topLoser()),
               res.mostMentioned(),
               res.kospiPick(),
               res.kosdaqPick(),
               res.source(),
-              res.notes()));
+              res.notes(),
+              res.anomalies() == null ? java.util.List.of() : res.anomalies(),
+              nullToEmpty(res.rankingWarning())));
     } catch (Exception e) {
       return Optional.of(
           new DailyMarketBrief(
+              "TOP_GAINER_" + date,
+              "TOP_LOSER_" + date,
               "TOP_GAINER_" + date,
               "TOP_LOSER_" + date,
               "-",
               "-",
               "-",
               "pykrx_error",
-              "Failed to fetch leaders from marketdata service: " + e.getMessage()));
+              "Failed to fetch leaders from marketdata service: " + e.getMessage(),
+              java.util.List.of(),
+              ""));
     }
+  }
+
+  private static String blankToDash(String... values) {
+    for (String value : values) {
+      if (value != null && !value.isBlank()) {
+        return value;
+      }
+    }
+    return "-";
+  }
+
+  private static String nullToEmpty(String value) {
+    return value == null ? "" : value;
   }
 
   public record PykrxLeadersResponse(
       String date,
       String topGainer,
       String topLoser,
+      String rawTopGainer,
+      String rawTopLoser,
+      String filteredTopGainer,
+      String filteredTopLoser,
       String mostMentioned,
       String kospiPick,
       String kosdaqPick,
       String topGainerCode,
       String topLoserCode,
+      String rawTopGainerCode,
+      String rawTopLoserCode,
+      String filteredTopGainerCode,
+      String filteredTopLoserCode,
       String mostMentionedCode,
       String kospiPickCode,
       String kosdaqPickCode,
+      java.util.List<DailyMarketBrief.AnomalyCandidate> anomalies,
+      String rankingWarning,
       String source,
       String notes) {}
 }
