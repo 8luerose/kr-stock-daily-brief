@@ -605,11 +605,11 @@ export default function App() {
               <div className="notesWrap">
                 <h4>랭킹 계산 근거</h4>
                 <div className="verifyMeta">
-                  <div>가공 전 원본 상승 1위: {valueOrDash(summary.rawTopGainer || summary.topGainer)}</div>
-                  <div>가공 전 원본 하락 1위: {valueOrDash(summary.rawTopLoser || summary.topLoser)}</div>
-                  <div>이상치 규칙 적용 후 상승 1위: {valueOrDash(summary.filteredTopGainer || summary.topGainer)}</div>
-                  <div>이상치 규칙 적용 후 하락 1위: {valueOrDash(summary.filteredTopLoser || summary.topLoser)}</div>
-                  <div>주의/보정 안내: {valueOrDash(summary.rankingWarning)}</div>
+                  <div>처음 계산 1위(상승): {valueOrDash(summary.rawTopGainer || summary.topGainer)}</div>
+                  <div>처음 계산 1위(하락): {valueOrDash(summary.rawTopLoser || summary.topLoser)}</div>
+                  <div>검토 후 1위(상승, 최종 표시): {valueOrDash(summary.filteredTopGainer || summary.topGainer)}</div>
+                  <div>검토 후 1위(하락, 최종 표시): {valueOrDash(summary.filteredTopLoser || summary.topLoser)}</div>
+                  <div>주의 메모: {valueOrDash(summary.rankingWarning)}</div>
                 </div>
                 <div className="verifyTableWrap">
                   <table className="verifyTable">
