@@ -41,6 +41,7 @@ class SummaryApiTest {
     mvc.perform(post("/api/summaries/2026-02-15/generate"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.date").value("2026-02-15"))
+        .andExpect(jsonPath("$.marketClosed").exists())
         .andExpect(jsonPath("$.topGainer").value("TOP_GAINER_2026-02-15"))
         .andExpect(jsonPath("$.rawTopGainer").value("TOP_GAINER_2026-02-15"))
         .andExpect(jsonPath("$.rawTopLoser").value("TOP_LOSER_2026-02-15"))
@@ -53,11 +54,11 @@ class SummaryApiTest {
         .andExpect(jsonPath("$.verification.primarySourceTier").value(org.hamcrest.Matchers.containsString("Primary=KRX")))
         .andExpect(jsonPath("$.verification.secondarySourceTier").value(org.hamcrest.Matchers.containsString("Secondary=Naver")))
         .andExpect(jsonPath("$.verification.krxDataPortal").value("https://data.krx.co.kr/"))
-        .andExpect(jsonPath("$.verification.topGainerDateSearch").value(org.hamcrest.Matchers.containsString("ds=2026.02.15")))
-        .andExpect(jsonPath("$.verification.topLoserDateSearch").value(org.hamcrest.Matchers.containsString("de=2026.02.15")))
-        .andExpect(jsonPath("$.verification.mostMentionedDateSearch").value(org.hamcrest.Matchers.containsString("ds=2026.02.15")))
-        .andExpect(jsonPath("$.verification.kospiPickDateSearch").value(org.hamcrest.Matchers.containsString("de=2026.02.15")))
-        .andExpect(jsonPath("$.verification.kosdaqPickDateSearch").value(org.hamcrest.Matchers.containsString("ds=2026.02.15")))
+        .andExpect(jsonPath("$.verification.topGainerDateSearch").value(org.hamcrest.Matchers.containsString("finance.naver.com/item/sise_day.naver")))
+        .andExpect(jsonPath("$.verification.topLoserDateSearch").value(org.hamcrest.Matchers.containsString("finance.naver.com/item/sise_day.naver")))
+        .andExpect(jsonPath("$.verification.mostMentionedDateSearch").value(org.hamcrest.Matchers.containsString("finance.naver.com/item/sise_day.naver")))
+        .andExpect(jsonPath("$.verification.kospiPickDateSearch").value(org.hamcrest.Matchers.containsString("finance.naver.com/item/sise_day.naver")))
+        .andExpect(jsonPath("$.verification.kosdaqPickDateSearch").value(org.hamcrest.Matchers.containsString("finance.naver.com/item/sise_day.naver")))
         .andExpect(jsonPath("$.verification.topGainerItem.value").value("TOP_GAINER_2026-02-15"))
         .andExpect(jsonPath("$.verification.topGainerItem.sourceType").value("official_computable"))
         .andExpect(jsonPath("$.verification.topGainerItem.sourceName").value("pykrx(KRX-based)"))
@@ -65,7 +66,7 @@ class SummaryApiTest {
         .andExpect(jsonPath("$.verification.mostMentionedItem.sourceType").value("derived_rule"))
         .andExpect(jsonPath("$.verification.kospiPickItem.sourceType").value("derived_rule"))
         .andExpect(jsonPath("$.verification.kosdaqPickItem.sourceType").value("derived_rule"))
-        .andExpect(jsonPath("$.verification.verificationLimitations").value(org.hamcrest.Matchers.containsString("KRX official pages")))
+        .andExpect(jsonPath("$.verification.verificationLimitations").value(org.hamcrest.Matchers.containsString("KRX")))
         .andExpect(jsonPath("$.leaderExplanations.topGainer.level").exists())
         .andExpect(jsonPath("$.leaderExplanations.topGainer.summary").exists())
         .andExpect(jsonPath("$.leaderExplanations.topGainer.evidenceLinks").isArray())
@@ -75,7 +76,8 @@ class SummaryApiTest {
 
     mvc.perform(get("/api/summaries/2026-02-15"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.date").value("2026-02-15"));
+        .andExpect(jsonPath("$.date").value("2026-02-15"))
+        .andExpect(jsonPath("$.marketClosed").exists());
 
     mvc.perform(get("/api/summaries/2026-02-15/verification/krx"))
         .andExpect(status().isOk())
@@ -86,6 +88,14 @@ class SummaryApiTest {
         .andExpect(jsonPath("$.computedTopGainerTopLoserBasis.metric").value("등락률(%)"))
         .andExpect(jsonPath("$.evidenceRecords[0].field").value("topGainer"))
         .andExpect(jsonPath("$.evidenceRecords[1].field").value("topLoser"));
+  }
+
+  @Test
+  void generate_onMarketClosedDay_returnsMarketClosedStatus() throws Exception {
+    mvc.perform(post("/api/summaries/2026-02-14/generate"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.date").value("2026-02-14"))
+        .andExpect(jsonPath("$.marketClosed").exists());
   }
 
   @Test

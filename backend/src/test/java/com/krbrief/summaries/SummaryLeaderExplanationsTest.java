@@ -26,9 +26,9 @@ class SummaryLeaderExplanationsTest {
         SummaryLeaderExplanations.build(
             LocalDate.of(2026, 2, 9), "테스트상승", "테스트하락", List.of(), "", links);
 
-    assertEquals("info", explanations.topGainer().level());
-    assertTrue(explanations.topGainer().summary().contains("일반 순위"));
-    assertTrue(explanations.topGainer().evidenceLinks().stream().anyMatch(x -> x.contains("data.krx.co.kr")));
+    assertEquals("confirmed", explanations.topGainer().level());
+    assertTrue(explanations.topGainer().summary().contains("네이버 증권"));
+    assertTrue(explanations.topGainer().evidenceLinks().stream().anyMatch(x -> x.contains("naver.com")));
   }
 
   @Test
@@ -46,7 +46,7 @@ class SummaryLeaderExplanationsTest {
             "C",
             "D",
             "E",
-            "codes: topGainer=111111, topLoser=222222, mostMentioned=333333, kospiPick=444444, kosdaqPick=555555");
+            "codes: topGainer=111111, topLoser=, mostMentioned=333333, kospiPick=444444, kosdaqPick=555555");
 
     SummaryDto.LeaderExplanations explanations =
         SummaryLeaderExplanations.build(
@@ -88,7 +88,10 @@ class SummaryLeaderExplanationsTest {
             links);
 
     assertEquals("confirmed", explanations.topGainer().level());
-    assertTrue(explanations.topGainer().summary().contains("근거 링크가 확인"));
+    assertTrue(explanations.topGainer().summary().contains("네이버 증권"));
+    assertTrue(
+        explanations.topGainer().evidenceLinks().stream()
+            .anyMatch(x -> x.contains("naver.com")));
     assertTrue(
         explanations.topGainer().evidenceLinks().stream()
             .anyMatch(x -> x.equals("https://dart.fss.or.kr/example")));

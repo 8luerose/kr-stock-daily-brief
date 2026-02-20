@@ -1,5 +1,62 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+const COPY = {
+  brand: "주식 일간 브리프",
+  generateToday: "오늘 생성",
+  moveToLatest: "최신 요약",
+  prevMonth: "이전",
+  nextMonth: "다음",
+  generateSelected: "선택일 생성",
+  archiveSelected: "보관",
+  backfillRun: "일괄 생성",
+  loading: "불러오는 중...",
+  noSummary: "이 날짜의 요약이 아직 없습니다.",
+  marketClosed: "휴장일",
+  marketClosedDesc: "이 날짜는 증권시장 휴장일입니다.",
+  generatedAt: "생성 시각",
+  topGainer: "최대 상승",
+  topLoser: "최대 하락",
+  mostMentioned: "최다 거래",
+  kospiPick: "코스피 픽",
+  kosdaqPick: "코스닥 픽",
+  rankingBasis: "랭킹 계산 근거",
+  rawFirstGainer: "처음 계산 1위 (상승)",
+  rawFirstLoser: "처음 계산 1위 (하락)",
+  filteredFirstGainer: "검토 후 1위 (상승, 최종)",
+  filteredFirstLoser: "검토 후 1위 (하락, 최종)",
+  warningNote: "주의 메모",
+  code: "종목코드",
+  name: "종목명",
+  rate: "등락률(%)",
+  signals: "감지 신호",
+  description: "설명",
+  evidenceLinks: "근거 링크",
+  verification: "검증",
+  date: "날짜",
+  result: "결과값",
+  directLink: "바로 확인",
+  notes: "주의사항",
+  showRawNotes: "원본 노트 보기",
+  hideRawNotes: "원본 노트 숨기기",
+  developerDetails: "개발자용 상세보기",
+  closeDetails: "상세 닫기",
+  summaryExists: "요약 있음",
+  gatedHint: "이 화면은 비밀키가 필요합니다. URL에 ?k=비밀키 를 추가하세요.",
+  cumulativeSummaries: "누적 요약",
+  latestDate: "최신 날짜",
+  lastUpdated: "최근 갱신",
+  monthlyTotalDays: "월 총 일수",
+  monthlyGenerated: "생성 완료",
+  monthlyMissing: "미생성",
+  monthlyTopMentioned: "월 최다 거래",
+  days: ["일", "월", "화", "수", "목", "금", "토"],
+  verifyField: "항목",
+  verifySource: "출처",
+  krxArtifact: "KRX 검증",
+  krxPortal: "KRX 포털",
+  pykrxRepo: "pykrx 저장소"
+};
+
 function valueOrDash(v) {
   return v && String(v).trim() ? v : "-";
 }
@@ -11,7 +68,7 @@ function asArray(v) {
 function LinkOrDash({ href, label }) {
   if (!href) return <span>-</span>;
   return (
-    <a href={href} target="_blank" rel="noreferrer">
+    <a href={href} target="_blank" rel="noreferrer" className="link">
       {label}
     </a>
   );
@@ -33,14 +90,6 @@ function resolveApiLink(href, apiBaseUrl, k) {
   }
 }
 
-function pickVerificationLink(v, datedKey, legacyKey) {
-  return v?.[datedKey] || v?.[legacyKey] || "";
-}
-
-function pickDateSpecificVerificationLink(v, datedKey, legacyKey) {
-  return pickVerificationLink(v, datedKey, legacyKey);
-}
-
 function getLeaderExplanation(summary, key) {
   const node = summary?.leaderExplanations?.[key];
   return {
@@ -48,81 +97,6 @@ function getLeaderExplanation(summary, key) {
     summary: node?.summary || "설명 데이터가 없습니다.",
     evidenceLinks: asArray(node?.evidenceLinks)
   };
-}
-
-const VERIFICATION_FIELDS = [
-  {
-    key: "topGainer",
-    label: "Top Gainer",
-    datedKey: "topGainerDateSearch",
-    legacyKey: "topGainerSearch",
-    itemKey: "topGainerItem",
-    fallbackSourceType: "official_computable",
-    fallbackSourceName: "pykrx(KRX-based)",
-    fallbackNote:
-      "KRX data can be recomputed via pykrx, but no stable official deep-link is available for exact stock+date."
-  },
-  {
-    key: "topLoser",
-    label: "Top Loser",
-    datedKey: "topLoserDateSearch",
-    legacyKey: "topLoserSearch",
-    itemKey: "topLoserItem",
-    fallbackSourceType: "official_computable",
-    fallbackSourceName: "pykrx(KRX-based)",
-    fallbackNote:
-      "KRX data can be recomputed via pykrx, but no stable official deep-link is available for exact stock+date."
-  },
-  {
-    key: "mostMentioned",
-    label: "Most Mentioned",
-    datedKey: "mostMentionedDateSearch",
-    legacyKey: "mostMentionedSearch",
-    itemKey: "mostMentionedItem",
-    fallbackSourceType: "derived_rule",
-    fallbackSourceName: "naver_rule_v1",
-    fallbackNote: "Heuristic derived value, not an official exchange metric."
-  },
-  {
-    key: "kospiPick",
-    label: "KOSPI Pick",
-    datedKey: "kospiPickDateSearch",
-    legacyKey: "kospiPickSearch",
-    itemKey: "kospiPickItem",
-    fallbackSourceType: "derived_rule",
-    fallbackSourceName: "naver_rule_v1",
-    fallbackNote: "Heuristic derived value from crawler rules; exact reproducibility is limited."
-  },
-  {
-    key: "kosdaqPick",
-    label: "KOSDAQ Pick",
-    datedKey: "kosdaqPickDateSearch",
-    legacyKey: "kosdaqPickSearch",
-    itemKey: "kosdaqPickItem",
-    fallbackSourceType: "derived_rule",
-    fallbackSourceName: "naver_rule_v1",
-    fallbackNote: "Heuristic derived value from crawler rules; exact reproducibility is limited."
-  }
-];
-
-function buildVerificationRows(summary) {
-  const verification = summary?.verification;
-  return VERIFICATION_FIELDS.map((field) => {
-    const item = verification?.[field.itemKey];
-    const fallbackUrl = pickDateSpecificVerificationLink(
-      verification,
-      field.datedKey,
-      field.legacyKey
-    );
-    return {
-      field: field.label,
-      value: item?.value || summary?.[field.key] || "",
-      sourceType: item?.sourceType || field.fallbackSourceType,
-      sourceName: item?.sourceName || field.fallbackSourceName,
-      directUrl: item?.directUrl || fallbackUrl,
-      note: item?.note || field.fallbackNote
-    };
-  });
 }
 
 function isoDate(d) {
@@ -195,6 +169,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showNotes, setShowNotes] = useState(false);
+  const [showDevDetails, setShowDevDetails] = useState(false);
   const [backfillFrom, setBackfillFrom] = useState("2026-02-01");
   const [backfillTo, setBackfillTo] = useState("2026-02-05");
   const [backfillResult, setBackfillResult] = useState(null);
@@ -202,7 +177,7 @@ export default function App() {
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
     () =>
-      month.toLocaleString(undefined, {
+      month.toLocaleString("ko-KR", {
         year: "numeric",
         month: "long"
       }),
@@ -394,52 +369,51 @@ export default function App() {
   return (
     <div className="page">
       <header className="top">
-        <div className="brand">KR Stock Daily Brief</div>
+        <div className="brand">{COPY.brand}</div>
         <div className="actions">
           <button className="btn ghost" onClick={jumpToLatest} disabled={loading}>
-            최신 요약 이동
+            {COPY.moveToLatest}
           </button>
           <button
-            className="btn"
+            className="btn primary"
             onClick={() => generate(todayStr)}
             disabled={loading}
-            title="Generate today's summary"
           >
-            Generate (today)
+            {COPY.generateToday}
           </button>
         </div>
       </header>
 
       <section className="card overview">
         <div className="overviewItem">
-          <span className="label">누적 요약</span>
+          <span className="label">{COPY.cumulativeSummaries}</span>
           <strong>{stats?.totalCount ?? "-"}</strong>
         </div>
         <div className="overviewItem">
-          <span className="label">최신 날짜</span>
+          <span className="label">{COPY.latestDate}</span>
           <strong>{stats?.latestDate ?? "-"}</strong>
         </div>
         <div className="overviewItem">
-          <span className="label">최근 갱신</span>
+          <span className="label">{COPY.lastUpdated}</span>
           <strong>{stats?.latestUpdatedAt ?? "-"}</strong>
         </div>
       </section>
 
       <section className="card overview insights">
         <div className="overviewItem">
-          <span className="label">월 총 일수</span>
+          <span className="label">{COPY.monthlyTotalDays}</span>
           <strong>{insights?.totalDays ?? "-"}</strong>
         </div>
         <div className="overviewItem">
-          <span className="label">생성 완료 일수</span>
+          <span className="label">{COPY.monthlyGenerated}</span>
           <strong>{insights?.generatedDays ?? "-"}</strong>
         </div>
         <div className="overviewItem">
-          <span className="label">미생성 일수</span>
+          <span className="label">{COPY.monthlyMissing}</span>
           <strong>{insights?.missingDays ?? "-"}</strong>
         </div>
         <div className="overviewItem">
-          <span className="label">월 최다 언급</span>
+          <span className="label">{COPY.monthlyTopMentioned}</span>
           <strong>
             {insights?.topMostMentioned
               ? `${insights.topMostMentioned} (${insights.topMostMentionedCount}회)`
@@ -452,16 +426,16 @@ export default function App() {
         <section className="card calendar">
           <div className="calendarHead">
             <button className="btn ghost" onClick={() => setMonth(addMonths(month, -1))}>
-              Prev
+              {COPY.prevMonth}
             </button>
             <div className="monthLabel">{monthLabel}</div>
             <button className="btn ghost" onClick={() => setMonth(addMonths(month, 1))}>
-              Next
+              {COPY.nextMonth}
             </button>
           </div>
 
           <div className="dow">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((x) => (
+            {COPY.days.map((x) => (
               <div key={x} className="dowCell">
                 {x}
               </div>
@@ -488,7 +462,7 @@ export default function App() {
                   onClick={() => setSelected(dStr)}
                 >
                   <div className="dayNum">{d.getDate()}</div>
-                  {hasSummary ? <div className="dot" title="Summary exists" /> : null}
+                  {hasSummary ? <div className="dot" title={COPY.summaryExists} /> : null}
                 </button>
               );
             })}
@@ -499,136 +473,126 @@ export default function App() {
           <div className="detailHead">
             <div className="detailTitle">{selected}</div>
             <div className="actions">
-              <button className="btn" onClick={() => generate(selected)} disabled={loading}>
-                Generate (selected)
+              <button className="btn primary" onClick={() => generate(selected)} disabled={loading}>
+                {COPY.generateSelected}
               </button>
               <button className="btn ghost" onClick={archiveSelected} disabled={loading}>
-                Archive (selected)
+                {COPY.archiveSelected}
               </button>
             </div>
           </div>
 
           {cfg.gateEnabled && !k ? (
-            <div className="hint">
-              This UI is gated. Add <code>?k=PUBLIC_KEY</code> to the URL.
-            </div>
+            <div className="hint">{COPY.gatedHint}</div>
           ) : null}
 
           <div className="backfillBar">
             <input type="date" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
             <input type="date" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
             <button className="btn ghost" onClick={runBackfill} disabled={loading}>
-              Backfill run
+              {COPY.backfillRun}
             </button>
           </div>
           {backfillResult ? (
             <div className="hint">
-              backfill: success {backfillResult.successCount}, low-confidence {backfillResult.lowConfidenceCount}, fail {backfillResult.failCount}
+              완료: 성공 {backfillResult.successCount}, 저신뢰 {backfillResult.lowConfidenceCount}, 실패 {backfillResult.failCount}
             </div>
           ) : null}
 
           {error ? <div className="error">{error}</div> : null}
-          {loading ? <div className="loading">Loading...</div> : null}
+          {loading ? <div className="loading">{COPY.loading}</div> : null}
 
           {!loading && !summary ? (
-            <div className="empty">No summary for this date yet.</div>
+            <div className="empty">{COPY.noSummary}</div>
           ) : null}
 
           {!loading && summary ? (
             <div className="summary">
-              {(() => {
-                const verificationRows = buildVerificationRows(summary);
-                const verificationDate = summary.verification?.date || summary.date;
-                const topGainerExplanation = getLeaderExplanation(summary, "topGainer");
-                const topLoserExplanation = getLeaderExplanation(summary, "topLoser");
-                return (
-                  <>
-              <div className="meta">Generated at: {summary.generatedAt}</div>
+              <div className="meta">{COPY.generatedAt}: {summary.generatedAt}</div>
+
+              {summary.marketClosed === true && (
+                <div className="marketClosedBanner">
+                  <div className="marketClosedIcon">📭</div>
+                  <div>
+                    <div className="marketClosedTitle">{COPY.marketClosed}</div>
+                    <div className="marketClosedDesc">{summary.marketClosedReason || COPY.marketClosedDesc}</div>
+                  </div>
+                </div>
+              )}
 
               <div className="kvGrid">
                 <div className="kvItem">
-                  <span>Top Gainer</span>
+                  <span>{COPY.topGainer}</span>
                   <strong>{valueOrDash(summary.topGainer)}</strong>
-                  <div className={`leaderExplanation ${topGainerExplanation.level}`}>
-                    <div>{topGainerExplanation.summary}</div>
-                    <div className="leaderLinks">
-                      근거 링크: {topGainerExplanation.evidenceLinks.length === 0 ? (
-                        "-"
-                      ) : (
-                        topGainerExplanation.evidenceLinks.map((href, idx) => (
+                  <div className={`leaderExplanation ${getLeaderExplanation(summary, "topGainer").level}`}>
+                    <div>{getLeaderExplanation(summary, "topGainer").summary}</div>
+                    {getLeaderExplanation(summary, "topGainer").evidenceLinks.length > 0 && (
+                      <div className="leaderLinks">
+                        {COPY.evidenceLinks}: {getLeaderExplanation(summary, "topGainer").evidenceLinks.map((href, idx) => (
                           <React.Fragment key={href}>
                             {idx > 0 ? " | " : ""}
-                            <a href={href} target="_blank" rel="noreferrer">
-                              링크 {idx + 1}
-                            </a>
+                            <a href={href} target="_blank" rel="noreferrer">네이버 {idx + 1}</a>
                           </React.Fragment>
-                        ))
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="kvItem">
-                  <span>Top Loser</span>
+                  <span>{COPY.topLoser}</span>
                   <strong>{valueOrDash(summary.topLoser)}</strong>
-                  <div className={`leaderExplanation ${topLoserExplanation.level}`}>
-                    <div>{topLoserExplanation.summary}</div>
-                    <div className="leaderLinks">
-                      근거 링크: {topLoserExplanation.evidenceLinks.length === 0 ? (
-                        "-"
-                      ) : (
-                        topLoserExplanation.evidenceLinks.map((href, idx) => (
+                  <div className={`leaderExplanation ${getLeaderExplanation(summary, "topLoser").level}`}>
+                    <div>{getLeaderExplanation(summary, "topLoser").summary}</div>
+                    {getLeaderExplanation(summary, "topLoser").evidenceLinks.length > 0 && (
+                      <div className="leaderLinks">
+                        {COPY.evidenceLinks}: {getLeaderExplanation(summary, "topLoser").evidenceLinks.map((href, idx) => (
                           <React.Fragment key={href}>
                             {idx > 0 ? " | " : ""}
-                            <a href={href} target="_blank" rel="noreferrer">
-                              링크 {idx + 1}
-                            </a>
+                            <a href={href} target="_blank" rel="noreferrer">네이버 {idx + 1}</a>
                           </React.Fragment>
-                        ))
-                      )}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="kvItem">
-                  <span>Most Mentioned</span>
+                  <span>{COPY.mostMentioned}</span>
                   <strong>{valueOrDash(summary.mostMentioned)}</strong>
                 </div>
                 <div className="kvItem">
-                  <span>KOSPI Pick</span>
+                  <span>{COPY.kospiPick}</span>
                   <strong>{valueOrDash(summary.kospiPick)}</strong>
                 </div>
                 <div className="kvItem">
-                  <span>KOSDAQ Pick</span>
+                  <span>{COPY.kosdaqPick}</span>
                   <strong>{valueOrDash(summary.kosdaqPick)}</strong>
                 </div>
               </div>
 
               <div className="notesWrap">
-                <h4>랭킹 계산 근거</h4>
+                <h4>{COPY.rankingBasis}</h4>
                 <div className="verifyMeta">
-                  <div>처음 계산 1위(상승): {valueOrDash(summary.rawTopGainer || summary.topGainer)}</div>
-                  <div>처음 계산 1위(하락): {valueOrDash(summary.rawTopLoser || summary.topLoser)}</div>
-                  <div>검토 후 1위(상승, 최종 표시): {valueOrDash(summary.filteredTopGainer || summary.topGainer)}</div>
-                  <div>검토 후 1위(하락, 최종 표시): {valueOrDash(summary.filteredTopLoser || summary.topLoser)}</div>
-                  <div>주의 메모: {valueOrDash(summary.rankingWarning)}</div>
+                  <div>{COPY.rawFirstGainer}: {valueOrDash(summary.rawTopGainer || summary.topGainer)}</div>
+                  <div>{COPY.rawFirstLoser}: {valueOrDash(summary.rawTopLoser || summary.topLoser)}</div>
+                  <div>{COPY.filteredFirstGainer}: {valueOrDash(summary.filteredTopGainer || summary.topGainer)}</div>
+                  <div>{COPY.filteredFirstLoser}: {valueOrDash(summary.filteredTopLoser || summary.topLoser)}</div>
+                  {summary.rankingWarning && <div className="warning">{COPY.warningNote}: {valueOrDash(summary.rankingWarning)}</div>}
                 </div>
-                <div className="verifyTableWrap">
-                  <table className="verifyTable">
-                    <thead>
-                      <tr>
-                        <th>종목코드</th>
-                        <th>종목명</th>
-                        <th>등락률(%)</th>
-                        <th>감지 신호</th>
-                        <th>한 줄 설명</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {asArray(summary.anomalies).length === 0 ? (
+                
+                {asArray(summary.anomalies).length > 0 && (
+                  <div className="anomalyTableWrap">
+                    <table className="anomalyTable">
+                      <thead>
                         <tr>
-                          <td colSpan={5}>-</td>
+                          <th>{COPY.code}</th>
+                          <th>{COPY.name}</th>
+                          <th>{COPY.rate}</th>
+                          <th>{COPY.signals}</th>
+                          <th>{COPY.description}</th>
                         </tr>
-                      ) : (
-                        asArray(summary.anomalies).map((a) => (
+                      </thead>
+                      <tbody>
+                        {asArray(summary.anomalies).map((a) => (
                           <tr key={`${a.symbol}-${a.rate}`}>
                             <td>{valueOrDash(a.symbol)}</td>
                             <td>{valueOrDash(a.name)}</td>
@@ -636,79 +600,109 @@ export default function App() {
                             <td>{valueOrDash(asArray(a.flags).join(", "))}</td>
                             <td>{valueOrDash(a.oneLineReason)}</td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               <div className="notesWrap">
-                <button className="btn ghost" onClick={() => setShowNotes((v) => !v)}>
-                  {showNotes ? "rawNotes 접기" : "rawNotes 보기"}
+                <h4>{COPY.verification}</h4>
+                <div className="verifySimple">
+                  <div className="verifySimpleRow">
+                    <span className="label">{COPY.date}</span>
+                    <strong>{valueOrDash(summary.verification?.date || summary.date)}</strong>
+                  </div>
+                  
+                  {summary.verification?.topGainerDateSearch && (
+                    <div className="verifySimpleRow">
+                      <span className="label">{COPY.topGainer} {COPY.directLink}</span>
+                      <LinkOrDash href={summary.verification.topGainerDateSearch} label="네이버 증권 열기" />
+                    </div>
+                  )}
+                  
+                  {summary.verification?.topLoserDateSearch && (
+                    <div className="verifySimpleRow">
+                      <span className="label">{COPY.topLoser} {COPY.directLink}</span>
+                      <LinkOrDash href={summary.verification.topLoserDateSearch} label="네이버 증권 열기" />
+                    </div>
+                  )}
+                  
+                  {summary.verification?.krxDataPortal && (
+                    <div className="verifySimpleRow">
+                      <span className="label">{COPY.krxPortal}</span>
+                      <LinkOrDash href={summary.verification.krxDataPortal} label="KRX 데이터 포털" />
+                    </div>
+                  )}
+                  
+                  {summary.verification?.verificationLimitations && (
+                    <div className="verifySimpleRow notes">
+                      <span className="label">{COPY.notes}</span>
+                      <span>{summary.verification.verificationLimitations}</span>
+                    </div>
+                  )}
+                </div>
+
+                <button className="btn ghost small" onClick={() => setShowDevDetails((v) => !v)}>
+                  {showDevDetails ? COPY.closeDetails : COPY.developerDetails}
+                </button>
+                
+                {showDevDetails && (
+                  <div className="devDetails">
+                    <div className="verifyMeta">
+                      <div>KRX 검증 아티팩트: <LinkOrDash href={resolveApiLink(summary.verification?.primaryKrxArtifact, cfg.apiBaseUrl, k)} label="열기" /></div>
+                      <div>KRX 아티팩트 상태: {valueOrDash(krxArtifact?.status)}</div>
+                      <div>KRX 아티팩트 사유: {valueOrDash(krxArtifact?.unverifiedReason || krxArtifactError)}</div>
+                      <div>데이터셋: {valueOrDash(krxArtifact?.rawSourceIdentity?.datasetName)} ({valueOrDash(krxArtifact?.rawSourceIdentity?.datasetCode)})</div>
+                      <div>KRX 마켓 오버뷰: <LinkOrDash href={summary.verification?.krxMarketOverview} label="열기" /></div>
+                      <div>pykrx 저장소: <LinkOrDash href={summary.verification?.pykrxRepo} label="열기" /></div>
+                    </div>
+                    
+                    <div className="verifyTableWrap">
+                      <table className="verifyTable">
+                        <thead>
+                          <tr>
+                            <th>{COPY.verifyField}</th>
+                            <th>{COPY.result}</th>
+                            <th>{COPY.verifySource}</th>
+                            <th>{COPY.directLink}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { key: "topGainer", label: COPY.topGainer },
+                            { key: "topLoser", label: COPY.topLoser },
+                            { key: "mostMentioned", label: COPY.mostMentioned },
+                            { key: "kospiPick", label: COPY.kospiPick },
+                            { key: "kosdaqPick", label: COPY.kosdaqPick }
+                          ].map((item) => {
+                            const v = summary.verification;
+                            const itemKey = item.key + "Item";
+                            const dateSearchKey = item.key + "DateSearch";
+                            const itemData = v?.[itemKey];
+                            return (
+                              <tr key={item.key}>
+                                <td>{item.label}</td>
+                                <td>{valueOrDash(itemData?.value || summary[item.key])}</td>
+                                <td><code>{valueOrDash(itemData?.sourceName)}</code></td>
+                                <td><LinkOrDash href={v?.[dateSearchKey] || itemData?.directUrl} label={v?.[dateSearchKey] || itemData?.directUrl ? "열기" : "-"} /></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="notesWrap">
+                <button className="btn ghost small" onClick={() => setShowNotes((v) => !v)}>
+                  {showNotes ? COPY.hideRawNotes : COPY.showRawNotes}
                 </button>
                 {showNotes ? <pre className="content">{valueOrDash(summary.rawNotes)}</pre> : null}
               </div>
-
-              <div className="notesWrap">
-                <h4>검증 (날짜-필드-소스 직접 비교)</h4>
-                <div className="verifyMeta">
-                  <div>날짜: {valueOrDash(verificationDate)}</div>
-                  <div>
-                    KRX 검증 아티팩트: <LinkOrDash href={resolveApiLink(summary.verification?.primaryKrxArtifact, cfg.apiBaseUrl, k)} label="열기" />
-                  </div>
-                  <div>KRX 아티팩트 상태: {valueOrDash(krxArtifact?.status)}</div>
-                  <div>KRX 아티팩트 사유: {valueOrDash(krxArtifact?.unverifiedReason || krxArtifactError)}</div>
-                  <div>
-                    KRX 데이터셋: {valueOrDash(krxArtifact?.rawSourceIdentity?.datasetName)} ({valueOrDash(krxArtifact?.rawSourceIdentity?.datasetCode)})
-                  </div>
-                  <div>
-                    KRX 공식 포털: <LinkOrDash href={summary.verification?.krxDataPortal} label="열기" />
-                  </div>
-                  <div>
-                    KRX 마켓 오버뷰: <LinkOrDash href={summary.verification?.krxMarketOverview} label="열기" />
-                  </div>
-                  <div>
-                    pykrx 저장소: <LinkOrDash href={summary.verification?.pykrxRepo} label="열기" />
-                  </div>
-                  <div>제한사항: {valueOrDash(summary.verification?.verificationLimitations)}</div>
-                </div>
-                <div className="verifyTableWrap">
-                  <table className="verifyTable">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Field</th>
-                        <th>Value</th>
-                        <th>sourceType</th>
-                        <th>sourceName</th>
-                        <th>directUrl</th>
-                        <th>Note</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {verificationRows.map((row) => (
-                        <tr key={row.field}>
-                          <td>{valueOrDash(verificationDate)}</td>
-                          <td>{row.field}</td>
-                          <td>{valueOrDash(row.value)}</td>
-                          <td>
-                            <code>{valueOrDash(row.sourceType)}</code>
-                          </td>
-                          <td>{valueOrDash(row.sourceName)}</td>
-                          <td>
-                            <LinkOrDash href={row.directUrl} label={row.directUrl ? "열기" : "-"} />
-                          </td>
-                          <td>{valueOrDash(row.note)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-                  </>
-                );
-              })()}
             </div>
           ) : null}
         </section>

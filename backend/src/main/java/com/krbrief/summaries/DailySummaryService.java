@@ -364,7 +364,29 @@ public class DailySummaryService {
               .retrieve()
               .body(PykrxLeadersResponse.class);
 
-      if (res == null || isBlank(res.topGainer()) || isBlank(res.topLoser())) {
+      if (res == null) {
+        return Optional.empty();
+      }
+
+      // 휴장일 처리: marketClosed 플래그 확인
+      if (Boolean.TRUE.equals(res.marketClosed())) {
+        log.info("Market closed for date={}, reason={}", date, res.marketClosedReason());
+        return Optional.of(
+            new DailyMarketBrief(
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "market_closed",
+                "휴장일: " + (res.marketClosedReason() == null ? "해당 날짜는 증권시장 휴장일입니다." : res.marketClosedReason()),
+                java.util.List.of(),
+                "휴장일로 인해 랭킹 데이터가 없습니다."));
+      }
+
+      if (isBlank(res.topGainer()) || isBlank(res.topLoser())) {
         return Optional.empty();
       }
 
@@ -510,6 +532,8 @@ public class DailySummaryService {
 
   private record PykrxLeadersResponse(
       String date,
+      Boolean marketClosed,
+      String marketClosedReason,
       String topGainer,
       String topLoser,
       String rawTopGainer,

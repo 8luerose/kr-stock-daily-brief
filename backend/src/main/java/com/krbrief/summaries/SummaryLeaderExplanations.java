@@ -37,15 +37,25 @@ final class SummaryLeaderExplanations {
     boolean caution = hasContinuitySignal(flags);
 
     LinkedHashSet<String> links = new LinkedHashSet<>();
+    String naverDirectLink = verificationItemLink(verification, leaderKey);
+    addIfPresent(links, naverDirectLink);
     addIfPresent(links, explicitEvidenceLink(rawNotes, leaderKey));
-    addIfPresent(links, verificationItemLink(verification, leaderKey));
-    addIfPresent(links, verification == null ? "" : verification.krxDataPortal());
     addIfPresent(links, buildDartSearchLink(normalizedName, date));
 
-    String explicit = explicitEvidenceLink(rawNotes, leaderKey);
     String level;
     String summary;
-    if (!explicit.isBlank()) {
+    if (normalizedName.equals("-") || normalizedName.isBlank()) {
+      level = "info";
+      summary = "해당 날짜의 데이터가 없습니다.";
+    } else if (!naverDirectLink.isBlank()) {
+      level = "confirmed";
+      summary =
+          normalizedName
+              + "은 네이버 증권 페이지에서 확인할 수 있습니다."
+              + " (감지 신호: "
+              + signalText(flags)
+              + ")";
+    } else if (!explicitEvidenceLink(rawNotes, leaderKey).isBlank()) {
       level = "confirmed";
       summary =
           normalizedName
@@ -72,10 +82,10 @@ final class SummaryLeaderExplanations {
   private static String verificationItemLink(SummaryVerificationLinks verification, String leaderKey) {
     if (verification == null) return "";
     if ("topGainer".equals(leaderKey)) {
-      return verification.topGainerItem() == null ? "" : nullToEmpty(verification.topGainerItem().directUrl());
+      return nullToEmpty(verification.topGainerDateSearch());
     }
     if ("topLoser".equals(leaderKey)) {
-      return verification.topLoserItem() == null ? "" : nullToEmpty(verification.topLoserItem().directUrl());
+      return nullToEmpty(verification.topLoserDateSearch());
     }
     return "";
   }

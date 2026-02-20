@@ -105,7 +105,7 @@ public record SummaryVerificationLinks(
                 "Derived rule(v1); heuristic pick.",
                 kosdaqPickCode,
                 kosdaqPickDirect)),
-        "Primary verification is date-locked KRX artifact. Secondary links are direct Naver stock pages by ticker code (when code is available); no Naver search links are used.");
+        "1차 검증은 날짜 기준 KRX 데이터셋이며, 2차 링크는 네이버 증권 종목 페이지(티커 코드 기반)입니다. 검색 페이지가 아닌 직접 링크를 사용합니다.");
   }
 
   private static String primaryAnchor(String primaryKrxArtifact, String field) {

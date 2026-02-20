@@ -6,6 +6,8 @@ import java.util.List;
 
 public record SummaryDto(
     LocalDate date,
+    Boolean marketClosed,
+    String marketClosedReason,
     String topGainer,
     String topLoser,
     String rawTopGainer,
@@ -23,10 +25,20 @@ public record SummaryDto(
     Instant archivedAt,
     SummaryVerificationLinks verification,
     LeaderExplanations leaderExplanations,
-    // Back-compat fields for the current UI.
     String content,
     Instant generatedAt) {
   public static SummaryDto from(DailySummary s) {
+    String rawNotes = s.getRawNotes();
+    boolean isMarketClosed = rawNotes != null && rawNotes.contains("Source: market_closed");
+    String marketClosedReason = null;
+    if (isMarketClosed && rawNotes != null) {
+      int idx = rawNotes.indexOf("휴장일:");
+      if (idx >= 0) {
+        int end = rawNotes.indexOf('\n', idx);
+        marketClosedReason = end < 0 ? rawNotes.substring(idx) : rawNotes.substring(idx, end);
+      }
+    }
+
     SummaryVerificationLinks verification =
         SummaryVerificationLinks.from(
             s.getDate(),
@@ -36,11 +48,13 @@ public record SummaryDto(
             s.getMostMentioned(),
             s.getKospiPick(),
             s.getKosdaqPick(),
-            s.getRawNotes());
+            rawNotes);
     List<AnomalyDto> anomalies = SummaryAnomalyCodec.decode(s.getAnomaliesText());
 
     return new SummaryDto(
         s.getDate(),
+        isMarketClosed,
+        marketClosedReason,
         s.getTopGainer(),
         s.getTopLoser(),
         s.getTopGainer(),
@@ -52,13 +66,13 @@ public record SummaryDto(
         s.getMostMentioned(),
         s.getKospiPick(),
         s.getKosdaqPick(),
-        s.getRawNotes(),
+        rawNotes,
         s.getCreatedAt(),
         s.getUpdatedAt(),
         s.getArchivedAt(),
         verification,
         SummaryLeaderExplanations.build(
-            s.getDate(), s.getTopGainer(), s.getTopLoser(), anomalies, s.getRawNotes(), verification),
+            s.getDate(), s.getTopGainer(), s.getTopLoser(), anomalies, rawNotes, verification),
         s.renderContent(),
         s.getUpdatedAt());
   }
