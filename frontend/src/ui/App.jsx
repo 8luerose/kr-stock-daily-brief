@@ -15,6 +15,23 @@ function buildTwoNaverLinks(dayUrl) {
   return out.slice(0, 2);
 }
 
+function buildEvidenceLinks(naverDayUrl, yahooUrl) {
+  const links = [];
+  
+  // 네이버 링크 (최대 1개)
+  const naverLinks = buildTwoNaverLinks(naverDayUrl);
+  if (naverLinks.length > 0) {
+    links.push(naverLinks[0]); // 네이버 일별만 사용
+  }
+  
+  // Yahoo Finance 링크 (1개)
+  if (yahooUrl) {
+    links.push({ href: yahooUrl, label: "Yahoo Finance" });
+  }
+  
+  return links.slice(0, 2); // 총 2개로 제한
+}
+
 const COPY = {
   brand: "주식 일간 브리프",
   generateToday: "오늘 생성",
@@ -568,10 +585,10 @@ export default function App() {
                   <div className={`leaderExplanation ${getLeaderExplanation(summary, "topGainer").level}`}>
                     <div>{getLeaderExplanation(summary, "topGainer").summary}</div>
                     <div className="leaderLinks">
-                      {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.topGainerDateSearch).length === 0 ? (
+                      {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.topGainerDateSearch, summary.verification?.topGainerYahooFinance).length === 0 ? (
                         "-"
                       ) : (
-                        buildTwoNaverLinks(summary.verification?.topGainerDateSearch).map((x, idx) => (
+                        buildEvidenceLinks(summary.verification?.topGainerDateSearch, summary.verification?.topGainerYahooFinance).map((x, idx) => (
                           <React.Fragment key={x.href}>
                             {idx > 0 ? " | " : ""}
                             <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
@@ -587,10 +604,10 @@ export default function App() {
                   <div className={`leaderExplanation ${getLeaderExplanation(summary, "topLoser").level}`}>
                     <div>{getLeaderExplanation(summary, "topLoser").summary}</div>
                     <div className="leaderLinks">
-                      {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.topLoserDateSearch).length === 0 ? (
+                      {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.topLoserDateSearch, summary.verification?.topLoserYahooFinance).length === 0 ? (
                         "-"
                       ) : (
-                        buildTwoNaverLinks(summary.verification?.topLoserDateSearch).map((x, idx) => (
+                        buildEvidenceLinks(summary.verification?.topLoserDateSearch, summary.verification?.topLoserYahooFinance).map((x, idx) => (
                           <React.Fragment key={x.href}>
                             {idx > 0 ? " | " : ""}
                             <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
@@ -604,10 +621,10 @@ export default function App() {
                   <span>{COPY.mostMentioned}</span>
                   <strong>{valueOrDash(summary.mostMentioned)}</strong>
                   <div className="leaderLinks">
-                    {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.mostMentionedDateSearch).length === 0 ? (
+                    {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.mostMentionedDateSearch, summary.verification?.mostMentionedYahooFinance).length === 0 ? (
                       "-"
                     ) : (
-                      buildTwoNaverLinks(summary.verification?.mostMentionedDateSearch).map((x, idx) => (
+                      buildEvidenceLinks(summary.verification?.mostMentionedDateSearch, summary.verification?.mostMentionedYahooFinance).map((x, idx) => (
                         <React.Fragment key={x.href}>
                           {idx > 0 ? " | " : ""}
                           <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
@@ -620,10 +637,10 @@ export default function App() {
                   <span>{COPY.kospiPick}</span>
                   <strong>{valueOrDash(summary.kospiPick)}</strong>
                   <div className="leaderLinks">
-                    {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.kospiPickDateSearch).length === 0 ? (
+                    {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.kospiPickDateSearch, summary.verification?.kospiPickYahooFinance).length === 0 ? (
                       "-"
                     ) : (
-                      buildTwoNaverLinks(summary.verification?.kospiPickDateSearch).map((x, idx) => (
+                      buildEvidenceLinks(summary.verification?.kospiPickDateSearch, summary.verification?.kospiPickYahooFinance).map((x, idx) => (
                         <React.Fragment key={x.href}>
                           {idx > 0 ? " | " : ""}
                           <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
@@ -636,10 +653,10 @@ export default function App() {
                   <span>{COPY.kosdaqPick}</span>
                   <strong>{valueOrDash(summary.kosdaqPick)}</strong>
                   <div className="leaderLinks">
-                    {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.kosdaqPickDateSearch).length === 0 ? (
+                    {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.kosdaqPickDateSearch, summary.verification?.kosdaqPickYahooFinance).length === 0 ? (
                       "-"
                     ) : (
-                      buildTwoNaverLinks(summary.verification?.kosdaqPickDateSearch).map((x, idx) => (
+                      buildEvidenceLinks(summary.verification?.kosdaqPickDateSearch, summary.verification?.kosdaqPickYahooFinance).map((x, idx) => (
                         <React.Fragment key={x.href}>
                           {idx > 0 ? " | " : ""}
                           <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
