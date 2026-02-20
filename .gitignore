@@ -3,6 +3,7 @@
 
 # Node
 node_modules/
+frontend/dist/
 
 # Java/Gradle
 .gradle/
