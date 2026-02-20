@@ -109,23 +109,15 @@ def leaders(date: str):
     # 거래일 확인: 비거래일인 경우 market_closed 응답 반환
     is_trading, closed_reason = _is_trading_day(ymd)
     if not is_trading:
-        # 1) KRX (공식) - 공개 접근 가능한 증시일정/휴장일 안내 페이지
-        #    ※ data.krx.co.kr(정보데이터시스템)은 로그인/POST 필요로 1:1 딥링크가 불안정할 수 있어
-        #    사용자 클릭 확인용으로는 krx.co.kr 공개 페이지를 우선 제공합니다.
-        krx_url = "https://www.krx.co.kr/contents/MKD/01/0110/01100305/MKD01100305.jsp"
-
-        # 2) 네이버(2차) - 날짜 1:1로 바로 매칭되는 JSON 엔드포인트(클릭 시 해당 날짜만 반환)
-        #    startTime/endTime: YYYYMMDD
-        naver_url = (
-            "https://api.finance.naver.com/siseJson.naver?symbol=KOSPI"
-            f"&requestType=1&startTime={ymd}&endTime={ymd}&timeframe=day"
-        )
+        # NOTE: 사용자가 신뢰할 수 있는 '공식/공인 기관' 근거 링크로 교체 예정.
+        # 현재는 민간(네이버) 또는 KRX 웹페이지 링크를 근거로 사용하지 않습니다.
+        evidence_links: list[str] = []
         return {
             "date": date,
             "marketClosed": True,
             "marketClosedReason": (closed_reason or "해당 날짜는 한국 증권시장 휴장일입니다 (주말/공휴일).")
             + " (근거 링크 2개 제공)",
-            "evidenceLinks": [krx_url, naver_url],
+            "evidenceLinks": evidence_links,
             "rawTopGainer": "-",
             "rawTopLoser": "-",
             "filteredTopGainer": "-",

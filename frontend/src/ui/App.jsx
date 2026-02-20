@@ -579,7 +579,7 @@ export default function App() {
                         {COPY.evidenceLinks}: {summary.marketClosedEvidenceLinks.slice(0, 2).map((href, idx) => (
                           <React.Fragment key={href}>
                             {idx > 0 ? " | " : ""}
-                            <a href={href} target="_blank" rel="noreferrer">{idx === 0 ? "KRX" : "네이버"}</a>
+                            <a href={href} target="_blank" rel="noreferrer">공식 근거</a>
                           </React.Fragment>
                         ))}
                       </div>
