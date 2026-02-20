@@ -54,6 +54,9 @@ make check-month MONTH=2026-02
 - `http://localhost:5173`
 - 날짜 선택 후 Generate
 - 생성 직후 해당 날짜 dot가 즉시 표시되는지 확인
+- 휴장일 날짜를 선택했을 때:
+  - 휴장 배지/문구 표시
+  - 근거 링크(KRX/네이버) 2개가 클릭 가능
 
 ## 5) PUBLIC_KEY 모드 확인(선택)
 

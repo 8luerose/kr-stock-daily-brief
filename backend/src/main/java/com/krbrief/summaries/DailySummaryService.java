@@ -371,6 +371,10 @@ public class DailySummaryService {
       // 휴장일 처리: marketClosed 플래그 확인
       if (Boolean.TRUE.equals(res.marketClosed())) {
         log.info("Market closed for date={}, reason={}", date, res.marketClosedReason());
+        String links =
+            res.evidenceLinks() == null || res.evidenceLinks().isEmpty()
+                ? ""
+                : "\n휴장 근거: " + String.join(" | ", res.evidenceLinks());
         return Optional.of(
             new DailyMarketBrief(
                 "-",
@@ -381,7 +385,11 @@ public class DailySummaryService {
                 "-",
                 "-",
                 "market_closed",
-                "휴장일: " + (res.marketClosedReason() == null ? "해당 날짜는 증권시장 휴장일입니다." : res.marketClosedReason()),
+                "휴장일: "
+                    + (res.marketClosedReason() == null
+                        ? "해당 날짜는 증권시장 휴장일입니다."
+                        : res.marketClosedReason())
+                    + links,
                 java.util.List.of(),
                 "휴장일로 인해 랭킹 데이터가 없습니다."));
       }
@@ -534,6 +542,7 @@ public class DailySummaryService {
       String date,
       Boolean marketClosed,
       String marketClosedReason,
+      java.util.List<String> evidenceLinks,
       String topGainer,
       String topLoser,
       String rawTopGainer,

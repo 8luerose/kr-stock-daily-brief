@@ -574,6 +574,16 @@ export default function App() {
                   <div>
                     <div className="marketClosedTitle">{COPY.marketClosed}</div>
                     <div className="marketClosedDesc">{summary.marketClosedReason || COPY.marketClosedDesc}</div>
+                    {Array.isArray(summary.marketClosedEvidenceLinks) && summary.marketClosedEvidenceLinks.length > 0 ? (
+                      <div className="marketClosedLinks">
+                        {COPY.evidenceLinks}: {summary.marketClosedEvidenceLinks.slice(0, 2).map((href, idx) => (
+                          <React.Fragment key={href}>
+                            {idx > 0 ? " | " : ""}
+                            <a href={href} target="_blank" rel="noreferrer">{idx === 0 ? "KRX" : "네이버"}</a>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               )}

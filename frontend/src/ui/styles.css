@@ -517,6 +517,21 @@ body {
   color: var(--text-secondary);
 }
 
+.marketClosedLinks {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.marketClosedLinks a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.marketClosedLinks a:hover {
+  text-decoration: underline;
+}
+
 .notesWrap {
   margin-top: 24px;
 }

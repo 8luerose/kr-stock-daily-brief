@@ -109,10 +109,14 @@ def leaders(date: str):
     # 거래일 확인: 비거래일인 경우 market_closed 응답 반환
     is_trading, closed_reason = _is_trading_day(ymd)
     if not is_trading:
+        krx_url = "https://www.krx.co.kr/contents/MKD/01/0110/01100305/MKD01100305.jsp"
+        naver_url = "https://finance.naver.com/sise/sise_index_day.naver?code=KOSPI"
         return {
             "date": date,
             "marketClosed": True,
-            "marketClosedReason": closed_reason or "해당 날짜는 한국 증권시장 휴장일입니다 (주말/공휴일).",
+            "marketClosedReason": (closed_reason or "해당 날짜는 한국 증권시장 휴장일입니다 (주말/공휴일).")
+            + " (근거 링크 2개 제공)",
+            "evidenceLinks": [krx_url, naver_url],
             "rawTopGainer": "-",
             "rawTopLoser": "-",
             "filteredTopGainer": "-",

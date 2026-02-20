@@ -8,6 +8,7 @@ public record SummaryDto(
     LocalDate date,
     Boolean marketClosed,
     String marketClosedReason,
+    java.util.List<String> marketClosedEvidenceLinks,
     String topGainer,
     String topLoser,
     String rawTopGainer,
@@ -31,11 +32,34 @@ public record SummaryDto(
     String rawNotes = s.getRawNotes();
     boolean isMarketClosed = rawNotes != null && rawNotes.contains("Source: market_closed");
     String marketClosedReason = null;
+    java.util.List<String> marketClosedEvidenceLinks = java.util.List.of();
     if (isMarketClosed && rawNotes != null) {
       int idx = rawNotes.indexOf("휴장일:");
       if (idx >= 0) {
         int end = rawNotes.indexOf('\n', idx);
         marketClosedReason = end < 0 ? rawNotes.substring(idx) : rawNotes.substring(idx, end);
+      }
+
+      int linkIdx = rawNotes.indexOf("휴장 근거:");
+      if (linkIdx >= 0) {
+        int end = rawNotes.indexOf('\n', linkIdx);
+        String line = end < 0 ? rawNotes.substring(linkIdx) : rawNotes.substring(linkIdx, end);
+        // e.g. "휴장 근거: url1 | url2"
+        int colon = line.indexOf(':');
+        if (colon >= 0 && colon + 1 < line.length()) {
+          String rest = line.substring(colon + 1).trim();
+          if (!rest.isBlank()) {
+            String[] parts = rest.split("\\s*\\|\\s*");
+            java.util.List<String> links = new java.util.ArrayList<>();
+            for (String p : parts) {
+              String u = p.trim();
+              if (!u.isBlank()) {
+                links.add(u);
+              }
+            }
+            marketClosedEvidenceLinks = links;
+          }
+        }
       }
     }
 
@@ -55,6 +79,7 @@ public record SummaryDto(
         s.getDate(),
         isMarketClosed,
         marketClosedReason,
+        marketClosedEvidenceLinks,
         s.getTopGainer(),
         s.getTopLoser(),
         s.getTopGainer(),
