@@ -38,6 +38,10 @@ make up
 make health
 ```
 
+Dev note:
+- `docker-compose.override.yml` is used for local convenience (hot-updating frontend dist).
+- For a clean, portable run (CI/other machines), you can ignore/remove the override file.
+
 2. Open:
 
 - UI: `http://localhost:5173`

@@ -54,10 +54,6 @@ services:
       API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
-    # Dev convenience: allow updating UI without rebuilding the image.
-    # After `cd frontend && npm run build`, the container serves the new dist immediately.
-    volumes:
-      - ./frontend/dist:/app/dist
     depends_on:
       - backend
 

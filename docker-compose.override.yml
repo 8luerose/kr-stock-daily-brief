@@ -1,0 +1,9 @@
+# Local development overrides.
+# This file is automatically picked up by `docker compose` when present.
+
+services:
+  frontend:
+    # Dev convenience: allow updating UI without rebuilding the image.
+    # After `cd frontend && npm run build`, the container serves the new dist immediately.
+    volumes:
+      - ./frontend/dist:/app/dist
