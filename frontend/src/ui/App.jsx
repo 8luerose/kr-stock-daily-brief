@@ -1,9 +1,26 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+function naverMainFromDayUrl(dayUrl) {
+  if (!dayUrl) return "";
+  return dayUrl.replace("/item/sise_day.naver?code=", "/item/main.naver?code=");
+}
+
+function buildTwoNaverLinks(dayUrl) {
+  const day = dayUrl || "";
+  const main = naverMainFromDayUrl(dayUrl);
+  // Return at most 2 unique links.
+  const out = [];
+  if (day) out.push({ href: day, label: "네이버(일별)" });
+  if (main && main !== day) out.push({ href: main, label: "네이버(종합)" });
+  return out.slice(0, 2);
+}
+
 const COPY = {
   brand: "주식 일간 브리프",
   generateToday: "오늘 생성",
   moveToLatest: "최신 요약",
+  toggleDarkOn: "다크 모드",
+  toggleDarkOff: "라이트 모드",
   prevMonth: "이전",
   nextMonth: "다음",
   generateSelected: "선택일 생성",
@@ -150,6 +167,23 @@ export default function App() {
   const cfg = useMemo(() => getConfig(), []);
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const k = urlParams.get("k") || "";
+
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem("theme") === "dark";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    try {
+      localStorage.setItem("theme", darkMode ? "dark" : "light");
+    } catch {
+      // ignore
+    }
+  }, [darkMode]);
 
   const [month, setMonth] = useState(() => new Date());
   const [selected, setSelected] = useState(() => isoDate(new Date()));
@@ -375,6 +409,13 @@ export default function App() {
             {COPY.moveToLatest}
           </button>
           <button
+            className="btn ghost"
+            onClick={() => setDarkMode((v) => !v)}
+            type="button"
+          >
+            {darkMode ? COPY.toggleDarkOff : COPY.toggleDarkOn}
+          </button>
+          <button
             className="btn primary"
             onClick={() => generate(todayStr)}
             disabled={loading}
@@ -526,16 +567,18 @@ export default function App() {
                   <strong>{valueOrDash(summary.topGainer)}</strong>
                   <div className={`leaderExplanation ${getLeaderExplanation(summary, "topGainer").level}`}>
                     <div>{getLeaderExplanation(summary, "topGainer").summary}</div>
-                    {getLeaderExplanation(summary, "topGainer").evidenceLinks.length > 0 && (
-                      <div className="leaderLinks">
-                        {COPY.evidenceLinks}: {getLeaderExplanation(summary, "topGainer").evidenceLinks.map((href, idx) => (
-                          <React.Fragment key={href}>
+                    <div className="leaderLinks">
+                      {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.topGainerDateSearch).length === 0 ? (
+                        "-"
+                      ) : (
+                        buildTwoNaverLinks(summary.verification?.topGainerDateSearch).map((x, idx) => (
+                          <React.Fragment key={x.href}>
                             {idx > 0 ? " | " : ""}
-                            <a href={href} target="_blank" rel="noreferrer">네이버 {idx + 1}</a>
+                            <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
                           </React.Fragment>
-                        ))}
-                      </div>
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="kvItem">
@@ -543,29 +586,67 @@ export default function App() {
                   <strong>{valueOrDash(summary.topLoser)}</strong>
                   <div className={`leaderExplanation ${getLeaderExplanation(summary, "topLoser").level}`}>
                     <div>{getLeaderExplanation(summary, "topLoser").summary}</div>
-                    {getLeaderExplanation(summary, "topLoser").evidenceLinks.length > 0 && (
-                      <div className="leaderLinks">
-                        {COPY.evidenceLinks}: {getLeaderExplanation(summary, "topLoser").evidenceLinks.map((href, idx) => (
-                          <React.Fragment key={href}>
+                    <div className="leaderLinks">
+                      {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.topLoserDateSearch).length === 0 ? (
+                        "-"
+                      ) : (
+                        buildTwoNaverLinks(summary.verification?.topLoserDateSearch).map((x, idx) => (
+                          <React.Fragment key={x.href}>
                             {idx > 0 ? " | " : ""}
-                            <a href={href} target="_blank" rel="noreferrer">네이버 {idx + 1}</a>
+                            <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
                           </React.Fragment>
-                        ))}
-                      </div>
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="kvItem">
                   <span>{COPY.mostMentioned}</span>
                   <strong>{valueOrDash(summary.mostMentioned)}</strong>
+                  <div className="leaderLinks">
+                    {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.mostMentionedDateSearch).length === 0 ? (
+                      "-"
+                    ) : (
+                      buildTwoNaverLinks(summary.verification?.mostMentionedDateSearch).map((x, idx) => (
+                        <React.Fragment key={x.href}>
+                          {idx > 0 ? " | " : ""}
+                          <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
+                        </React.Fragment>
+                      ))
+                    )}
+                  </div>
                 </div>
                 <div className="kvItem">
                   <span>{COPY.kospiPick}</span>
                   <strong>{valueOrDash(summary.kospiPick)}</strong>
+                  <div className="leaderLinks">
+                    {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.kospiPickDateSearch).length === 0 ? (
+                      "-"
+                    ) : (
+                      buildTwoNaverLinks(summary.verification?.kospiPickDateSearch).map((x, idx) => (
+                        <React.Fragment key={x.href}>
+                          {idx > 0 ? " | " : ""}
+                          <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
+                        </React.Fragment>
+                      ))
+                    )}
+                  </div>
                 </div>
                 <div className="kvItem">
                   <span>{COPY.kosdaqPick}</span>
                   <strong>{valueOrDash(summary.kosdaqPick)}</strong>
+                  <div className="leaderLinks">
+                    {COPY.evidenceLinks}: {buildTwoNaverLinks(summary.verification?.kosdaqPickDateSearch).length === 0 ? (
+                      "-"
+                    ) : (
+                      buildTwoNaverLinks(summary.verification?.kosdaqPickDateSearch).map((x, idx) => (
+                        <React.Fragment key={x.href}>
+                          {idx > 0 ? " | " : ""}
+                          <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
+                        </React.Fragment>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
 
