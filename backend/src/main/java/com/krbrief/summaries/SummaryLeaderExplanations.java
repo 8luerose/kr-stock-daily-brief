@@ -44,6 +44,7 @@ final class SummaryLeaderExplanations {
 
     String level;
     String summary;
+    String particle = getSubjectParticle(normalizedName);
     if (normalizedName.equals("-") || normalizedName.isBlank()) {
       level = "info";
       summary = "해당 날짜의 데이터가 없습니다.";
@@ -51,7 +52,7 @@ final class SummaryLeaderExplanations {
       level = "confirmed";
       summary =
           normalizedName
-              + "은 네이버 증권 페이지에서 확인할 수 있습니다."
+              + particle + " 네이버 증권 페이지에서 확인할 수 있습니다."
               + " (감지 신호: "
               + signalText(flags)
               + ")";
@@ -59,7 +60,7 @@ final class SummaryLeaderExplanations {
       level = "confirmed";
       summary =
           normalizedName
-              + "은 관련 근거 링크가 확인되었습니다."
+              + particle + " 관련 근거 링크가 확인되었습니다."
               + " (감지 신호: "
               + signalText(flags)
               + ")";
@@ -67,13 +68,13 @@ final class SummaryLeaderExplanations {
       level = "caution";
       summary =
           normalizedName
-              + "은 값이 크게 튀는 신호가 있어 해석에 주의가 필요합니다."
+              + particle + " 값이 크게 튀는 신호가 있어 해석에 주의가 필요합니다."
               + " (감지 신호: "
               + signalText(flags)
               + ")";
     } else {
       level = "info";
-      summary = normalizedName + "은 특별한 이상 신호가 없어 일반 순위로 표시했습니다.";
+      summary = normalizedName + particle + " 특별한 이상 신호가 없어 일반 순위로 표시했습니다.";
     }
 
     return new SummaryDto.LeaderExplanation(level, summary, new ArrayList<>(links));
@@ -177,5 +178,33 @@ final class SummaryLeaderExplanations {
   private static void addIfPresent(LinkedHashSet<String> links, String value) {
     if (value == null || value.isBlank()) return;
     links.add(value);
+  }
+
+  /**
+   * Returns the appropriate Korean subject particle ("은" or "는") based on whether
+   * the last character of the name has a jongseong (final consonant/batchim).
+   *
+   * Rule: 종성(받침)이 있으면 "은", 없으면 "는"
+   * Examples:
+   *   - "삼성전자" (ends with "자", no jongseong) → "는" → "삼성전자는"
+   *   - "LG에너지솔루션" (ends with "션", has jongseong ㄴ) → "은" → "LG에너지솔루션은"
+   */
+  private static String getSubjectParticle(String name) {
+    if (name == null || name.isEmpty()) {
+      return "은"; // 기본값
+    }
+    int lastIdx = name.length() - 1;
+    char lastChar = name.charAt(lastIdx);
+
+    // 한글 범위 확인 (AC00-D7AF: 완성형 한글)
+    if (lastChar >= 0xAC00 && lastChar <= 0xD7AF) {
+      // 종성 인덱스 계산: (char - 0xAC00) % 28
+      // 0이면 종성 없음, 1-27이면 종성 있음
+      int jongseongIdx = (lastChar - 0xAC00) % 28;
+      return jongseongIdx == 0 ? "는" : "은";
+    }
+
+    // 한글이 아닌 경우 (영어, 숫자 등) 기본값 "은" 사용
+    return "은";
   }
 }

@@ -96,4 +96,46 @@ class SummaryLeaderExplanationsTest {
         explanations.topGainer().evidenceLinks().stream()
             .anyMatch(x -> x.equals("https://dart.fss.or.kr/example")));
   }
+
+  @Test
+  void koreanParticleUsesEunForJongseong() {
+    SummaryVerificationLinks links =
+        SummaryVerificationLinks.from(
+            LocalDate.of(2026, 2, 9),
+            "/api/summaries/2026-02-09/verification/krx",
+            "에너지솔루션",
+            "테스트하락",
+            "C",
+            "D",
+            "E",
+            "codes: topGainer=111111, topLoser=222222, mostMentioned=333333, kospiPick=444444, kosdaqPick=555555");
+
+    SummaryDto.LeaderExplanations explanations =
+        SummaryLeaderExplanations.build(
+            LocalDate.of(2026, 2, 9), "에너지솔루션", "테스트하락", List.of(), "", links);
+
+    assertTrue(explanations.topGainer().summary().contains("에너지솔루션은"));
+    assertTrue(explanations.topGainer().summary().contains("네이버 증권"));
+  }
+
+  @Test
+  void koreanParticleUsesNeunForNoJongseong() {
+    SummaryVerificationLinks links =
+        SummaryVerificationLinks.from(
+            LocalDate.of(2026, 2, 9),
+            "/api/summaries/2026-02-09/verification/krx",
+            "삼성전자",
+            "테스트하락",
+            "C",
+            "D",
+            "E",
+            "codes: topGainer=111111, topLoser=222222, mostMentioned=333333, kospiPick=444444, kosdaqPick=555555");
+
+    SummaryDto.LeaderExplanations explanations =
+        SummaryLeaderExplanations.build(
+            LocalDate.of(2026, 2, 9), "삼성전자", "테스트하락", List.of(), "", links);
+
+    assertTrue(explanations.topGainer().summary().contains("삼성전자는"));
+    assertTrue(explanations.topGainer().summary().contains("네이버 증권"));
+  }
 }
