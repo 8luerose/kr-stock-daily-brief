@@ -8,18 +8,23 @@ from pykrx import stock
 app = FastAPI(title="kr-stock-daily-brief marketdata", version="0.5.0")
 
 
-def _is_trading_day(ymd: str) -> bool:
-    """pykrx를 사용해 해당 날짜가 실제 거래일인지 확인합니다."""
+def _is_trading_day(ymd: str) -> tuple[bool, str | None]:
+    """pykrx로 해당 날짜가 실제 거래일인지 확인합니다.
+
+    반환: (is_trading_day, reason_if_closed)
+    - pykrx 호출 실패 시에는 안전상 비거래일로 처리합니다.
+    """
     try:
-        # 해당 날짜의 영업일 목록을 가져와서 ymd가 포함되어 있는지 확인
         # get_nearest_business_day_in_a_week은 가장 가까운 영업일을 반환하므로
-        # 요청일과 결과가 같으면 거래일
+        # 요청일과 결과가 같으면 거래일로 판단.
         nearest = stock.get_nearest_business_day_in_a_week(ymd, direction="next")
-        return nearest == ymd
-    except Exception:
-        # pykrx 에러 시, 평일이면 거래일로 가정 (안전한 fallback)
-        dt = datetime.strptime(ymd, "%Y%m%d")
-        return dt.weekday() < 5  # Mon-Fri
+        if nearest == ymd:
+            return True, None
+        return False, "주말/공휴일로 추정됩니다."
+    except Exception as e:
+        # pykrx 에러 시 '평일이면 거래일'로 가정하면
+        # 실제 공휴일/임시휴장일에 잘못된 랭킹이 생성될 수 있어 위험합니다.
+        return False, f"영업일 확인 실패로 안전상 휴장 처리했습니다 ({type(e).__name__})."
 
 
 def _parse_date(date_str: str) -> str:
@@ -102,11 +107,12 @@ def leaders(date: str):
     ymd = _parse_date(date)
 
     # 거래일 확인: 비거래일인 경우 market_closed 응답 반환
-    if not _is_trading_day(ymd):
+    is_trading, closed_reason = _is_trading_day(ymd)
+    if not is_trading:
         return {
             "date": date,
             "marketClosed": True,
-            "marketClosedReason": "해당 날짜는 한국 증권시장 휴장일입니다 (주말/공휴일).",
+            "marketClosedReason": closed_reason or "해당 날짜는 한국 증권시장 휴장일입니다 (주말/공휴일).",
             "rawTopGainer": "-",
             "rawTopLoser": "-",
             "filteredTopGainer": "-",
