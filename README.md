@@ -27,6 +27,7 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `MARKETDATA_BASE_URL` | No | Market data service URL (Docker internal) |
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
 | `ADMIN_KEY` | Recommended | Admin key for protected operations |
+| `APP_ADMIN_TRUSTED_CIDRS` | No | Comma-separated CIDRs for trusted admin bypass (default: `127.0.0.1/32,::1/128`) |
 
 ## Market Data (current)
 
@@ -112,17 +113,44 @@ A cron job is configured to auto-generate a summary on weekdays at **15:40 Asia/
 
 ## Admin-only operations (ADMIN_KEY)
 
-This project supports a lightweight “admin key” guard for operations that can overwrite data.
+This project supports a lightweight "admin key" guard for operations that can overwrite data.
 
 - Set `ADMIN_KEY` (non-empty) to enable admin checks.
 - Admin is recognized by either:
   - HTTP header: `X-Admin-Key: <ADMIN_KEY>`
   - or query param: `adminKey=<ADMIN_KEY>` (useful for quick manual calls)
+  - **or** request from a trusted IP address (see Local Bypass below)
 
 Admin-only endpoints/operations:
 - Regenerating an **existing** date via `POST /api/summaries/{date}/generate`
 - `POST /api/summaries/backfill`
 - `PUT /api/summaries/{date}/archive`
+
+### Local Bypass (Trusted CIDRs)
+
+When `ADMIN_KEY` is set, requests from trusted IP addresses are automatically treated as admin **without** needing the key. This is useful for:
+- Local development (`localhost` calls)
+- Docker internal networking (e.g., backend calling itself)
+- CI/CD pipelines running in trusted networks
+
+**Default trusted CIDRs:** `127.0.0.1/32,::1/128` (localhost only)
+
+**Configuration:** Set `APP_ADMIN_TRUSTED_CIDRS` to customize:
+```bash
+# Docker internal networks (172.16.0.0/12 covers Docker default bridge)
+APP_ADMIN_TRUSTED_CIDRS="127.0.0.1/32,::1/128,172.16.0.0/12" make up
+
+# Multiple private ranges
+APP_ADMIN_TRUSTED_CIDRS="10.0.0.0/8,192.168.0.0/16" make up
+
+# Disable local bypass entirely (only key-based auth)
+APP_ADMIN_TRUSTED_CIDRS="" make up
+```
+
+**⚠️ Production Warning:** For internet-facing deploys, carefully review `APP_ADMIN_TRUSTED_CIDRS`. If your reverse proxy forwards client IPs (e.g., via `X-Forwarded-For`), requests may appear to come from trusted addresses even if they originate externally. Recommended:
+1. Set `APP_ADMIN_TRUSTED_CIDRS=""` to disable bypass, OR
+2. Ensure only actual internal IPs are trusted, AND
+3. Configure your reverse proxy to strip/validate `X-Forwarded-For` headers.
 
 Frontend convenience:
 - Add `?ak=<ADMIN_KEY>` (or `?adminKey=<ADMIN_KEY>`) to the UI URL. The frontend will attach `X-Admin-Key` automatically.
