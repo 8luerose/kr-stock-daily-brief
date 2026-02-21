@@ -37,7 +37,9 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-app}
       PUBLIC_KEY: ${PUBLIC_KEY:-}
       ADMIN_KEY: ${ADMIN_KEY:-}
-      APP_ADMIN_TRUSTED_CIDRS: ${APP_ADMIN_TRUSTED_CIDRS:-127.0.0.1/32,::1/128}
+      # Local/dev convenience: include common private ranges (docker/lan) in trusted CIDRs.
+      # For internet-facing deploys, override to a strict value or empty to disable.
+      APP_ADMIN_TRUSTED_CIDRS: ${APP_ADMIN_TRUSTED_CIDRS:-127.0.0.1/32,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
       MARKETDATA_PROVIDER: ${MARKETDATA_PROVIDER:-pykrx}
       MARKETDATA_BASE_URL: ${MARKETDATA_BASE_URL:-http://marketdata:8000}
