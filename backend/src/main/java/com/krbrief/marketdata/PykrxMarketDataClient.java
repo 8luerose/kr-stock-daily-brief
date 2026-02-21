@@ -41,7 +41,11 @@ public class PykrxMarketDataClient implements MarketDataClient {
               res.source(),
               res.notes(),
               res.anomalies() == null ? java.util.List.of() : res.anomalies(),
-              nullToEmpty(res.rankingWarning())));
+              nullToEmpty(res.rankingWarning()),
+              nullToEmpty(res.effectiveDate()),
+              res.topGainers() == null ? java.util.List.of() : res.topGainers(),
+              res.topLosers() == null ? java.util.List.of() : res.topLosers(),
+              res.mostMentionedTop() == null ? java.util.List.of() : res.mostMentionedTop()));
     } catch (Exception e) {
       return Optional.of(
           new DailyMarketBrief(
@@ -72,10 +76,6 @@ public class PykrxMarketDataClient implements MarketDataClient {
     return value == null ? "" : value;
   }
 
-  public record LeaderEntry(String code, String name, Double rate) {}
-
-  public record MostMentionedEntry(String code, String name, Integer count) {}
-
   public record PykrxLeadersResponse(
       String date,
       String effectiveDate,
@@ -97,9 +97,9 @@ public class PykrxMarketDataClient implements MarketDataClient {
       String mostMentionedCode,
       String kospiPickCode,
       String kosdaqPickCode,
-      java.util.List<LeaderEntry> topGainers,
-      java.util.List<LeaderEntry> topLosers,
-      java.util.List<MostMentionedEntry> mostMentionedTop,
+      java.util.List<DailyMarketBrief.LeaderEntry> topGainers,
+      java.util.List<DailyMarketBrief.LeaderEntry> topLosers,
+      java.util.List<DailyMarketBrief.MostMentionedEntry> mostMentionedTop,
       java.util.List<DailyMarketBrief.AnomalyCandidate> anomalies,
       String rankingWarning,
       String source,
