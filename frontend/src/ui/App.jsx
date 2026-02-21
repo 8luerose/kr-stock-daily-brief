@@ -88,11 +88,33 @@ const COPY = {
   verifySource: "출처",
   krxArtifact: "KRX 검증",
   krxPortal: "KRX 포털",
-  pykrxRepo: "pykrx 저장소"
+  pykrxRepo: "pykrx 저장소",
+  actualCalcDate: "실제 계산일",
+  topGainersTitle: "상승 TOP3",
+  topLosersTitle: "하락 TOP3",
+  mostMentionedTitle: "언급 TOP3",
+  postCount: "게시물 수",
+  naverDaily: "일별",
+  naverMain: "종합",
+  naverBoard: "토론"
 };
 
 function valueOrDash(v) {
   return v && String(v).trim() ? v : "-";
+}
+
+function formatEffectiveDate(yyyymmdd) {
+  if (!yyyymmdd || yyyymmdd.length !== 8) return null;
+  return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
+}
+
+function buildNaverLinks(code) {
+  if (!code) return [];
+  return [
+    { href: `https://finance.naver.com/item/sise_day.naver?code=${code}`, label: COPY.naverDaily },
+    { href: `https://finance.naver.com/item/main.naver?code=${code}`, label: COPY.naverMain },
+    { href: `https://finance.naver.com/item/board.naver?code=${code}`, label: COPY.naverBoard }
+  ];
 }
 
 function asArray(v) {
@@ -566,7 +588,12 @@ export default function App() {
 
           {!loading && summary ? (
             <div className="summary">
-              <div className="meta">{COPY.generatedAt}: {summary.generatedAt}</div>
+              <div className="meta">
+                {COPY.generatedAt}: {summary.generatedAt}
+                {summary.effectiveDate && summary.effectiveDate !== summary.date?.replace(/-/g, "") && (
+                  <span className="effectiveDate"> | {COPY.actualCalcDate}: {formatEffectiveDate(summary.effectiveDate)}</span>
+                )}
+              </div>
 
               {summary.marketClosed === true && (
                 <div className="marketClosedBanner">
@@ -676,6 +703,74 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {(asArray(summary.topGainers).length > 0 || asArray(summary.topLosers).length > 0 || asArray(summary.mostMentionedTop).length > 0) && (
+                <div className="topListsSection">
+                  {asArray(summary.topGainers).length > 0 && (
+                    <div className="topList">
+                      <h4>{COPY.topGainersTitle}</h4>
+                      <ul>
+                        {summary.topGainers.slice(0, 3).map((item, idx) => (
+                          <li key={item.code || idx}>
+                            <span className="itemName">{item.name}({item.code})</span>
+                            <span className="itemRate gain">+{item.rate}%</span>
+                            <span className="itemLinks">
+                              {buildNaverLinks(item.code).map((link, i) => (
+                                <React.Fragment key={link.href}>
+                                  {i > 0 ? " " : ""}
+                                  <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
+                                </React.Fragment>
+                              ))}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {asArray(summary.topLosers).length > 0 && (
+                    <div className="topList">
+                      <h4>{COPY.topLosersTitle}</h4>
+                      <ul>
+                        {summary.topLosers.slice(0, 3).map((item, idx) => (
+                          <li key={item.code || idx}>
+                            <span className="itemName">{item.name}({item.code})</span>
+                            <span className="itemRate loss">{item.rate}%</span>
+                            <span className="itemLinks">
+                              {buildNaverLinks(item.code).map((link, i) => (
+                                <React.Fragment key={link.href}>
+                                  {i > 0 ? " " : ""}
+                                  <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
+                                </React.Fragment>
+                              ))}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {asArray(summary.mostMentionedTop).length > 0 && (
+                    <div className="topList">
+                      <h4>{COPY.mostMentionedTitle}</h4>
+                      <ul>
+                        {summary.mostMentionedTop.slice(0, 3).map((item, idx) => (
+                          <li key={item.code || idx}>
+                            <span className="itemName">{item.name}({item.code})</span>
+                            <span className="itemCount">{item.count}{COPY.postCount}</span>
+                            <span className="itemLinks">
+                              {buildNaverLinks(item.code).map((link, i) => (
+                                <React.Fragment key={link.href}>
+                                  {i > 0 ? " " : ""}
+                                  <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
+                                </React.Fragment>
+                              ))}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="notesWrap">
                 <h4>{COPY.rankingBasis}</h4>
