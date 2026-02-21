@@ -415,6 +415,20 @@ export default function App() {
     }
   }
 
+  function formatApiError(err) {
+    const msg = err.message || String(err);
+    if (msg.includes("409") || msg.includes("summary_already_exists")) {
+      return "이미 생성된 요약이 있습니다. 재생성은 관리자만 가능합니다.";
+    }
+    if (msg.includes("403") || msg.includes("forbidden") || msg.includes("admin_only")) {
+      return "관리자 권한이 필요합니다. URL에 ?ak=관리자키 를 추가하세요.";
+    }
+    if (msg.includes("HTTP 401")) return "인증이 필요합니다.";
+    if (msg.includes("HTTP 404")) return "데이터를 찾을 수 없습니다.";
+    if (msg.includes("HTTP 500")) return "서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.";
+    return msg;
+  }
+
   async function generate(dateStr) {
     setLoading(true);
     setError("");
@@ -427,7 +441,7 @@ export default function App() {
       await loadStats();
       await loadInsights(month);
     } catch (e) {
-      setError(e.message || String(e));
+      setError(formatApiError(e));
     } finally {
       setLoading(false);
     }
@@ -443,7 +457,7 @@ export default function App() {
       await loadStats();
       await loadInsights(month);
     } catch (e) {
-      setError(e.message || String(e));
+      setError(formatApiError(e));
     } finally {
       setLoading(false);
     }
@@ -461,7 +475,7 @@ export default function App() {
       await loadStats();
       await loadInsights(month);
     } catch (e) {
-      setError(e.message || String(e));
+      setError(formatApiError(e));
     } finally {
       setLoading(false);
     }
@@ -629,9 +643,11 @@ export default function App() {
               <button className="btn primary" onClick={() => generate(selected)} disabled={loading}>
                 {COPY.generateSelected}
               </button>
-              <button className="btn ghost" onClick={archiveSelected} disabled={loading}>
-                {COPY.archiveSelected}
-              </button>
+              {adminKey ? (
+                <button className="btn ghost" onClick={archiveSelected} disabled={loading}>
+                  {COPY.archiveSelected}
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -639,13 +655,15 @@ export default function App() {
             <div className="hint">{COPY.gatedHint}</div>
           ) : null}
 
-          <div className="backfillBar">
-            <input type="date" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
-            <input type="date" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
-            <button className="btn ghost" onClick={runBackfill} disabled={loading}>
-              {COPY.backfillRun}
-            </button>
-          </div>
+          {adminKey ? (
+            <div className="backfillBar">
+              <input type="date" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
+              <input type="date" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
+              <button className="btn ghost" onClick={runBackfill} disabled={loading}>
+                {COPY.backfillRun}
+              </button>
+            </div>
+          ) : null}
           {backfillResult ? (
             <div className="hint">
               완료: 성공 {backfillResult.successCount}, 저신뢰 {backfillResult.lowConfidenceCount}, 실패 {backfillResult.failCount}

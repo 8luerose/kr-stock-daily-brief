@@ -9,6 +9,25 @@ MVP: stores and serves daily summaries from MySQL, with a small UI to browse a m
 - DB: MySQL
 - Orchestration: Docker Compose + Makefile wrappers
 
+## Environment Variables
+
+Copy `.env.example` to `.env` and adjust values for your environment.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DB_NAME` | Yes | Database name |
+| `DB_USER` | Yes | Database user |
+| `DB_PASSWORD` | Yes | Database password |
+| `DB_ROOT_PASSWORD` | Yes | MySQL root password |
+| `BACKEND_PORT` | Yes | Backend API port (default: 8080) |
+| `FRONTEND_PORT` | Yes | Frontend UI port (default: 5173) |
+| `MARKETDATA_PORT` | Yes | Market data service port (default: 8000) |
+| `API_BASE_URL` | Yes | Backend URL accessible from frontend |
+| `MARKETDATA_PROVIDER` | No | Provider: `pykrx` or `naver` (default: pykrx) |
+| `MARKETDATA_BASE_URL` | No | Market data service URL (Docker internal) |
+| `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
+| `ADMIN_KEY` | Recommended | Admin key for protected operations |
+
 ## Market Data (current)
 
 Historical dates are generated with **pykrx sidecar** first (`marketdata-python /leaders`),
