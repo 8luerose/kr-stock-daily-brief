@@ -1,5 +1,8 @@
 package com.krbrief.summaries;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,7 +30,14 @@ public record SummaryDto(
     SummaryVerificationLinks verification,
     LeaderExplanations leaderExplanations,
     String content,
-    Instant generatedAt) {
+    Instant generatedAt,
+    String effectiveDate,
+    List<LeaderEntryDto> topGainers,
+    List<LeaderEntryDto> topLosers,
+    List<MostMentionedEntryDto> mostMentionedTop) {
+
+  private static final ObjectMapper JSON = new ObjectMapper();
+
   public static SummaryDto from(DailySummary s) {
     String rawNotes = s.getRawNotes();
     boolean isMarketClosed = rawNotes != null && rawNotes.contains("Source: market_closed");
@@ -44,7 +54,6 @@ public record SummaryDto(
       if (linkIdx >= 0) {
         int end = rawNotes.indexOf('\n', linkIdx);
         String line = end < 0 ? rawNotes.substring(linkIdx) : rawNotes.substring(linkIdx, end);
-        // e.g. "휴장 근거: url1 | url2"
         int colon = line.indexOf(':');
         if (colon >= 0 && colon + 1 < line.length()) {
           String rest = line.substring(colon + 1).trim();
@@ -75,6 +84,10 @@ public record SummaryDto(
             rawNotes);
     List<AnomalyDto> anomalies = SummaryAnomalyCodec.decode(s.getAnomaliesText());
 
+    List<LeaderEntryDto> topGainers = deserializeLeaderEntries(s.getTopGainersJson());
+    List<LeaderEntryDto> topLosers = deserializeLeaderEntries(s.getTopLosersJson());
+    List<MostMentionedEntryDto> mostMentionedTop = deserializeMostMentionedEntries(s.getMostMentionedTopJson());
+
     return new SummaryDto(
         s.getDate(),
         isMarketClosed,
@@ -99,7 +112,29 @@ public record SummaryDto(
         SummaryLeaderExplanations.build(
             s.getDate(), s.getTopGainer(), s.getTopLoser(), anomalies, rawNotes, verification),
         s.renderContent(),
-        s.getUpdatedAt());
+        s.getUpdatedAt(),
+        s.getEffectiveDate(),
+        topGainers,
+        topLosers,
+        mostMentionedTop);
+  }
+
+  private static List<LeaderEntryDto> deserializeLeaderEntries(String json) {
+    if (json == null || json.isBlank()) return List.of();
+    try {
+      return JSON.readValue(json, new TypeReference<List<LeaderEntryDto>>() {});
+    } catch (JsonProcessingException e) {
+      return List.of();
+    }
+  }
+
+  private static List<MostMentionedEntryDto> deserializeMostMentionedEntries(String json) {
+    if (json == null || json.isBlank()) return List.of();
+    try {
+      return JSON.readValue(json, new TypeReference<List<MostMentionedEntryDto>>() {});
+    } catch (JsonProcessingException e) {
+      return List.of();
+    }
   }
 
   private static String firstNonBlank(String primary, String fallback) {
@@ -119,4 +154,8 @@ public record SummaryDto(
   public record LeaderExplanations(LeaderExplanation topGainer, LeaderExplanation topLoser) {}
 
   public record LeaderExplanation(String level, String summary, List<String> evidenceLinks) {}
+
+  public record LeaderEntryDto(String code, String name, Double rate) {}
+
+  public record MostMentionedEntryDto(String code, String name, Integer count) {}
 }

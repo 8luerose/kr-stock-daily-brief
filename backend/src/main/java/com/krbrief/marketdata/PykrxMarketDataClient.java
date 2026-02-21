@@ -72,8 +72,13 @@ public class PykrxMarketDataClient implements MarketDataClient {
     return value == null ? "" : value;
   }
 
+  public record LeaderEntry(String code, String name, Double rate) {}
+
+  public record MostMentionedEntry(String code, String name, Integer count) {}
+
   public record PykrxLeadersResponse(
       String date,
+      String effectiveDate,
       String topGainer,
       String topLoser,
       String rawTopGainer,
@@ -92,6 +97,9 @@ public class PykrxMarketDataClient implements MarketDataClient {
       String mostMentionedCode,
       String kospiPickCode,
       String kosdaqPickCode,
+      java.util.List<LeaderEntry> topGainers,
+      java.util.List<LeaderEntry> topLosers,
+      java.util.List<MostMentionedEntry> mostMentionedTop,
       java.util.List<DailyMarketBrief.AnomalyCandidate> anomalies,
       String rankingWarning,
       String source,

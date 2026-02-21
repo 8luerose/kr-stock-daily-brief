@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -72,7 +73,11 @@ class SummaryApiTest {
         .andExpect(jsonPath("$.leaderExplanations.topGainer.evidenceLinks").isArray())
         .andExpect(jsonPath("$.leaderExplanations.topLoser.level").exists())
         .andExpect(jsonPath("$.content").exists())
-        .andExpect(jsonPath("$.generatedAt").exists());
+        .andExpect(jsonPath("$.generatedAt").exists())
+        .andExpect(jsonPath("$.effectiveDate").exists())
+        .andExpect(jsonPath("$.topGainers").isArray())
+        .andExpect(jsonPath("$.topLosers").isArray())
+        .andExpect(jsonPath("$.mostMentionedTop").isArray());
 
     mvc.perform(get("/api/summaries/2026-02-15"))
         .andExpect(status().isOk())
@@ -106,5 +111,60 @@ class SummaryApiTest {
     mvc.perform(get("/api/summaries?from=2026-02-01&to=2026-02-28"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].date").value("2026-02-01"));
+  }
+
+  @Test
+  void pykrxLeadersResponse_withNewFields_deserializesWithoutError() throws Exception {
+    ObjectMapper mapper = new ObjectMapper();
+    String json = """
+        {
+          "date": "2026-02-20",
+          "effectiveDate": "2026-02-20",
+          "marketClosed": false,
+          "marketClosedReason": null,
+          "evidenceLinks": [],
+          "topGainer": "삼성전자",
+          "topLoser": "LG에너지솔루션",
+          "rawTopGainer": "삼성전자",
+          "rawTopLoser": "LG에너지솔루션",
+          "filteredTopGainer": "삼성전자",
+          "filteredTopLoser": "LG에너지솔루션",
+          "mostMentioned": "SK하이닉스",
+          "kospiPick": "현대차",
+          "kosdaqPick": "에코프로비엠",
+          "topGainerCode": "005930",
+          "topLoserCode": "373220",
+          "rawTopGainerCode": "005930",
+          "rawTopLoserCode": "373220",
+          "filteredTopGainerCode": "005930",
+          "filteredTopLoserCode": "373220",
+          "mostMentionedCode": "000660",
+          "kospiPickCode": "005380",
+          "kosdaqPickCode": "247540",
+          "topGainers": [
+            {"code": "005930", "name": "삼성전자", "rate": 5.2},
+            {"code": "000660", "name": "SK하이닉스", "rate": 4.8}
+          ],
+          "topLosers": [
+            {"code": "373220", "name": "LG에너지솔루션", "rate": -3.5}
+          ],
+          "mostMentionedTop": [
+            {"code": "000660", "name": "SK하이닉스", "count": 15}
+          ],
+          "anomalies": [],
+          "rankingWarning": null,
+          "source": "pykrx",
+          "notes": "test notes"
+        }
+        """;
+
+    var node = mapper.readTree(json);
+    assert node.has("effectiveDate");
+    assert node.has("topGainers");
+    assert node.has("topLosers");
+    assert node.has("mostMentionedTop");
+    assert node.get("topGainers").isArray();
+    assert node.get("topLosers").isArray();
+    assert node.get("mostMentionedTop").isArray();
   }
 }

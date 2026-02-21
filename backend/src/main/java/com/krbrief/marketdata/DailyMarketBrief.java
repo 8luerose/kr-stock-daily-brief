@@ -14,7 +14,11 @@ public record DailyMarketBrief(
     String source,
     String notes,
     List<AnomalyCandidate> anomalies,
-    String rankingWarning) {
+    String rankingWarning,
+    String effectiveDate,
+    List<LeaderEntry> topGainers,
+    List<LeaderEntry> topLosers,
+    List<MostMentionedEntry> mostMentionedTop) {
 
   public DailyMarketBrief(
       String topGainer,
@@ -35,7 +39,41 @@ public record DailyMarketBrief(
         source,
         notes,
         List.of(),
-        "");
+        "",
+        null,
+        List.of(),
+        List.of(),
+        List.of());
+  }
+
+  public DailyMarketBrief(
+      String topGainer,
+      String topLoser,
+      String filteredTopGainer,
+      String filteredTopLoser,
+      String mostMentioned,
+      String kospiPick,
+      String kosdaqPick,
+      String source,
+      String notes,
+      List<AnomalyCandidate> anomalies,
+      String rankingWarning) {
+    this(
+        topGainer,
+        topLoser,
+        filteredTopGainer,
+        filteredTopLoser,
+        mostMentioned,
+        kospiPick,
+        kosdaqPick,
+        source,
+        notes,
+        anomalies,
+        rankingWarning,
+        null,
+        List.of(),
+        List.of(),
+        List.of());
   }
 
   public record AnomalyCandidate(
@@ -44,4 +82,8 @@ public record DailyMarketBrief(
       double rate,
       List<String> flags,
       String oneLineReason) {}
+
+  public record LeaderEntry(String code, String name, Double rate) {}
+
+  public record MostMentionedEntry(String code, String name, Integer count) {}
 }

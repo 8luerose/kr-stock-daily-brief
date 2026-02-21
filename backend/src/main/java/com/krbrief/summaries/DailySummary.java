@@ -46,6 +46,18 @@ public class DailySummary {
   @Column(name = "anomalies_text", columnDefinition = "TEXT")
   private String anomaliesText;
 
+  @Column(name = "effective_date")
+  private String effectiveDate;
+
+  @Column(name = "top_gainers_json", columnDefinition = "TEXT")
+  private String topGainersJson;
+
+  @Column(name = "top_losers_json", columnDefinition = "TEXT")
+  private String topLosersJson;
+
+  @Column(name = "most_mentioned_top_json", columnDefinition = "TEXT")
+  private String mostMentionedTopJson;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -143,6 +155,38 @@ public class DailySummary {
 
   public void setAnomaliesText(String anomaliesText) {
     this.anomaliesText = anomaliesText;
+  }
+
+  public String getEffectiveDate() {
+    return effectiveDate;
+  }
+
+  public void setEffectiveDate(String effectiveDate) {
+    this.effectiveDate = effectiveDate;
+  }
+
+  public String getTopGainersJson() {
+    return topGainersJson;
+  }
+
+  public void setTopGainersJson(String topGainersJson) {
+    this.topGainersJson = topGainersJson;
+  }
+
+  public String getTopLosersJson() {
+    return topLosersJson;
+  }
+
+  public void setTopLosersJson(String topLosersJson) {
+    this.topLosersJson = topLosersJson;
+  }
+
+  public String getMostMentionedTopJson() {
+    return mostMentionedTopJson;
+  }
+
+  public void setMostMentionedTopJson(String mostMentionedTopJson) {
+    this.mostMentionedTopJson = mostMentionedTopJson;
   }
 
   public Instant getCreatedAt() {

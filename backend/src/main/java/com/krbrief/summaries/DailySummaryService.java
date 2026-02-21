@@ -1,5 +1,7 @@
 package com.krbrief.summaries;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.krbrief.marketdata.DailyMarketBrief;
 import com.krbrief.marketdata.MarketDataClient;
 import jakarta.transaction.Transactional;
@@ -21,6 +23,7 @@ import org.springframework.web.client.RestClient;
 @Service
 public class DailySummaryService {
   private static final Logger log = LoggerFactory.getLogger(DailySummaryService.class);
+  private static final ObjectMapper JSON = new ObjectMapper();
 
   private final DailySummaryRepository repo;
   private final MarketDataClient marketData;
@@ -189,7 +192,22 @@ public class DailySummaryService {
     s.setRankingWarning(brief.rankingWarning());
     s.setAnomaliesText(SummaryAnomalyCodec.encode(brief.anomalies()));
 
+    s.setEffectiveDate(brief.effectiveDate());
+    s.setTopGainersJson(serializeJson(brief.topGainers()));
+    s.setTopLosersJson(serializeJson(brief.topLosers()));
+    s.setMostMentionedTopJson(serializeJson(brief.mostMentionedTop()));
+
     return repo.save(s);
+  }
+
+  private String serializeJson(Object obj) {
+    if (obj == null) return null;
+    try {
+      return JSON.writeValueAsString(obj);
+    } catch (JsonProcessingException e) {
+      log.warn("JSON serialization failed: {}", e.getMessage());
+      return null;
+    }
   }
 
   @Transactional
@@ -398,6 +416,12 @@ public class DailySummaryService {
         return Optional.empty();
       }
 
+      // machine-parseable effective_date line (YYYYMMDD format)
+      String effectiveDateNote = "";
+      if (res.effectiveDate() != null && !res.effectiveDate().isBlank()) {
+        effectiveDateNote = "effective_date=" + res.effectiveDate().replace("-", "");
+      }
+
       String codeNotes =
           "codes: topGainer="
               + nullToEmpty(res.topGainerCode())
@@ -410,7 +434,15 @@ public class DailySummaryService {
               + ", kosdaqPick="
               + nullToEmpty(res.kosdaqPickCode());
 
-      String notes = (res.notes() == null || res.notes().isBlank()) ? codeNotes : res.notes() + "\n" + codeNotes;
+      StringBuilder notesBuilder = new StringBuilder();
+      if (res.notes() != null && !res.notes().isBlank()) {
+        notesBuilder.append(res.notes()).append("\n");
+      }
+      if (!effectiveDateNote.isBlank()) {
+        notesBuilder.append(effectiveDateNote).append("\n");
+      }
+      notesBuilder.append(codeNotes);
+      String notes = notesBuilder.toString();
 
       return Optional.of(
           new DailyMarketBrief(
@@ -424,7 +456,11 @@ public class DailySummaryService {
               "pykrx",
               notes,
               res.anomalies() == null ? java.util.List.of() : res.anomalies(),
-              nullToEmpty(res.rankingWarning())));
+              nullToEmpty(res.rankingWarning()),
+              res.effectiveDate(),
+              res.topGainers() == null ? java.util.List.of() : res.topGainers(),
+              res.topLosers() == null ? java.util.List.of() : res.topLosers(),
+              res.mostMentionedTop() == null ? java.util.List.of() : res.mostMentionedTop()));
     } catch (Exception e) {
       log.info(
           "pykrx leaders unavailable: date={}, reason={}",
@@ -540,6 +576,7 @@ public class DailySummaryService {
 
   private record PykrxLeadersResponse(
       String date,
+      String effectiveDate,
       Boolean marketClosed,
       String marketClosedReason,
       java.util.List<String> evidenceLinks,
@@ -561,6 +598,9 @@ public class DailySummaryService {
       String mostMentionedCode,
       String kospiPickCode,
       String kosdaqPickCode,
+      java.util.List<DailyMarketBrief.LeaderEntry> topGainers,
+      java.util.List<DailyMarketBrief.LeaderEntry> topLosers,
+      java.util.List<DailyMarketBrief.MostMentionedEntry> mostMentionedTop,
       java.util.List<DailyMarketBrief.AnomalyCandidate> anomalies,
       String rankingWarning,
       String source,
