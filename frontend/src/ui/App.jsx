@@ -108,17 +108,77 @@ function formatEffectiveDate(yyyymmdd) {
   return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
 }
 
-function buildNaverLinks(code) {
+function buildNaverLinks(code, effectiveDate) {
   if (!code) return [];
-  return [
-    { href: `https://finance.naver.com/item/sise_day.naver?code=${code}`, label: COPY.naverDaily },
+  const dailyPage = calcPageFromEffectiveDate(effectiveDate, 10);
+  const boardPage = calcPageFromEffectiveDate(effectiveDate, 20);
+  
+  const links = [
+    { 
+      href: dailyPage 
+        ? `https://finance.naver.com/item/sise_day.naver?code=${code}&page=${dailyPage}` 
+        : `https://finance.naver.com/item/sise_day.naver?code=${code}`, 
+      label: COPY.naverDaily 
+    },
     { href: `https://finance.naver.com/item/main.naver?code=${code}`, label: COPY.naverMain },
-    { href: `https://finance.naver.com/item/board.naver?code=${code}`, label: COPY.naverBoard }
+    { 
+      href: boardPage 
+        ? `https://finance.naver.com/item/board.naver?code=${code}&page=${boardPage}` 
+        : `https://finance.naver.com/item/board.naver?code=${code}`, 
+      label: COPY.naverBoard 
+    }
   ];
+  return links;
 }
 
 function asArray(v) {
   return Array.isArray(v) ? v : [];
+}
+
+// TOP3 정렬 유틸리티 함수
+function sortTopGainers(arr) {
+  return [...asArray(arr)].sort((a, b) => (b.rate || 0) - (a.rate || 0));
+}
+
+function sortTopLosers(arr) {
+  // 더 음수일수록 1위 (오름차순)
+  return [...asArray(arr)].sort((a, b) => (a.rate || 0) - (b.rate || 0));
+}
+
+function sortMostMentioned(arr) {
+  return [...asArray(arr)].sort((a, b) => (b.count || 0) - (a.count || 0));
+}
+
+function filterMostMentioned(arr) {
+  return sortMostMentioned(asArray(arr)).filter(item => (item.count || 0) > 0);
+}
+
+// effectiveDate(YYYYMMDD)로부터 page 파라미터 계산
+// 네이버 일별시세는 한 페이지에 약 10일, 토론은 페이지당 게시물 수가 다름
+// 휴리스틱: 오늘부터 해당일까지의 일수 차이를 이용해 근사 페이지 계산
+function calcPageFromEffectiveDate(effectiveDate, pageSize = 10) {
+  if (!effectiveDate || effectiveDate.length !== 8) return null;
+  
+  try {
+    const year = parseInt(effectiveDate.slice(0, 4), 10);
+    const month = parseInt(effectiveDate.slice(4, 6), 10) - 1;
+    const day = parseInt(effectiveDate.slice(6, 8), 10);
+    const targetDate = new Date(year, month, day);
+    const today = new Date();
+    
+    // 일수 차이 계산
+    const diffTime = today.getTime() - targetDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // 거래일 근사 (주말 제외 대략 5/7 비율 적용)
+    const approxTradingDays = Math.floor(diffDays * (5 / 7));
+    
+    // 페이지 계산 (pageSize일당 1페이지)
+    const page = Math.max(1, Math.ceil(approxTradingDays / pageSize));
+    return page;
+  } catch {
+    return null;
+  }
 }
 
 function LinkOrDash({ href, label }) {
@@ -704,73 +764,71 @@ export default function App() {
                 </div>
               </div>
 
-              {(asArray(summary.topGainers).length > 0 || asArray(summary.topLosers).length > 0 || asArray(summary.mostMentionedTop).length > 0) && (
-                <div className="topListsSection">
-                  {asArray(summary.topGainers).length > 0 && (
-                    <div className="topList">
-                      <h4>{COPY.topGainersTitle}</h4>
-                      <ul>
-                        {summary.topGainers.slice(0, 3).map((item, idx) => (
-                          <li key={item.code || idx}>
-                            <span className="itemName">{item.name}({item.code})</span>
-                            <span className="itemRate gain">+{item.rate}%</span>
-                            <span className="itemLinks">
-                              {buildNaverLinks(item.code).map((link, i) => (
-                                <React.Fragment key={link.href}>
-                                  {i > 0 ? " " : ""}
-                                  <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
-                                </React.Fragment>
-                              ))}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
+              {(() => {
+                  const sortedGainers = sortTopGainers(summary.topGainers).slice(0, 3);
+                  const sortedLosers = sortTopLosers(summary.topLosers).slice(0, 3);
+                  const filteredMentioned = filterMostMentioned(summary.mostMentionedTop).slice(0, 3);
+                  const hasAny = sortedGainers.length > 0 || sortedLosers.length > 0 || filteredMentioned.length > 0;
+                  if (!hasAny) return null;
+                  return (
+                    <div className="topListsSection">
+                      {sortedGainers.length > 0 && (
+                        <div className="topList">
+                          <h4>{COPY.topGainersTitle}</h4>
+                          <ul>
+                            {sortedGainers.map((item, idx) => (
+                              <li key={item.code || idx}>
+                                <span className="itemName">{item.name}({item.code})</span>
+                                <span className="itemRate gain">+{item.rate}%</span>
+                                <span className="itemLinks">
+                                  {buildNaverLinks(item.code, summary.effectiveDate).map((link, i) => (
+                                    <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
+                                  ))}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {sortedLosers.length > 0 && (
+                        <div className="topList">
+                          <h4>{COPY.topLosersTitle}</h4>
+                          <ul>
+                            {sortedLosers.map((item, idx) => (
+                              <li key={item.code || idx}>
+                                <span className="itemName">{item.name}({item.code})</span>
+                                <span className="itemRate loss">{item.rate}%</span>
+                                <span className="itemLinks">
+                                  {buildNaverLinks(item.code, summary.effectiveDate).map((link, i) => (
+                                    <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
+                                  ))}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {filteredMentioned.length > 0 && (
+                        <div className="topList">
+                          <h4>{COPY.mostMentionedTitle}</h4>
+                          <ul>
+                            {filteredMentioned.map((item, idx) => (
+                              <li key={item.code || idx}>
+                                <span className="itemName">{item.name}({item.code})</span>
+                                <span className="itemCount">{item.count}{COPY.postCount}</span>
+                                <span className="itemLinks">
+                                  {buildNaverLinks(item.code, summary.effectiveDate).map((link, i) => (
+                                    <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
+                                  ))}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {asArray(summary.topLosers).length > 0 && (
-                    <div className="topList">
-                      <h4>{COPY.topLosersTitle}</h4>
-                      <ul>
-                        {summary.topLosers.slice(0, 3).map((item, idx) => (
-                          <li key={item.code || idx}>
-                            <span className="itemName">{item.name}({item.code})</span>
-                            <span className="itemRate loss">{item.rate}%</span>
-                            <span className="itemLinks">
-                              {buildNaverLinks(item.code).map((link, i) => (
-                                <React.Fragment key={link.href}>
-                                  {i > 0 ? " " : ""}
-                                  <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
-                                </React.Fragment>
-                              ))}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {asArray(summary.mostMentionedTop).length > 0 && (
-                    <div className="topList">
-                      <h4>{COPY.mostMentionedTitle}</h4>
-                      <ul>
-                        {summary.mostMentionedTop.slice(0, 3).map((item, idx) => (
-                          <li key={item.code || idx}>
-                            <span className="itemName">{item.name}({item.code})</span>
-                            <span className="itemCount">{item.count}{COPY.postCount}</span>
-                            <span className="itemLinks">
-                              {buildNaverLinks(item.code).map((link, i) => (
-                                <React.Fragment key={link.href}>
-                                  {i > 0 ? " " : ""}
-                                  <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
-                                </React.Fragment>
-                              ))}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+                  );
+                })()}
 
               <div className="notesWrap">
                 <h4>{COPY.rankingBasis}</h4>

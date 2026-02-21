@@ -681,6 +681,139 @@ body {
   }
 }
 
+.topListsSection {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.topList {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.topList h4 {
+  margin: 0 0 14px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--line);
+}
+
+.topList ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.topList li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--card);
+  border-radius: 10px;
+  transition: var(--transition);
+}
+
+.topList li:hover {
+  background: var(--card-hover);
+  transform: translateY(-1px);
+}
+
+.itemName {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  flex: 1;
+  min-width: 100px;
+}
+
+.itemRate {
+  font-weight: 700;
+  font-size: 15px;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.itemRate.gain {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.itemRate.loss {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.itemCount {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.itemLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.linkBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-light);
+  border-radius: 20px;
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.linkBadge:hover {
+  background: var(--accent);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .topListsSection {
+    grid-template-columns: 1fr;
+  }
+  
+  .topList {
+    padding: 14px;
+  }
+  
+  .itemName {
+    font-size: 13px;
+    min-width: 80px;
+  }
+  
+  .itemRate {
+    font-size: 13px;
+    padding: 3px 8px;
+  }
+  
+  .linkBadge {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
