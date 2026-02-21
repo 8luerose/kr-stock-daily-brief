@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
+import com.krbrief.config.AdminKeyGuard;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.validation.annotation.Validated;
@@ -15,15 +17,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.FORBIDDEN;
 
 @RestController
 @RequestMapping("/api/summaries")
 @Validated
 public class SummaryController {
   private final DailySummaryService service;
+  private final AdminKeyGuard admin;
 
-  public SummaryController(DailySummaryService service) {
+  public SummaryController(DailySummaryService service, AdminKeyGuard admin) {
     this.service = service;
+    this.admin = admin;
   }
 
   @GetMapping
@@ -73,21 +79,34 @@ public class SummaryController {
 
   @PostMapping("/{date:\\d{4}-\\d{2}-\\d{2}}/generate")
   public SummaryDto generate(
+      HttpServletRequest request,
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    // If already exists, only admin can regenerate/overwrite.
+    if (service.existsAny(date) && !admin.isAdmin(request)) {
+      throw new ResponseStatusException(CONFLICT, "summary_already_exists_admin_only_regenerate");
+    }
     return SummaryDto.from(service.generate(date));
   }
 
   @PutMapping("/{date:\\d{4}-\\d{2}-\\d{2}}/archive")
   public ResponseEntity<SummaryDto> archive(
+      HttpServletRequest request,
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    if (!admin.isAdmin(request)) {
+      throw new ResponseStatusException(FORBIDDEN, "admin_only");
+    }
     return service.archive(date).map(s -> ResponseEntity.ok(SummaryDto.from(s)))
         .orElseGet(() -> ResponseEntity.notFound().build());
   }
 
   @PostMapping("/backfill")
   public BackfillResponseDto backfill(
+      HttpServletRequest request,
       @RequestParam("from") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam("to") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    if (!admin.isAdmin(request)) {
+      throw new ResponseStatusException(FORBIDDEN, "admin_only");
+    }
     if (from.isAfter(to)) {
       throw new ResponseStatusException(BAD_REQUEST, "from_must_be_on_or_before_to");
     }
@@ -95,7 +114,11 @@ public class SummaryController {
   }
 
   @PostMapping("/generate/today")
-  public SummaryDto generateToday() {
-    return SummaryDto.from(service.generate(service.todaySeoul()));
+  public SummaryDto generateToday(HttpServletRequest request) {
+    LocalDate today = service.todaySeoul();
+    if (service.existsAny(today) && !admin.isAdmin(request)) {
+      throw new ResponseStatusException(CONFLICT, "summary_already_exists_admin_only_regenerate");
+    }
+    return SummaryDto.from(service.generate(today));
   }
 }

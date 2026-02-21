@@ -71,6 +71,10 @@ def _http_get(url: str, timeout_s: float = 10.0, extra_headers: Optional[Dict[st
     return data.decode("utf-8", errors="replace")
 
 
+def _http_get_json(url: str, timeout_s: float = 30.0, extra_headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    return json.loads(_http_get(url, timeout_s=timeout_s, extra_headers=extra_headers))
+
+
 def _http_post_json(url: str, payload: Optional[dict] = None, timeout_s: float = 120.0, extra_headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     body = b""
     headers = {
@@ -391,8 +395,16 @@ def _backend_url(base: str, path: str, public_key: Optional[str]) -> str:
 
 
 def generate_summary(base: str, requested_date: str, public_key: Optional[str]) -> Dict[str, Any]:
+    # Do not overwrite existing summaries: try GET first; generate only if missing (404).
+    get_url = _backend_url(base, f"/api/summaries/{requested_date}", public_key)
+    try:
+        return _http_get_json(get_url, timeout_s=30.0)
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            raise
+
     url = _backend_url(base, f"/api/summaries/{requested_date}/generate", public_key)
-    return _http_post_json(url, payload=None, timeout_s=60.0)
+    return _http_post_json(url, payload=None, timeout_s=120.0)
 
 
 def _fmt_ok(ok: bool) -> str:

@@ -49,6 +49,10 @@ public class DailySummaryService {
     return repo.findByDateAndArchivedAtIsNull(date);
   }
 
+  public boolean existsAny(LocalDate date) {
+    return repo.existsById(date);
+  }
+
   public Optional<DailySummary> latest() {
     return repo.findTopByArchivedAtIsNullOrderByDateDesc();
   }

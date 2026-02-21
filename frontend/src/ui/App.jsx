@@ -266,6 +266,7 @@ export default function App() {
   const cfg = useMemo(() => getConfig(), []);
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const k = urlParams.get("k") || "";
+  const adminKey = urlParams.get("adminKey") || urlParams.get("ak") || "";
 
   const [darkMode, setDarkMode] = useState(() => {
     try {
@@ -320,7 +321,11 @@ export default function App() {
   async function apiFetch(path, opts = {}) {
     const url = new URL(cfg.apiBaseUrl + path);
     if (k) url.searchParams.set("k", k);
-    const res = await fetch(url.toString(), opts);
+
+    const headers = new Headers(opts.headers || {});
+    if (adminKey) headers.set("X-Admin-Key", adminKey);
+
+    const res = await fetch(url.toString(), { ...opts, headers });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(text || `HTTP ${res.status}`);
