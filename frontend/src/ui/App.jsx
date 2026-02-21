@@ -613,6 +613,14 @@ export default function App() {
           <div className="detailHead">
             <div className="detailTitle">{selected}</div>
             <div className="actions">
+              <input
+                type="date"
+                value={selected}
+                onChange={(e) => setSelected(e.target.value)}
+                className="dateInput"
+                disabled={loading}
+                aria-label="과거 날짜 선택"
+              />
               <button className="btn primary" onClick={() => generate(selected)} disabled={loading}>
                 {COPY.generateSelected}
               </button>

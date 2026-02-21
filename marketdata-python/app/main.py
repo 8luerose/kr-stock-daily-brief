@@ -90,6 +90,7 @@ _BOARD_DATE_RE = re.compile(r'<span class="tah p10 gray03">(\d{4}\.\d{2}\.\d{2})
 _SISE_TR_RE = re.compile(r"<tr[^>]*>.*?</tr>", re.IGNORECASE | re.DOTALL)
 
 
+@lru_cache(maxsize=50000)
 def _naver_sise_day_rate(code: str, ymd: str, max_pages: int = 3) -> float | None:
     """Compute daily rate (%) from Naver item/sise_day for given date (ymd=YYYYMMDD)."""
     target = _format_ymd_dot(ymd)
@@ -247,6 +248,9 @@ def leaders(
     mentionsUniverse: int = 200,
     mentionsMaxPages: int = 3,
     mentionsTimeoutSeconds: float = 15.0,
+    leaderCandidateN: int = 400,
+    leaderMaxSisePages: int = 3,
+    leaderTimeoutSeconds: float = 25.0,
 ):
     requested_ymd = _parse_date(date)
     effective_ymd, adjust_note = _effective_business_day_or_previous(requested_ymd)
@@ -265,19 +269,37 @@ def leaders(
     if "등락률" not in df_change.columns:
         raise HTTPException(status_code=502, detail="unexpected_dataframe_columns: missing 등락률")
 
-    # Candidate pool size: smaller to keep Naver HTML fetch cost bounded.
-    # (We only need a small pool to correctly identify top3 in most cases.)
-    candidate_n = 60
+    # Candidate pool size: larger by default for higher accuracy (avoid missing true Naver top3
+    # when KRX-derived rate differs for some tickers).
+    candidate_n = max(20, min(int(leaderCandidateN), 2000))
     candidates = set(df_change["등락률"].nlargest(candidate_n).index.tolist())
     candidates.update(df_change["등락률"].nsmallest(candidate_n).index.tolist())
 
-    # Compute Naver rate for candidates
+    max_pages = max(1, min(int(leaderMaxSisePages), 30))
+    time_budget = max(3.0, min(float(leaderTimeoutSeconds), 120.0))
+
+    # Compute Naver rate for candidates (parallel for latency)
     scored = []
-    for code in candidates:
-        rate = _naver_sise_day_rate(code, effective_ymd, max_pages=3)
-        if rate is None:
-            continue
-        scored.append({"code": code, "name": _name(code), "rate": round(rate, 2)})
+    started = time.time()
+    max_workers = 32
+
+    def _score_one(code: str):
+        r = _naver_sise_day_rate(code, effective_ymd, max_pages=max_pages)
+        if r is None:
+            return None
+        return {"code": code, "name": _name(code), "rate": round(r, 2)}
+
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = {ex.submit(_score_one, c): c for c in candidates}
+        for fut in as_completed(futs):
+            if time.time() - started > time_budget:
+                break
+            try:
+                v = fut.result()
+            except Exception:
+                v = None
+            if v is not None:
+                scored.append(v)
 
     if not scored:
         raise HTTPException(status_code=502, detail="naver_rate_empty")
