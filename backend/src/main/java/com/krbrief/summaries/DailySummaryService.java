@@ -524,7 +524,11 @@ public class DailySummaryService {
         brief.source(),
         notes,
         brief.anomalies(),
-        brief.rankingWarning());
+        brief.rankingWarning(),
+        brief.effectiveDate(),
+        brief.topGainers(),
+        brief.topLosers(),
+        brief.mostMentionedTop());
   }
 
   private boolean same(String a, String b) {
