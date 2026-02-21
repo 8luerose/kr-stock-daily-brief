@@ -67,7 +67,9 @@ make generate-today
 
 Notes:
 - Dates are ISO `YYYY-MM-DD`.
-- `POST .../generate` is idempotent: it upserts the summary for that date.
+- `POST .../generate` behavior:
+  - If the date does **not** exist yet → creates the summary.
+  - If the date **already exists** → **admin-only regenerate** (otherwise returns `409 summary_already_exists_admin_only_regenerate`).
 - Market data fetch uses retry/fallback for resilience (fallback reason is recorded in `rawNotes`).
 - For backfill dates before today (`Asia/Seoul`), backend tries pykrx sidecar (`/leaders?date=YYYY-MM-DD`) first, then falls back to existing provider (default naver) and internal fallback placeholders.
 - `rawNotes` stores source/rules/fallback reason (debug + trust trace).
@@ -88,6 +90,36 @@ Notes:
 
 A cron job is configured to auto-generate a summary on weekdays at **15:40 Asia/Seoul**.
 (If you don't see auto-generation, ensure the OpenClaw cron is enabled and the backend is running.)
+
+## Admin-only operations (ADMIN_KEY)
+
+This project supports a lightweight “admin key” guard for operations that can overwrite data.
+
+- Set `ADMIN_KEY` (non-empty) to enable admin checks.
+- Admin is recognized by either:
+  - HTTP header: `X-Admin-Key: <ADMIN_KEY>`
+  - or query param: `adminKey=<ADMIN_KEY>` (useful for quick manual calls)
+
+Admin-only endpoints/operations:
+- Regenerating an **existing** date via `POST /api/summaries/{date}/generate`
+- `POST /api/summaries/backfill`
+- `PUT /api/summaries/{date}/archive`
+
+Frontend convenience:
+- Add `?ak=<ADMIN_KEY>` (or `?adminKey=<ADMIN_KEY>`) to the UI URL. The frontend will attach `X-Admin-Key` automatically.
+
+Example:
+
+```bash
+ADMIN_KEY=sekret make up
+open "http://localhost:5173/?ak=sekret"
+
+# non-admin regenerate (existing date) -> 409
+curl -i -X POST "http://localhost:8080/api/summaries/2026-02-16/generate"
+
+# admin regenerate -> 200
+curl -i -H "X-Admin-Key: sekret" -X POST "http://localhost:8080/api/summaries/2026-02-16/generate"
+```
 
 ## Optional Gate (PUBLIC_KEY)
 
