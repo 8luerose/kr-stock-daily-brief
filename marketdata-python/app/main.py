@@ -33,23 +33,24 @@ def _format_ymd_dot(ymd: str) -> str:
 
 def _previous_business_day(ymd: str) -> str:
     d = datetime.strptime(ymd, "%Y%m%d").date() - timedelta(days=1)
-    return stock.get_nearest_business_day_in_a_week(d.strftime("%Y%m%d"))
+    # prev=True: if holiday/weekend, go to previous business day
+    return stock.get_nearest_business_day_in_a_week(d.strftime("%Y%m%d"), prev=True)
 
 
 def _effective_business_day_or_previous(ymd: str) -> tuple[str, str]:
     """Return (effective_ymd, note).
 
     정책(2안): 요청 날짜는 유지하되, 실제 계산은 직전 영업일로 보정.
+
+    pykrx signature: get_nearest_business_day_in_a_week(date, prev=True|False)
     """
     try:
-        # pykrx signature: get_nearest_business_day_in_a_week(date, prev=False)
-        nearest_next = stock.get_nearest_business_day_in_a_week(ymd, prev=False)
-        if nearest_next == ymd:
+        # If ymd is a trading day, prev=True returns itself.
+        nearest_prev = stock.get_nearest_business_day_in_a_week(ymd, prev=True)
+        if nearest_prev == ymd:
             return ymd, ""
 
-        effective = stock.get_nearest_business_day_in_a_week(ymd, prev=True)
-        if effective == ymd:
-            effective = _previous_business_day(ymd)
+        effective = nearest_prev
         return effective, f"adjusted_to_previous_business_day: requested={ymd}, effective={effective}"
     except Exception as e:
         effective = _previous_business_day(ymd)
@@ -84,6 +85,60 @@ def _naver_fetch(url: str, timeout: int = 5) -> str:
 
 
 _BOARD_DATE_RE = re.compile(r'<span class="tah p10 gray03">(\d{4}\.\d{2}\.\d{2})')
+
+
+_SISE_TR_RE = re.compile(r"<tr[^>]*>.*?</tr>", re.IGNORECASE | re.DOTALL)
+
+
+def _naver_sise_day_rate(code: str, ymd: str, max_pages: int = 3) -> float | None:
+    """Compute daily rate (%) from Naver item/sise_day for given date (ymd=YYYYMMDD)."""
+    target = _format_ymd_dot(ymd)
+    last_html = ""
+
+    for page in range(1, max_pages + 1):
+        url = f"https://finance.naver.com/item/sise_day.naver?code={code}&page={page}"
+        try:
+            html = _naver_fetch(url)
+            last_html = html
+        except Exception:
+            continue
+
+        for tr in _SISE_TR_RE.findall(html):
+            if target not in tr:
+                continue
+
+            # direction (상승/하락/보합/상한가/하한가)
+            direction = "flat"
+            m_dir = re.search(r'class="blind"\s*>\s*([^<\s]+)\s*</span>', tr)
+            if m_dir:
+                t = m_dir.group(1)
+                if ("하락" in t) or ("하한" in t):
+                    direction = "down"
+                elif ("상승" in t) or ("상한" in t):
+                    direction = "up"
+
+            # numeric spans after date: close, diff, open, high, low, volume
+            idx = tr.find(target)
+            tail = tr[idx:] if idx >= 0 else tr
+            nums = re.findall(r"<span[^>]*>\s*([0-9][0-9,]*)\s*</span>", tail)
+            if len(nums) < 2:
+                continue
+
+            close = int(nums[0].replace(",", ""))
+            diff_abs = int(nums[1].replace(",", ""))
+
+            if direction == "up":
+                prev_close = close - diff_abs
+            elif direction == "down":
+                prev_close = close + diff_abs
+            else:
+                prev_close = close
+
+            if prev_close <= 0:
+                return None
+            return (close - prev_close) / prev_close * 100.0
+
+    return None
 
 
 @lru_cache(maxsize=20000)
@@ -196,22 +251,43 @@ def leaders(
     requested_ymd = _parse_date(date)
     effective_ymd, adjust_note = _effective_business_day_or_previous(requested_ymd)
 
+    # Leader ranking policy: match NAVER sise_day exactly.
+    # Strategy: use pykrx to pick a reasonable candidate set, then compute rates from Naver HTML.
     try:
         prev = _previous_business_day(effective_ymd)
-        df = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="ALL")
+        df_change = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="ALL")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"pykrx_error: {e}") from e
 
-    if df is None or len(df.index) == 0:
+    if df_change is None or len(df_change.index) == 0:
         raise HTTPException(status_code=404, detail="no_data")
 
-    for c in ["등락률", "거래량"]:
-        if c not in df.columns:
-            raise HTTPException(status_code=502, detail=f"unexpected_dataframe_columns: missing {c}")
+    if "등락률" not in df_change.columns:
+        raise HTTPException(status_code=502, detail="unexpected_dataframe_columns: missing 등락률")
 
-    top_gainers, top_losers = _top_rate_lists(df, n=3)
-    top_gainer_ticker = top_gainers[0]["code"] if top_gainers else df["등락률"].idxmax()
-    top_loser_ticker = top_losers[0]["code"] if top_losers else df["등락률"].idxmin()
+    # Candidate pool size: smaller to keep Naver HTML fetch cost bounded.
+    # (We only need a small pool to correctly identify top3 in most cases.)
+    candidate_n = 60
+    candidates = set(df_change["등락률"].nlargest(candidate_n).index.tolist())
+    candidates.update(df_change["등락률"].nsmallest(candidate_n).index.tolist())
+
+    # Compute Naver rate for candidates
+    scored = []
+    for code in candidates:
+        rate = _naver_sise_day_rate(code, effective_ymd, max_pages=3)
+        if rate is None:
+            continue
+        scored.append({"code": code, "name": _name(code), "rate": round(rate, 2)})
+
+    if not scored:
+        raise HTTPException(status_code=502, detail="naver_rate_empty")
+
+    scored_sorted = sorted(scored, key=lambda x: x["rate"], reverse=True)
+    top_gainers = scored_sorted[:3]
+    top_losers = list(sorted(scored, key=lambda x: x["rate"]))[:3]
+
+    top_gainer_ticker = top_gainers[0]["code"]
+    top_loser_ticker = top_losers[0]["code"]
 
     # Mentions universe
     try:

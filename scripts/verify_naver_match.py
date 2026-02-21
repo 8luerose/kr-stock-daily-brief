@@ -71,7 +71,7 @@ def _http_get(url: str, timeout_s: float = 10.0, extra_headers: Optional[Dict[st
     return data.decode("utf-8", errors="replace")
 
 
-def _http_post_json(url: str, payload: Optional[dict] = None, timeout_s: float = 30.0, extra_headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+def _http_post_json(url: str, payload: Optional[dict] = None, timeout_s: float = 120.0, extra_headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     body = b""
     headers = {
         "User-Agent": "kr-brief-verifier/1.0",
@@ -272,18 +272,11 @@ def verify_sise_day_rate(
     - actual_krx: from KRX Data Portal JSON (FLUC_RT)
 
     Pass condition:
-    - OK if expected_rate matches KRX within tolerance (±0.2pp)
-      (because backend/pykrx is KRX-based)
-    - We still report Naver rate to surface discrepancies.
+    - OK if expected_rate matches Naver sise_day computed rate within tolerance (±0.2pp)
+      (네이버 방식으로 맞추는 정책)
     """
 
     date_dotted = _to_yyyymmdd_dotted(effective_yyyymmdd)
-
-    # KRX reference (pykrx-like)
-    # Use prev = D-1 business day (string arithmetic is OK because backend already computed effectiveDate)
-    d = _dt.datetime.strptime(effective_yyyymmdd, "%Y%m%d").date() - _dt.timedelta(days=1)
-    prev_dd = d.strftime("%Y%m%d")
-    actual_krx = _krx_rate_for_code(prev_dd, effective_yyyymmdd, code)
 
     # Naver HTML reference
     actual_naver: Optional[float] = None
@@ -299,7 +292,7 @@ def verify_sise_day_rate(
                 code=code,
                 expected=expected_rate,
                 actual_naver=None,
-                actual_krx=actual_krx,
+                actual_krx=None,
                 ok=False,
                 detail=f"HTTP error fetching Naver sise_day page={page}: {e}",
                 url=url,
@@ -312,33 +305,27 @@ def verify_sise_day_rate(
             break
         time.sleep(sleep_s)
 
-    # Decision based on KRX rate match
+    # Decision based on NAVER rate match
     ok = False
     detail_parts = []
 
     if expected_rate is None:
         detail_parts.append("expected missing")
-    else:
-        if actual_krx is None:
-            detail_parts.append("KRX rate unavailable")
-        else:
-            delta_krx = abs(actual_krx - expected_rate)
-            ok = delta_krx <= 0.2
-            detail_parts.append(
-                f"KRX rate={actual_krx:.2f}% (expected={expected_rate:.2f}%, |Δ|={delta_krx:.2f}pp)"
-            )
-
-    if actual_naver is None:
+    elif actual_naver is None:
         detail_parts.append(f"Naver row {date_dotted} not found within first {max_pages} pages")
     else:
-        detail_parts.append(f"Naver rate={actual_naver:.2f}%")
+        delta = abs(actual_naver - expected_rate)
+        ok = delta <= 0.2
+        detail_parts.append(
+            f"Naver rate={actual_naver:.2f}% (expected={expected_rate:.2f}%, |Δ|={delta:.2f}pp)"
+        )
 
     return CheckResult(
         label="sise_day",
         code=code,
         expected=expected_rate,
         actual_naver=actual_naver,
-        actual_krx=actual_krx,
+        actual_krx=None,
         ok=ok,
         detail="; ".join(detail_parts),
         url=last_url,
@@ -481,8 +468,8 @@ def main() -> int:
 
         # Verify gainers/losers
         report_lines.append("\n### topGainers / topLosers rate verification\n")
-        report_lines.append("| side | rank | code | name | expectedRate(%) | naverRate(%) | krxRate(%) | result | detail |\n")
-        report_lines.append("|---|---:|---|---|---:|---:|---:|---|---|\n")
+        report_lines.append("| side | rank | code | name | expectedRate(%) | naverRate(%) | result | detail |\n")
+        report_lines.append("|---|---:|---|---|---:|---:|---|---|\n")
 
         def _iter_entries(key: str) -> List[dict]:
             arr = summary.get(key)
