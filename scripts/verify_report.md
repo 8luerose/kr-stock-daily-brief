@@ -1,5 +1,5 @@
 # Naver HTML Verification Report
-Generated at: `2026-02-21T20:49:39`
+Generated at: `2026-02-22T12:23:47`
 Backend: `http://localhost:8080`
 PUBLIC_KEY gate: not set
 
@@ -8,17 +8,17 @@ PUBLIC_KEY gate: not set
 - marketClosed: `False`
 
 ### Backend leaders (for context)
-  - topGainer: `코아시아씨엠`
+  - topGainer: `삼표시멘트`
   - topLoser: `나라소프트`
-  - mostMentioned: `리브스메드`
-  - kospiPick: `코아시아씨엠`
-  - kosdaqPick: `코아시아씨엠`
+  - mostMentioned: `테라뷰`
+  - kospiPick: `삼표시멘트`
+  - kosdaqPick: `삼표시멘트`
 
 ### topGainers / topLosers rate verification
 | side | rank | code | name | expectedRate(%) | naverRate(%) | result | detail |
 |---|---:|---|---|---:|---:|---|---|
-| Gainer | 1 | `196450` | 코아시아씨엠 | 30.0 | 30.00 |  | OK | Naver rate=30.00% (expected=30.00%, |Δ|=0.00pp) ([link](https://finance.naver.com/item/sise_day.naver?code=196450&page=2)) |
-| Gainer | 2 | `038500` | 삼표시멘트 | 30.0 | 30.00 |  | OK | Naver rate=30.00% (expected=30.00%, |Δ|=0.00pp) ([link](https://finance.naver.com/item/sise_day.naver?code=038500&page=2)) |
+| Gainer | 1 | `038500` | 삼표시멘트 | 30.0 | 30.00 |  | OK | Naver rate=30.00% (expected=30.00%, |Δ|=0.00pp) ([link](https://finance.naver.com/item/sise_day.naver?code=038500&page=2)) |
+| Gainer | 2 | `196450` | 코아시아씨엠 | 30.0 | 30.00 |  | OK | Naver rate=30.00% (expected=30.00%, |Δ|=0.00pp) ([link](https://finance.naver.com/item/sise_day.naver?code=196450&page=2)) |
 | Gainer | 3 | `038460` | 바이오스마트 | 29.98 | 29.98 |  | OK | Naver rate=29.98% (expected=29.98%, |Δ|=0.00pp) ([link](https://finance.naver.com/item/sise_day.naver?code=038460&page=2)) |
 | Loser | 1 | `288490` | 나라소프트 | -57.14 | -57.14 |  | OK | Naver rate=-57.14% (expected=-57.14%, |Δ|=0.00pp) ([link](https://finance.naver.com/item/sise_day.naver?code=288490&page=1)) |
 | Loser | 2 | `100120` | 뷰웍스 | -16.28 | -16.28 |  | OK | Naver rate=-16.28% (expected=-16.28%, |Δ|=0.00pp) ([link](https://finance.naver.com/item/sise_day.naver?code=100120&page=2)) |
@@ -27,9 +27,9 @@ PUBLIC_KEY gate: not set
 ### mostMentionedTop vs Naver board (post count)
 | rank | code | name | expectedCount | actualCount | result | detail |
 |---:|---|---|---:|---:|---|---|
-| 1 | `491000` | 리브스메드 | 0 | 0 | OK | Counted 0 posts on 2026.02.02 across pages 1..3 (expected 0) ([link](https://finance.naver.com/item/board.naver?code=491000&page=3)) |
-| 2 | `489790` | 한화비전 | 0 | 0 | OK | Counted 0 posts on 2026.02.02 across pages 1..3 (expected 0) ([link](https://finance.naver.com/item/board.naver?code=489790&page=3)) |
-| 3 | `478340` | 나라스페이스테크놀로지 | 0 | 0 | OK | Counted 0 posts on 2026.02.02 across pages 1..3 (expected 0) ([link](https://finance.naver.com/item/board.naver?code=478340&page=3)) |
+| 1 | `950250` | 테라뷰 | 0 | 0 | OK | Counted 0 posts on 2026.02.02 across pages 1..3 (expected 0) ([link](https://finance.naver.com/item/board.naver?code=950250&page=3)) |
+| 2 | `950160` | 코오롱티슈진 | 0 | 0 | OK | Counted 0 posts on 2026.02.02 across pages 1..3 (expected 0) ([link](https://finance.naver.com/item/board.naver?code=950160&page=3)) |
+| 3 | `491000` | 리브스메드 | 0 | 0 | OK | Counted 0 posts on 2026.02.02 across pages 1..3 (expected 0) ([link](https://finance.naver.com/item/board.naver?code=491000&page=3)) |
 
 ## Requested date: `2026-02-09`
 - effectiveDate: `20260209`
@@ -38,7 +38,7 @@ PUBLIC_KEY gate: not set
 ### Backend leaders (for context)
   - topGainer: `제일바이오`
   - topLoser: `이엠앤아이`
-  - mostMentioned: `케이엔제이`
+  - mostMentioned: `나노신소재`
   - kospiPick: `제일바이오`
   - kosdaqPick: `제일바이오`
 
@@ -55,9 +55,9 @@ PUBLIC_KEY gate: not set
 ### mostMentionedTop vs Naver board (post count)
 | rank | code | name | expectedCount | actualCount | result | detail |
 |---:|---|---|---:|---:|---|---|
-| 1 | `272110` | 케이엔제이 | 15 | 15 | OK | Counted 15 posts on 2026.02.09 across pages 1..3 (expected 15) ([link](https://finance.naver.com/item/board.naver?code=272110&page=3)) |
-| 2 | `039030` | 이오테크닉스 | 2 | 2 | OK | Counted 2 posts on 2026.02.09 across pages 1..3 (expected 2) ([link](https://finance.naver.com/item/board.naver?code=039030&page=3)) |
-| 3 | `005385` | 현대차우 | 2 | 2 | OK | Counted 2 posts on 2026.02.09 across pages 1..3 (expected 2) ([link](https://finance.naver.com/item/board.naver?code=005385&page=3)) |
+| 1 | `121600` | 나노신소재 | 22 | 22 | OK | Counted 22 posts on 2026.02.09 across pages 1..3 (expected 22) ([link](https://finance.naver.com/item/board.naver?code=121600&page=3)) |
+| 2 | `265740` | 엔에프씨 | 19 | 19 | OK | Counted 19 posts on 2026.02.09 across pages 1..3 (expected 19) ([link](https://finance.naver.com/item/board.naver?code=265740&page=3)) |
+| 3 | `272110` | 케이엔제이 | 15 | 15 | OK | Counted 15 posts on 2026.02.09 across pages 1..3 (expected 15) ([link](https://finance.naver.com/item/board.naver?code=272110&page=3)) |
 
 ## Requested date: `2026-02-16`
 - effectiveDate: `20260213`
@@ -66,7 +66,7 @@ PUBLIC_KEY gate: not set
 ### Backend leaders (for context)
   - topGainer: `SK증권우`
   - topLoser: `코퍼스코리아`
-  - mostMentioned: `미래에셋증권2우B`
+  - mostMentioned: `코콤`
   - kospiPick: `SK증권우`
   - kosdaqPick: `SK증권우`
 
@@ -83,9 +83,9 @@ PUBLIC_KEY gate: not set
 ### mostMentionedTop vs Naver board (post count)
 | rank | code | name | expectedCount | actualCount | result | detail |
 |---:|---|---|---:|---:|---|---|
-| 1 | `00680K` | 미래에셋증권2우B | 13 | 13 | OK | Counted 13 posts on 2026.02.13 across pages 1..3 (expected 13) ([link](https://finance.naver.com/item/board.naver?code=00680K&page=3)) |
-| 2 | `138930` | BNK금융지주 | 8 | 8 | OK | Counted 8 posts on 2026.02.13 across pages 1..3 (expected 8) ([link](https://finance.naver.com/item/board.naver?code=138930&page=3)) |
-| 3 | `021240` | 코웨이 | 7 | 7 | OK | Counted 7 posts on 2026.02.13 across pages 1..3 (expected 7) ([link](https://finance.naver.com/item/board.naver?code=021240&page=3)) |
+| 1 | `015710` | 코콤 | 35 | 35 | OK | Counted 35 posts on 2026.02.13 across pages 1..3 (expected 35) ([link](https://finance.naver.com/item/board.naver?code=015710&page=3)) |
+| 2 | `366030` | 공구우먼 | 33 | 33 | OK | Counted 33 posts on 2026.02.13 across pages 1..3 (expected 33) ([link](https://finance.naver.com/item/board.naver?code=366030&page=3)) |
+| 3 | `084370` | 유진테크 | 26 | 26 | OK | Counted 26 posts on 2026.02.13 across pages 1..3 (expected 26) ([link](https://finance.naver.com/item/board.naver?code=084370&page=3)) |
 
 ## Requested date: `2026-02-20`
 - effectiveDate: `20260220`
@@ -94,7 +94,7 @@ PUBLIC_KEY gate: not set
 ### Backend leaders (for context)
   - topGainer: `이앤에치`
   - topLoser: `제일바이오`
-  - mostMentioned: `나라스페이스테크놀로지`
+  - mostMentioned: `지투지바이오`
   - kospiPick: `이앤에치`
   - kosdaqPick: `이앤에치`
 
@@ -111,13 +111,17 @@ PUBLIC_KEY gate: not set
 ### mostMentionedTop vs Naver board (post count)
 | rank | code | name | expectedCount | actualCount | result | detail |
 |---:|---|---|---:|---:|---|---|
-| 1 | `478340` | 나라스페이스테크놀로지 | 44 | 44 | OK | Counted 44 posts on 2026.02.20 across pages 1..3 (expected 44) ([link](https://finance.naver.com/item/board.naver?code=478340&page=3)) |
-| 2 | `402340` | SK스퀘어 | 35 | 35 | OK | Counted 35 posts on 2026.02.20 across pages 1..3 (expected 35) ([link](https://finance.naver.com/item/board.naver?code=402340&page=3)) |
-| 3 | `004060` | SG세계물산 | 34 | 34 | OK | Counted 34 posts on 2026.02.20 across pages 1..3 (expected 34) ([link](https://finance.naver.com/item/board.naver?code=004060&page=3)) |
+| 1 | `456160` | 지투지바이오 | 58 | 57 | MISMATCH | Counted 57 posts on 2026.02.20 across pages 1..3 (expected 58) ([link](https://finance.naver.com/item/board.naver?code=456160&page=3)) |
+| 2 | `388050` | 지투파워 | 58 | 58 | OK | Counted 58 posts on 2026.02.20 across pages 1..3 (expected 58) ([link](https://finance.naver.com/item/board.naver?code=388050&page=3)) |
+| 3 | `054540` | 삼영엠텍 | 57 | 56 | MISMATCH | Counted 56 posts on 2026.02.20 across pages 1..3 (expected 57) ([link](https://finance.naver.com/item/board.naver?code=054540&page=3)) |
 
 ---
 ## Summary
-- Overall: **ALL OK**
+- Overall: **MISMATCHES FOUND** (2)
+
+### Mismatch list
+- 2026-02-20 mostMentionedTop[1] 456160: Counted 57 posts on 2026.02.20 across pages 1..3 (expected 58) (https://finance.naver.com/item/board.naver?code=456160&page=3)
+- 2026-02-20 mostMentionedTop[3] 054540: Counted 56 posts on 2026.02.20 across pages 1..3 (expected 57) (https://finance.naver.com/item/board.naver?code=054540&page=3)
 
 ---
 ## Plan if mismatched

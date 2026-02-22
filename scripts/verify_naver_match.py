@@ -77,6 +77,10 @@ def _http_get_json(url: str, timeout_s: float = 30.0, extra_headers: Optional[Di
     return json.loads(_http_get(url, timeout_s=timeout_s, extra_headers=extra_headers))
 
 
+def _fmt_ok(ok: bool) -> str:
+    return "OK" if ok else "MISMATCH"
+
+
 def _http_get_with_retry(url: str, timeout_s: float = 10.0, max_retries: int = 3, backoff_delays: Optional[List[float]] = None, extra_headers: Optional[Dict[str, str]] = None) -> Tuple[Optional[str], Optional[str]]:
     """HTTP GET with retry and backoff for transient errors.
     
