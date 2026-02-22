@@ -87,6 +87,10 @@ make generate-today
 
 Notes:
 - Dates are ISO `YYYY-MM-DD`.
+- **Future dates are blocked** (400 `future_date_not_allowed`) for:
+  - `POST /api/summaries/{date}/generate`
+  - `PUT /api/summaries/{date}/archive`
+  - `POST /api/summaries/backfill?from&to` (if either `from` or `to` is in the future)
 - `POST .../generate` behavior:
   - If the date does **not** exist yet → creates the summary.
   - If the date **already exists** → **admin-only regenerate** (otherwise returns `409 summary_already_exists_admin_only_regenerate`).

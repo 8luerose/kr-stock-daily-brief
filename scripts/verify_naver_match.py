@@ -46,6 +46,8 @@ class CheckResult:
     actual_naver: Optional[float]
     actual_krx: Optional[float]
     ok: bool
+    # Status: "OK", "MISMATCH", or "UNVERIFIED" (network/timeout failure)
+    status: str
     detail: str
     url: str
 
@@ -73,6 +75,34 @@ def _http_get(url: str, timeout_s: float = 10.0, extra_headers: Optional[Dict[st
 
 def _http_get_json(url: str, timeout_s: float = 30.0, extra_headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     return json.loads(_http_get(url, timeout_s=timeout_s, extra_headers=extra_headers))
+
+
+def _http_get_with_retry(url: str, timeout_s: float = 10.0, max_retries: int = 3, backoff_delays: Optional[List[float]] = None, extra_headers: Optional[Dict[str, str]] = None) -> Tuple[Optional[str], Optional[str]]:
+    """HTTP GET with retry and backoff for transient errors.
+    
+    Returns (html, error_message):
+    - On success: (html_content, None)
+    - On failure after all retries: (None, error_description)
+    """
+    if backoff_delays is None:
+        backoff_delays = [0.5, 1.0, 2.0]
+    
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            html = _http_get(url, timeout_s=timeout_s, extra_headers=extra_headers)
+            return html, None
+        except urllib.error.URLError as e:
+            last_error = f"URLError: {e.reason}"
+        except TimeoutError:
+            last_error = f"Timeout after {timeout_s}s"
+        except Exception as e:
+            last_error = f"{type(e).__name__}: {e}"
+        
+        if attempt < max_retries - 1 and attempt < len(backoff_delays):
+            time.sleep(backoff_delays[attempt])
+    
+    return None, last_error
 
 
 def _http_post_json(url: str, payload: Optional[dict] = None, timeout_s: float = 120.0, extra_headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
@@ -298,6 +328,7 @@ def verify_sise_day_rate(
                 actual_naver=None,
                 actual_krx=None,
                 ok=False,
+                status="MISMATCH",
                 detail=f"HTTP error fetching Naver sise_day page={page}: {e}",
                 url=url,
             )
@@ -331,6 +362,7 @@ def verify_sise_day_rate(
         actual_naver=actual_naver,
         actual_krx=None,
         ok=ok,
+        status="OK" if ok else "MISMATCH",
         detail="; ".join(detail_parts),
         url=last_url,
     )
@@ -343,15 +375,20 @@ def _count_board_posts_on_date(html: str, date_dotted: str) -> int:
 
 
 def verify_board_count(code: str, effective_yyyymmdd: str, expected_count: Optional[int], max_pages: int = 3, sleep_s: float = 0.05) -> CheckResult:
+    """Verify board post count with robust retry logic.
+    
+    Uses 20s timeout and 3 retries with backoff (0.5s, 1s, 2s).
+    Returns UNVERIFIED status if network fails after all retries.
+    """
     date_dotted = _to_yyyymmdd_dotted(effective_yyyymmdd)
     total = 0
     last_url = ""
     for page in range(1, max_pages + 1):
         url = f"{NAVER_BASE}/item/board.naver?code={urllib.parse.quote(code)}&page={page}"
         last_url = url
-        try:
-            html = _http_get(url, timeout_s=10.0)
-        except Exception as e:
+        html, error = _http_get_with_retry(url, timeout_s=20.0, max_retries=3, backoff_delays=[0.5, 1.0, 2.0])
+        if error:
+            # Network failure after retries - return UNVERIFIED instead of MISMATCH
             return CheckResult(
                 label="board",
                 code=code,
@@ -359,7 +396,8 @@ def verify_board_count(code: str, effective_yyyymmdd: str, expected_count: Optio
                 actual_naver=None,
                 actual_krx=None,
                 ok=False,
-                detail=f"HTTP error fetching Naver board page={page}: {e}",
+                status="UNVERIFIED",
+                detail=f"Network error after 3 retries (page={page}): {error}",
                 url=url,
             )
         total += _count_board_posts_on_date(html, date_dotted)
@@ -367,10 +405,12 @@ def verify_board_count(code: str, effective_yyyymmdd: str, expected_count: Optio
 
     if expected_count is None:
         ok = False
+        status = "MISMATCH"
         detail = f"Counted {total} posts on {date_dotted} (expected missing)"
         exp_f = None
     else:
         ok = (total == expected_count)
+        status = "OK" if ok else "MISMATCH"
         detail = f"Counted {total} posts on {date_dotted} across pages 1..{max_pages} (expected {expected_count})"
         exp_f = float(expected_count)
 
@@ -381,6 +421,7 @@ def verify_board_count(code: str, effective_yyyymmdd: str, expected_count: Optio
         actual_naver=float(total),
         actual_krx=None,
         ok=ok,
+        status=status,
         detail=detail,
         url=last_url,
     )
@@ -407,9 +448,9 @@ def generate_summary(base: str, requested_date: str, public_key: Optional[str]) 
     return _http_post_json(url, payload=None, timeout_s=120.0)
 
 
-def _fmt_ok(ok: bool) -> str:
-    return "OK" if ok else "MISMATCH"
-
+def _fmt_status(cr: 'CheckResult') -> str:
+    """Return status string from CheckResult."""
+    return cr.status
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -501,6 +542,7 @@ def main() -> int:
                         actual_naver=None,
                         actual_krx=None,
                         ok=False,
+                        status="MISMATCH",
                         detail=f"Backend entry missing code: {e}",
                         url="",
                     )
@@ -539,6 +581,7 @@ def main() -> int:
                     actual_naver=None,
                     actual_krx=None,
                     ok=False,
+                    status="MISMATCH",
                     detail=f"Backend entry missing code: {e}",
                     url="",
                 )

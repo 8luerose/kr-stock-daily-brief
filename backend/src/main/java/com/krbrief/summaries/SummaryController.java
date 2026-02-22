@@ -81,6 +81,10 @@ public class SummaryController {
   public SummaryDto generate(
       HttpServletRequest request,
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    // Future dates are not allowed
+    if (date.isAfter(service.todaySeoul())) {
+      throw new ResponseStatusException(BAD_REQUEST, "future_date_not_allowed");
+    }
     // If already exists, only admin can regenerate/overwrite.
     if (service.existsAny(date) && !admin.isAdmin(request)) {
       throw new ResponseStatusException(CONFLICT, "summary_already_exists_admin_only_regenerate");
@@ -92,6 +96,10 @@ public class SummaryController {
   public ResponseEntity<SummaryDto> archive(
       HttpServletRequest request,
       @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+    // Future dates are not allowed
+    if (date.isAfter(service.todaySeoul())) {
+      throw new ResponseStatusException(BAD_REQUEST, "future_date_not_allowed");
+    }
     if (!admin.isAdmin(request)) {
       throw new ResponseStatusException(FORBIDDEN, "admin_only");
     }
@@ -109,6 +117,11 @@ public class SummaryController {
     }
     if (from.isAfter(to)) {
       throw new ResponseStatusException(BAD_REQUEST, "from_must_be_on_or_before_to");
+    }
+    // Future dates are not allowed
+    LocalDate today = service.todaySeoul();
+    if (from.isAfter(today) || to.isAfter(today)) {
+      throw new ResponseStatusException(BAD_REQUEST, "future_date_not_allowed");
     }
     return service.backfill(from, to);
   }

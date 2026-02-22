@@ -2,6 +2,7 @@ package com.krbrief.summaries;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -166,5 +167,39 @@ class SummaryApiTest {
     assert node.get("topGainers").isArray();
     assert node.get("topLosers").isArray();
     assert node.get("mostMentionedTop").isArray();
+  }
+
+  // ===== Future date blocking tests =====
+
+  @Test
+  void generate_futureDate_returns400() throws Exception {
+    // Use a date far in the future to ensure it's always after todaySeoul()
+    mvc.perform(post("/api/summaries/2099-01-01/generate"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("future_date_not_allowed"));
+  }
+
+  @Test
+  void archive_futureDate_returns400() throws Exception {
+    // Archive requires admin key, but future date check happens first
+    mvc.perform(put("/api/summaries/2099-01-01/archive"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("future_date_not_allowed"));
+  }
+
+  @Test
+  void backfill_futureFromDate_returns400() throws Exception {
+    // Backfill requires admin key, but future date check should still work
+    mvc.perform(post("/api/summaries/backfill?from=2099-01-01&to=2099-01-05"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("future_date_not_allowed"));
+  }
+
+  @Test
+  void backfill_futureToDate_returns400() throws Exception {
+    // Backfill where 'to' is in the future should also fail
+    mvc.perform(post("/api/summaries/backfill?from=2026-02-01&to=2099-01-01"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("future_date_not_allowed"));
   }
 }
