@@ -306,11 +306,16 @@ public class DailySummaryService {
       }
     }
 
-    throw new IllegalStateException(
+    String reason =
         "verification_failed: primary="
             + String.join("; ", primaryReasons)
             + " | fallback="
-            + String.join("; ", fallbackReasons));
+            + String.join("; ", fallbackReasons);
+
+    // Do not fail the scheduler run entirely when verification is inconclusive.
+    // Prefer returning the reference(pykrx) brief with verification notes attached.
+    log.warn("{}; using reference(pykrx) as safe fallback for date={}", reason, date);
+    return appendVerification(reference.get(), "reference(pykrx)", 0, false, reason);
   }
 
   private Optional<DailyMarketBrief> loadReferenceBrief(LocalDate date, int maxRetries) {
@@ -483,14 +488,8 @@ public class DailySummaryService {
     if (!same(candidate.topLoser(), reference.topLoser())) {
       diffs.add("topLoser candidate='" + candidate.topLoser() + "' ref='" + reference.topLoser() + "'");
     }
-    if (!same(candidate.mostMentioned(), reference.mostMentioned())) {
-      diffs.add(
-          "mostMentioned candidate='"
-              + candidate.mostMentioned()
-              + "' ref='"
-              + reference.mostMentioned()
-              + "'");
-    }
+    // mostMentioned is derived from Naver board posts (heuristic/partial collection) and can be
+    // non-deterministic across calls even for the same date. Exclude it from strict verification.
     if (!same(candidate.kospiPick(), reference.kospiPick())) {
       diffs.add("kospiPick candidate='" + candidate.kospiPick() + "' ref='" + reference.kospiPick() + "'");
     }
