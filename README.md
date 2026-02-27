@@ -1,13 +1,151 @@
 # kr-stock-daily-brief (MVP)
 
-MVP: stores and serves daily summaries from MySQL, with a small UI to browse a month calendar and generate today's summary.
+**목표:** 한국 주식 시장을 날짜별로 요약 생성하고(MySQL에 저장), **프론트 화면(달력 UI)**에서 조회한다.
+
+- 데이터 계산: `marketdata` 서비스(`/leaders`)가 “상승/하락/언급 TOP”을 산출
+- 저장/제공: `backend`가 요약을 생성/저장하고 REST API로 제공
+- 표시/운영: `frontend`에서 월 달력으로 조회 + 운영 버튼(생성/백필/보관)
+
+> 추가 목표: Discord **웹훅(Webhook)**으로 지정 **스레드**에 자동 포스팅
+
+---
 
 ## Stack
 
 - Backend: Java 17, Spring Boot 3 (Gradle, Flyway, JPA)
-- Frontend: React + JavaScript (Vite build, Node runtime server)
+- Frontend: React + JavaScript (Vite)
+- Marketdata: FastAPI + pykrx + Naver(크롤링)
 - DB: MySQL
 - Orchestration: Docker Compose + Makefile wrappers
+
+---
+
+## 빠른 시작(로컬, Docker)
+
+```bash
+make up
+make health
+```
+
+열기:
+- UI: http://localhost:5173
+- API(예시): http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29
+
+오늘 생성:
+```bash
+curl -X POST "http://localhost:8080/api/summaries/generate/today"
+```
+
+특정 날짜 생성:
+```bash
+curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
+```
+
+---
+
+## 시스템 동작(핵심 플로우)
+
+### 1) marketdata: 리더 계산 API
+- 서비스: `marketdata-python` (port 8000)
+- 핵심 엔드포인트: `GET /leaders?date=YYYY-MM-DD`
+- 계산 규칙(현재 코드 기준)
+  - **topGainer/topLoser**: pykrx 등락률(전영업일→해당일)에서 상위/하위
+  - **mostMentioned**: 네이버 금융 종목토론방(board.naver) 게시물 수 top(거래대금 상위 유니버스에서 TOP3)
+
+응답 예시(축약):
+```json
+{
+  "date": "2026-02-26",
+  "effectiveDate": "20260226",
+  "topGainer": "젠큐릭스",
+  "topLoser": "캐리",
+  "mostMentioned": "한화비전",
+  "topGainers": [{"code":"229000","name":"젠큐릭스","rate":68.91}],
+  "topLosers": [{"code":"313760","name":"캐리","rate":-35.42}],
+  "mostMentionedTop": [{"code":"489790","name":"한화비전","count":60}],
+  "source": "pykrx(KRX historical change) + naver(item board)",
+  "notes": "..."
+}
+```
+
+### 2) backend: 요약 생성/저장/조회 API
+- 서비스: Spring Boot (port 8080)
+- 동작: `POST /api/summaries/{date}/generate` 호출 시
+  1) marketdata에서 리더 데이터를 받아서
+  2) 날짜 1건 요약을 생성하고
+  3) MySQL에 저장한 후
+  4) 저장된 결과를 JSON으로 반환
+
+### 3) frontend: 달력 UI
+- 서비스: Vite/React (port 5173)
+- 월 달력에서 날짜를 선택하면 backend API로 조회해서 표시
+- 운영 버튼
+  - 오늘 생성
+  - 선택일 생성
+  - 일괄 생성(backfill)
+  - 보관(archive)
+
+---
+
+## API (Backend)
+
+조회:
+- `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- `GET /api/summaries/{date}`
+- `GET /api/summaries/latest`
+- `GET /api/summaries/stats`
+- `GET /api/summaries/insights?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- `GET /api/summaries/{date}/verification/krx`
+
+생성/운영:
+- `POST /api/summaries/{date}/generate`
+- `POST /api/summaries/generate/today`
+- `POST /api/summaries/backfill?from=YYYY-MM-DD&to=YYYY-MM-DD` (admin)
+- `PUT /api/summaries/{date}/archive` (admin)
+
+정책:
+- 날짜 포맷은 ISO `YYYY-MM-DD`
+- 미래 날짜는 생성/백필/보관 모두 차단
+- 이미 존재하는 날짜의 재생성은 admin만 허용(일반 요청은 409)
+
+---
+
+## Scheduler (Backend)
+
+- 평일 1회 자동 생성 (기본: 15:40 Asia/Seoul)
+- 구현: `SummaryScheduler`의 Spring `@Scheduled`
+
+---
+
+## Admin-only operations (ADMIN_KEY)
+
+운영자가 데이터를 덮어쓰거나(재생성) 대량 작업(백필)을 실행할 때 보호 장치.
+
+- Admin 인식 방법
+  - HTTP header: `X-Admin-Key: <ADMIN_KEY>`
+  - 또는 query param: `adminKey=<ADMIN_KEY>`
+  - 또는 trusted CIDR에서의 요청(로컬/도커 내부)
+
+Admin-only:
+- 기존 날짜 재생성(=이미 존재하는 date에 대해 generate)
+- backfill
+- archive
+
+---
+
+## Discord 자동 포스팅 (계획)
+
+**방식:** Discord Webhook URL로 POST 해서, 생성된 요약을 지정 스레드에 올린다.
+
+- (제안) 환경변수
+  - `DISCORD_WEBHOOK_URL`
+  - `DISCORD_THREAD_ID` (있으면 `?thread_id=` 방식으로 스레드에 포스팅)
+
+포스팅 예시(개념):
+- 제목: `[2026-02-26] 한국 주식 일간 브리프`
+- 본문: topGainer/topLoser/mostMentioned + TOP3 + 근거 링크
+
+---
 
 ## Environment Variables
 
@@ -27,165 +165,9 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `MARKETDATA_BASE_URL` | No | Market data service URL (Docker internal) |
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
 | `ADMIN_KEY` | Recommended | Admin key for protected operations |
-| `APP_ADMIN_TRUSTED_CIDRS` | No | Comma-separated CIDRs for trusted admin bypass (default: `127.0.0.1/32,::1/128`) |
+| `APP_ADMIN_TRUSTED_CIDRS` | No | Comma-separated CIDRs for trusted admin bypass |
 
-## Market Data (current)
-
-Historical dates are generated with **pykrx sidecar** first (`marketdata-python /leaders`),
-then fallback provider (`MARKETDATA_PROVIDER`, default `naver`) if pykrx is unavailable.
-
-- Primary calculation:
-  - Top gainer/loser: `pykrx.get_market_price_change_by_ticker(prev_business_day, date, ALL)`
-  - mostMentioned: highest volume (derived rule)
-  - KOSPI/KOSDAQ pick: highest volume inside each market (derived rule)
-- Ranking transparency fields:
-  - `rawTopGainer/rawTopLoser`
-  - `filteredTopGainer/filteredTopLoser`
-  - `anomalies[]` + `rankingWarning`
-  - `leaderExplanations.topGainer/topLoser` (`level`, `summary`, `evidenceLinks`)
-- Policy:
-  - Extreme return alone does not auto-exclude a mover.
-  - Explanations are deterministic (rule-based, no LLM token required).
-
-Note: verification links use direct Naver stock day pages (`item/sise_day.naver?code=...`) and KRX portal/artifact references.
-
-## Quickstart (Docker)
-
-1. Start everything:
-
-```bash
-make up
-make health
-```
-
-2. Open:
-
-- UI: `http://localhost:5173`
-- API: `http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29`
-
-3. Generate a day manually (example):
-
-```bash
-curl -X POST "http://localhost:8080/api/summaries/2026-02-16/generate"
-# or
-curl -X POST "http://localhost:8080/api/summaries/generate/today"
-# or
-make generate-today
-```
-
-## API
-
-- `GET /api/summaries/stats`
-- `GET /api/summaries/insights?from=YYYY-MM-DD&to=YYYY-MM-DD`
-- `GET /api/summaries?from=YYYY-MM-DD&to=YYYY-MM-DD`
-- `GET /api/summaries/latest`
-- `GET /api/summaries/{date}`
-- `POST /api/summaries/{date}/generate`
-- `PUT /api/summaries/{date}/archive` (soft delete)
-- `POST /api/summaries/backfill?from=YYYY-MM-DD&to=YYYY-MM-DD` (returns success/lowConfidence/fail counts)
-- `POST /api/summaries/generate/today`
-
-Notes:
-- Dates are ISO `YYYY-MM-DD`.
-- **Future dates are blocked** (400 `future_date_not_allowed`) for:
-  - `POST /api/summaries/{date}/generate`
-  - `PUT /api/summaries/{date}/archive`
-  - `POST /api/summaries/backfill?from&to` (if either `from` or `to` is in the future)
-- `POST .../generate` behavior:
-  - If the date does **not** exist yet → creates the summary.
-  - If the date **already exists** → **admin-only regenerate** (otherwise returns `409 summary_already_exists_admin_only_regenerate`).
-- Market data fetch uses retry/fallback for resilience (fallback reason is recorded in `rawNotes`).
-- For backfill dates before today (`Asia/Seoul`), backend tries pykrx sidecar (`/leaders?date=YYYY-MM-DD`) first, then falls back to existing provider (default naver) and internal fallback placeholders.
-- `rawNotes` stores source/rules/fallback reason (debug + trust trace).
-- failed fetch means external source retrieval/parsing failed; service retries, then falls back with reason.
-- Responses include structured fields (`topGainer`, `topLoser`, `mostMentioned`, `kospiPick`, `kosdaqPick`, `rawNotes`, `createdAt`, `updatedAt`) and also `content`/`generatedAt` for the current MVP UI.
-- Responses also include anomaly-aware fields: `rawTopGainer`, `rawTopLoser`, `filteredTopGainer`, `filteredTopLoser`, `anomalies`, `rankingWarning`.
-- Responses include `leaderExplanations` for top gainer/loser with beginner-friendly one-line Korean summaries and evidence links.
-- Responses include `verification` links. `verification.*DateSearch` now points to direct Naver stock day pages by ticker code (no Naver search links).
-- Backfill result rows include `sourceUsed` (`pykrx|fdr|naver|fallback`) and `confidence` (`high|low`).
-
-### Date-specific verification quick guide
-
-- Primary source: open `verification.primaryKrxArtifact` (date-locked evidence endpoint) and `verification.krxDataPortal`.
-- Field cross-check: open `verification.topGainerDateSearch`, `verification.topLoserDateSearch`, `verification.mostMentionedDateSearch`, `verification.kospiPickDateSearch`, `verification.kosdaqPickDateSearch` (direct Naver item/day links).
-- Limitation: KRX does not provide a stable public deep-link for every `stock + exact date` combination, so KRX is exposed as portal + artifact, with stock-level direct links provided by ticker-based Naver pages.
-
-## Scheduler
-
-A cron job is configured to auto-generate a summary on weekdays at **15:40 Asia/Seoul**.
-(If you don't see auto-generation, ensure the OpenClaw cron is enabled and the backend is running.)
-
-## Admin-only operations (ADMIN_KEY)
-
-This project supports a lightweight "admin key" guard for operations that can overwrite data.
-
-- Set `ADMIN_KEY` (non-empty) to enable admin checks.
-- Admin is recognized by either:
-  - HTTP header: `X-Admin-Key: <ADMIN_KEY>`
-  - or query param: `adminKey=<ADMIN_KEY>` (useful for quick manual calls)
-  - **or** request from a trusted IP address (see Local Bypass below)
-
-Admin-only endpoints/operations:
-- Regenerating an **existing** date via `POST /api/summaries/{date}/generate`
-- `POST /api/summaries/backfill`
-- `PUT /api/summaries/{date}/archive`
-
-### Local Bypass (Trusted CIDRs)
-
-When `ADMIN_KEY` is set, requests from trusted IP addresses are automatically treated as admin **without** needing the key. This is useful for:
-- Local development (`localhost` calls)
-- Docker internal networking (e.g., backend calling itself)
-- CI/CD pipelines running in trusted networks
-
-**Default trusted CIDRs:** `127.0.0.1/32,::1/128` (localhost only)
-
-**Configuration:** Set `APP_ADMIN_TRUSTED_CIDRS` to customize:
-```bash
-# Docker internal networks (172.16.0.0/12 covers Docker default bridge)
-APP_ADMIN_TRUSTED_CIDRS="127.0.0.1/32,::1/128,172.16.0.0/12" make up
-
-# Multiple private ranges
-APP_ADMIN_TRUSTED_CIDRS="10.0.0.0/8,192.168.0.0/16" make up
-
-# Disable local bypass entirely (only key-based auth)
-APP_ADMIN_TRUSTED_CIDRS="" make up
-```
-
-**⚠️ Production Warning:** For internet-facing deploys, carefully review `APP_ADMIN_TRUSTED_CIDRS`. If your reverse proxy forwards client IPs (e.g., via `X-Forwarded-For`), requests may appear to come from trusted addresses even if they originate externally. Recommended:
-1. Set `APP_ADMIN_TRUSTED_CIDRS=""` to disable bypass, OR
-2. Ensure only actual internal IPs are trusted, AND
-3. Configure your reverse proxy to strip/validate `X-Forwarded-For` headers.
-
-Frontend convenience:
-- Add `?ak=<ADMIN_KEY>` (or `?adminKey=<ADMIN_KEY>`) to the UI URL. The frontend will attach `X-Admin-Key` automatically.
-
-Example:
-
-```bash
-ADMIN_KEY=sekret make up
-open "http://localhost:5173/?ak=sekret"
-
-# non-admin regenerate (existing date) -> 409
-curl -i -X POST "http://localhost:8080/api/summaries/2026-02-16/generate"
-
-# admin regenerate -> 200
-curl -i -H "X-Admin-Key: sekret" -X POST "http://localhost:8080/api/summaries/2026-02-16/generate"
-```
-
-## Optional Gate (PUBLIC_KEY)
-
-If `PUBLIC_KEY` is set (non-empty), then:
-
-- Backend requires query param `k=PUBLIC_KEY` for all `/api/**` requests.
-- Frontend requires `k=PUBLIC_KEY` in the browser URL for UI routes (HTML routes). Static assets are still served.
-
-Example:
-
-```bash
-PUBLIC_KEY=secret make up
-open "http://localhost:5173/?k=secret"
-curl "http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29&k=secret"
-```
+---
 
 ## Make Targets
 
@@ -193,30 +175,11 @@ curl "http://localhost:8080/api/summaries?from=2026-02-01&to=2026-02-29&k=secret
 - `make down`: stop services
 - `make logs`: tail logs
 - `make generate-today`: generate today summary (Asia/Seoul date)
-- `make check-month MONTH=YYYY-MM`: query monthly summaries quickly
 - `make latest`: get latest saved summary
-- `./scripts/qa_public_key.sh`: PUBLIC_KEY on/off 회귀 점검
-- `./scripts/validate_backfill_10days.sh`: 최근 과거 10개 영업일 백필 결과를 pykrx `/leaders` 기준과 비교하여 matchRate 출력
-- `./scripts/recheck_past_dates.sh [YYYY-MM-DD ...]`: re-run past dates and verify values/explanations/source links stay consistent
-- `make qa`: 전체 API 스모크 + PUBLIC_KEY 회귀 점검
-- `make backend-test`: run backend API tests
 
-If you use Colima on macOS, you may need:
+---
 
-```bash
-make backend-test DOCKER_SOCK="$HOME/.colima/default/docker.sock"
-```
+## Docs
 
-## Documentation
-
-- PRD: `docs/PRD.md`
-- API 명세: `docs/API_SPEC.md`
-- ERD: `docs/ERD.md`
-- DB 테이블 명세: `docs/DB_TABLES.md`
-- 점검 체크리스트: `docs/CHECKLIST.md`
-
-## Deploy Notes
-
-- Configure environment variables (or `.env`) for `DB_*`, `BACKEND_PORT`, `FRONTEND_PORT`, and optionally `PUBLIC_KEY`.
-- For internet-facing deploys, put a reverse proxy (nginx/Caddy/ALB) in front and terminate TLS there.
-  - Set `API_BASE_URL` for the frontend to the public backend origin (for example `https://api.example.com`).
+- PRD: `./PRD.md`
+- (추가 문서가 생기면) `docs/` 폴더에 정리
