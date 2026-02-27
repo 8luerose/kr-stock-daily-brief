@@ -48,6 +48,9 @@ ENV/
 .mypy_cache/
 .ruff_cache/
 
+# local scratch venv in this repo
+marketdata-python/.venv_tmp/
+
 # === Docker ===
 *.pid
 
