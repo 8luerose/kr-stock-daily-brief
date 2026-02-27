@@ -286,8 +286,12 @@ public class DailySummaryService {
 
     Optional<DailyMarketBrief> reference = loadReferenceBrief(date, maxRetries);
     if (reference.isEmpty()) {
-      throw new IllegalStateException(
-          "verification_reference_unavailable: cannot fetch date-specific leaders for " + date);
+      // If reference is unavailable (e.g., upstream pykrx/marketdata failure), do not fail the whole
+      // generation. Fall back to best-effort provider output without verification.
+      log.warn(
+          "verification_reference_unavailable: cannot fetch date-specific leaders for {}; using unverified primary",
+          date);
+      return loadBriefWithRetry(date, maxRetries);
     }
 
     // Historical summaries should prioritize the pykrx reference directly so
