@@ -67,6 +67,18 @@ public class DailySummary {
   @Column(name = "archived_at")
   private Instant archivedAt;
 
+  @Column(name = "discord_posted_at")
+  private Instant discordPostedAt;
+
+  @Column(name = "discord_message_id")
+  private String discordMessageId;
+
+  @Column(name = "discord_channel_id")
+  private String discordChannelId;
+
+  @Column(name = "discord_thread_id")
+  private String discordThreadId;
+
   protected DailySummary() {}
 
   public DailySummary(LocalDate date) {
@@ -203,6 +215,38 @@ public class DailySummary {
 
   public void setArchivedAt(Instant archivedAt) {
     this.archivedAt = archivedAt;
+  }
+
+  public Instant getDiscordPostedAt() {
+    return discordPostedAt;
+  }
+
+  public void setDiscordPostedAt(Instant discordPostedAt) {
+    this.discordPostedAt = discordPostedAt;
+  }
+
+  public String getDiscordMessageId() {
+    return discordMessageId;
+  }
+
+  public void setDiscordMessageId(String discordMessageId) {
+    this.discordMessageId = discordMessageId;
+  }
+
+  public String getDiscordChannelId() {
+    return discordChannelId;
+  }
+
+  public void setDiscordChannelId(String discordChannelId) {
+    this.discordChannelId = discordChannelId;
+  }
+
+  public String getDiscordThreadId() {
+    return discordThreadId;
+  }
+
+  public void setDiscordThreadId(String discordThreadId) {
+    this.discordThreadId = discordThreadId;
   }
 
   @PrePersist

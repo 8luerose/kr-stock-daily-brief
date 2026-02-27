@@ -29,14 +29,17 @@ public class DailySummaryService {
   private final MarketDataClient marketData;
   private final RestClient pykrxHttp;
   private final String provider;
+  private final com.krbrief.discord.DiscordPoster discord;
 
   public DailySummaryService(
       DailySummaryRepository repo,
       MarketDataClient marketData,
+      com.krbrief.discord.DiscordPoster discord,
       @Value("${marketdata.baseUrl:http://marketdata:8000}") String marketDataBaseUrl,
       @Value("${marketdata.provider:placeholder}") String provider) {
     this.repo = repo;
     this.marketData = marketData;
+    this.discord = discord;
     this.pykrxHttp = RestClient.builder().baseUrl(marketDataBaseUrl).build();
     this.provider = provider;
   }
@@ -201,7 +204,22 @@ public class DailySummaryService {
     s.setTopLosersJson(serializeJson(brief.topLosers()));
     s.setMostMentionedTopJson(serializeJson(brief.mostMentionedTop()));
 
-    return repo.save(s);
+    DailySummary saved = repo.save(s);
+
+    // Discord webhook auto-post (best-effort, does not affect persistence).
+    // Post only once per date (dedupe via discordPostedAt).
+    if (discord != null && discord.enabled() && saved.getDiscordPostedAt() == null) {
+      com.krbrief.discord.DiscordPoster.Result r = discord.post(saved);
+      if (r.ok()) {
+        saved.setDiscordPostedAt(r.postedAt());
+        saved.setDiscordMessageId(r.messageId());
+        saved.setDiscordChannelId(r.channelId());
+        saved.setDiscordThreadId(r.threadId());
+        saved = repo.save(saved);
+      }
+    }
+
+    return saved;
   }
 
   private String serializeJson(Object obj) {

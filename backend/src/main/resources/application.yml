@@ -33,3 +33,7 @@ marketdata:
   provider: ${MARKETDATA_PROVIDER:placeholder}
   baseUrl: ${MARKETDATA_BASE_URL:http://marketdata:8000}
 
+discord:
+  webhookUrl: ${DISCORD_WEBHOOK_URL:}
+  threadId: ${DISCORD_THREAD_ID:}
+
