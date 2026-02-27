@@ -32,9 +32,20 @@ def _format_ymd_dot(ymd: str) -> str:
 
 
 def _previous_business_day(ymd: str) -> str:
+    """Best-effort previous business day.
+
+    Prefer pykrx calendar, but fall back to a simple weekday-only rule if pykrx
+    calendar lookup fails (e.g., upstream KRX calendar returns empty).
+    """
     d = datetime.strptime(ymd, "%Y%m%d").date() - timedelta(days=1)
-    # prev=True: if holiday/weekend, go to previous business day
-    return stock.get_nearest_business_day_in_a_week(d.strftime("%Y%m%d"), prev=True)
+    try:
+        # prev=True: if holiday/weekend, go to previous business day
+        return stock.get_nearest_business_day_in_a_week(d.strftime("%Y%m%d"), prev=True)
+    except Exception:
+        # Fallback: skip weekends only.
+        while d.weekday() >= 5:  # 5=Sat, 6=Sun
+            d -= timedelta(days=1)
+        return d.strftime("%Y%m%d")
 
 
 def _effective_business_day_or_previous(ymd: str) -> tuple[str, str]:
@@ -42,7 +53,8 @@ def _effective_business_day_or_previous(ymd: str) -> tuple[str, str]:
 
     정책(2안): 요청 날짜는 유지하되, 실제 계산은 직전 영업일로 보정.
 
-    pykrx signature: get_nearest_business_day_in_a_week(date, prev=True|False)
+    We prefer pykrx calendar, but if that fails we fall back to a simple
+    weekday-only rule to keep the API responsive.
     """
     try:
         # If ymd is a trading day, prev=True returns itself.
