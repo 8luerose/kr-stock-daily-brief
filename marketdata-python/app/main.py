@@ -9,6 +9,7 @@ from functools import lru_cache
 
 from fastapi import FastAPI, HTTPException
 from pykrx import stock
+import pandas as pd
 
 app = FastAPI(title="kr-stock-daily-brief marketdata", version="0.6.1")
 
@@ -188,6 +189,64 @@ def _naver_board_posts_on_date(ticker: str, ymd: str, max_pages: int = 3) -> int
     return count
 
 
+def _naver_today_movers(sosok: int) -> tuple[list[dict], list[dict]]:
+    """Best-effort top movers for *today* from Naver sise pages.
+
+    Returns (gainers, losers) lists with fields: code, name, rate, volume.
+    """
+
+    def _parse_table(url: str) -> list[dict]:
+        html = _naver_fetch(url)
+        # Try to locate the first HTML table that contains 종목명.
+        tables = pd.read_html(html)
+        target = None
+        for t in tables:
+            if "종목명" in t.columns:
+                target = t
+                break
+        if target is None:
+            return []
+
+        out = []
+        for _, row in target.iterrows():
+            name = str(row.get("종목명", "")).strip()
+            if not name or name == "nan":
+                continue
+
+            # 등락률 may be like "+29.96%" or 29.96
+            rate_raw = row.get("등락률")
+            rate = None
+            try:
+                rate = float(str(rate_raw).replace("%", "").replace(",", "").replace("+", ""))
+            except Exception:
+                rate = 0.0
+
+            vol_raw = row.get("거래량")
+            vol = 0
+            try:
+                vol = int(str(vol_raw).replace(",", ""))
+            except Exception:
+                vol = 0
+
+            out.append({"name": name, "rate": round(rate, 2), "volume": vol})
+        return out
+
+    rise_url = f"https://finance.naver.com/sise/sise_rise.nhn?sosok={sosok}"
+    fall_url = f"https://finance.naver.com/sise/sise_fall.nhn?sosok={sosok}"
+
+    rise = _parse_table(rise_url)
+    fall = _parse_table(fall_url)
+
+    # Naver pages are already sorted, but keep deterministic sorting.
+    rise.sort(key=lambda x: (x.get("rate", 0), x.get("volume", 0), x.get("name", "")), reverse=True)
+    fall.sort(key=lambda x: (x.get("rate", 0), -x.get("volume", 0), x.get("name", "")))
+
+    # code is not easily available from read_html output; keep blank.
+    gainers = [{"code": "", "name": x["name"], "rate": x["rate"], "volume": x["volume"]} for x in rise[:3]]
+    losers = [{"code": "", "name": x["name"], "rate": x["rate"], "volume": x["volume"]} for x in fall[:3]]
+    return gainers, losers
+
+
 def _top_rate_lists(df, n: int = 3) -> tuple[list[dict], list[dict]]:
     gainers = []
     losers = []
@@ -269,59 +328,76 @@ def leaders(
 
     # Leader ranking policy: match NAVER sise_day exactly.
     # Strategy: use pykrx to pick a reasonable candidate set, then compute rates from Naver HTML.
+    # If pykrx/KRX blocks (403/empty), fall back to Naver "today" movers so the service keeps working.
     try:
         prev = _previous_business_day(effective_ymd)
         df_change = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="ALL")
+
+        if df_change is None or len(df_change.index) == 0:
+            raise ValueError("empty_dataframe")
+        if "등락률" not in df_change.columns:
+            raise ValueError("missing_column:등락률")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"pykrx_error: {e}") from e
+        today_ymd = datetime.now().strftime("%Y%m%d")
+        # If this request is for today, keep the API working even when KRX/pykrx is blocked.
+        if requested_ymd == today_ymd:
+            # Fallback (today only): use Naver sise_rise/sise_fall pages.
+            kospi_g, kospi_l = _naver_today_movers(0)
+            kosdaq_g, kosdaq_l = _naver_today_movers(1)
 
-    if df_change is None or len(df_change.index) == 0:
-        raise HTTPException(status_code=404, detail="no_data")
+            top_gainers = (kospi_g + kosdaq_g)[:3]
+            top_losers = (kospi_l + kosdaq_l)[:3]
 
-    if "등락률" not in df_change.columns:
-        raise HTTPException(status_code=502, detail="unexpected_dataframe_columns: missing 등락률")
+            top_gainer_ticker = top_gainers[0]["code"] if top_gainers else ""
+            top_loser_ticker = top_losers[0]["code"] if top_losers else ""
 
-    # Candidate pool size: larger by default for higher accuracy (avoid missing true Naver top3
-    # when KRX-derived rate differs for some tickers).
-    candidate_n = max(20, min(int(leaderCandidateN), 2000))
-    candidates = set(df_change["등락률"].nlargest(candidate_n).index.tolist())
-    candidates.update(df_change["등락률"].nsmallest(candidate_n).index.tolist())
+            prev = _previous_business_day(effective_ymd)
+            df_change = None
+        else:
+            raise HTTPException(status_code=502, detail=f"pykrx_error: {e}") from e
 
-    max_pages = max(1, min(int(leaderMaxSisePages), 30))
-    time_budget = max(3.0, min(float(leaderTimeoutSeconds), 120.0))
+    if df_change is not None:
+        # Candidate pool size: larger by default for higher accuracy (avoid missing true Naver top3
+        # when KRX-derived rate differs for some tickers).
+        candidate_n = max(20, min(int(leaderCandidateN), 2000))
+        candidates = set(df_change["등락률"].nlargest(candidate_n).index.tolist())
+        candidates.update(df_change["등락률"].nsmallest(candidate_n).index.tolist())
 
-    # Compute Naver rate for candidates (parallel for latency)
-    scored = []
-    started = time.time()
-    max_workers = 32
+        max_pages = max(1, min(int(leaderMaxSisePages), 30))
+        time_budget = max(3.0, min(float(leaderTimeoutSeconds), 120.0))
 
-    def _score_one(code: str):
-        r = _naver_sise_day_rate(code, effective_ymd, max_pages=max_pages)
-        if r is None:
-            return None
-        return {"code": code, "name": _name(code), "rate": round(r, 2)}
+        # Compute Naver rate for candidates (parallel for latency)
+        scored = []
+        started = time.time()
+        max_workers = 32
 
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futs = {ex.submit(_score_one, c): c for c in candidates}
-        for fut in as_completed(futs):
-            if time.time() - started > time_budget:
-                break
-            try:
-                v = fut.result()
-            except Exception:
-                v = None
-            if v is not None:
-                scored.append(v)
+        def _score_one(code: str):
+            r = _naver_sise_day_rate(code, effective_ymd, max_pages=max_pages)
+            if r is None:
+                return None
+            return {"code": code, "name": _name(code), "rate": round(r, 2)}
 
-    if not scored:
-        raise HTTPException(status_code=502, detail="naver_rate_empty")
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futs = {ex.submit(_score_one, c): c for c in candidates}
+            for fut in as_completed(futs):
+                if time.time() - started > time_budget:
+                    break
+                try:
+                    v = fut.result()
+                except Exception:
+                    v = None
+                if v is not None:
+                    scored.append(v)
 
-    scored_sorted = sorted(scored, key=lambda x: x["rate"], reverse=True)
-    top_gainers = scored_sorted[:3]
-    top_losers = list(sorted(scored, key=lambda x: x["rate"]))[:3]
+        if not scored:
+            raise HTTPException(status_code=502, detail="naver_rate_empty")
 
-    top_gainer_ticker = top_gainers[0]["code"]
-    top_loser_ticker = top_losers[0]["code"]
+        scored_sorted = sorted(scored, key=lambda x: x["rate"], reverse=True)
+        top_gainers = scored_sorted[:3]
+        top_losers = list(sorted(scored, key=lambda x: x["rate"]))[:3]
+
+        top_gainer_ticker = top_gainers[0]["code"]
+        top_loser_ticker = top_losers[0]["code"]
 
     # Mentions universe
     try:
@@ -338,8 +414,14 @@ def leaders(
     )
     most_ticker = most_mentioned_list[0]["code"] if most_mentioned_list else ""
 
+    source_line = (
+        "Source: pykrx(KRX historical change)"
+        if df_change is not None
+        else "Source: naver(sise_rise/sise_fall) [today fallback; KRX blocked]"
+    )
+
     notes_parts = [
-        "Source: pykrx(KRX historical change)",
+        source_line,
         f"effective_date={effective_ymd}",
         f"prev_date={prev}",
         "mostMentioned=naver_board_posts(universe=traded_value_topN)",
@@ -356,32 +438,49 @@ def leaders(
         f"kospiPick={top_gainer_ticker}, kosdaqPick={top_gainer_ticker}"
     )
 
+    top_gainer_name = (
+        _name(top_gainer_ticker)
+        if isinstance(top_gainer_ticker, str) and top_gainer_ticker
+        else (top_gainers[0].get("name") if top_gainers else "-")
+    )
+    top_loser_name = (
+        _name(top_loser_ticker)
+        if isinstance(top_loser_ticker, str) and top_loser_ticker
+        else (top_losers[0].get("name") if top_losers else "-")
+    )
+
+    source = (
+        "pykrx(KRX historical change) + naver(item board)"
+        if df_change is not None
+        else "naver(sise_rise/sise_fall) + naver(item board)"
+    )
+
     return {
         "date": date,
         "effectiveDate": effective_ymd,
-        "rawTopGainer": _name(top_gainer_ticker),
-        "rawTopLoser": _name(top_loser_ticker),
-        "filteredTopGainer": _name(top_gainer_ticker),
-        "filteredTopLoser": _name(top_loser_ticker),
-        "topGainer": _name(top_gainer_ticker),
-        "topLoser": _name(top_loser_ticker),
+        "rawTopGainer": top_gainer_name,
+        "rawTopLoser": top_loser_name,
+        "filteredTopGainer": top_gainer_name,
+        "filteredTopLoser": top_loser_name,
+        "topGainer": top_gainer_name,
+        "topLoser": top_loser_name,
         "mostMentioned": _name(most_ticker) if most_ticker else "-",
-        "kospiPick": _name(top_gainer_ticker),
-        "kosdaqPick": _name(top_gainer_ticker),
-        "topGainerCode": top_gainer_ticker,
-        "topLoserCode": top_loser_ticker,
-        "rawTopGainerCode": top_gainer_ticker,
-        "rawTopLoserCode": top_loser_ticker,
-        "filteredTopGainerCode": top_gainer_ticker,
-        "filteredTopLoserCode": top_loser_ticker,
+        "kospiPick": top_gainer_name,
+        "kosdaqPick": top_gainer_name,
+        "topGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
+        "topLoserCode": top_loser_ticker if isinstance(top_loser_ticker, str) else "",
+        "rawTopGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
+        "rawTopLoserCode": top_loser_ticker if isinstance(top_loser_ticker, str) else "",
+        "filteredTopGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
+        "filteredTopLoserCode": top_loser_ticker if isinstance(top_loser_ticker, str) else "",
         "mostMentionedCode": most_ticker,
-        "kospiPickCode": top_gainer_ticker,
-        "kosdaqPickCode": top_gainer_ticker,
+        "kospiPickCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
+        "kosdaqPickCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
         "topGainers": top_gainers,
         "topLosers": top_losers,
         "mostMentionedTop": most_mentioned_list,
         "anomalies": [],
         "rankingWarning": "",
-        "source": "pykrx(KRX historical change) + naver(item board)",
+        "source": source,
         "notes": "\n".join(notes_parts),
     }
