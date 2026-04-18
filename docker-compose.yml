@@ -1,6 +1,7 @@
 services:
   mysql:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${DB_NAME:-kr_stock_daily_brief}
       MYSQL_USER: ${DB_USER:-app}
@@ -20,6 +21,9 @@ services:
     build:
       context: ./marketdata-python
       dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
       TZ: Asia/Seoul
     ports:
@@ -29,6 +33,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
@@ -55,6 +60,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
       PUBLIC_KEY: ${PUBLIC_KEY:-}
       API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}

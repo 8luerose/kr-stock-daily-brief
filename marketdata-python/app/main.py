@@ -7,17 +7,67 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from functools import lru_cache
 
+import os
+
 from fastapi import FastAPI, HTTPException
 from pykrx import stock
 import pandas as pd
 
-app = FastAPI(title="kr-stock-daily-brief marketdata", version="0.6.1")
-
+# --- KRX access hardening ---
+# pykrx >= 1.2.5 supports KRX login session via KRX_ID/KRX_PW env vars.
+# When set, pykrx handles login automatically. When not set, fall back to
+# the monkey-patch below (persistent session + browser headers) so that
+# unauthenticated requests still work as well as possible.
 
 NAVER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 )
+
+if not os.getenv("KRX_ID"):
+    # No KRX credentials → use monkey-patch fallback
+    try:
+        import requests
+        from pykrx.website.comm import webio as _webio
+
+        _KRX_HDRS = {
+            "User-Agent": NAVER_UA,
+            "Referer": "https://data.krx.co.kr/",
+            "Origin": "https://data.krx.co.kr",
+        }
+
+        _krx_session = requests.Session()
+        _krx_session.headers.update(_KRX_HDRS)
+        # Warm up cookies
+        try:
+            _krx_session.get(
+                "https://data.krx.co.kr/contents/MDC/MDI/outerLoader/index.cmd?menuId=MDC0201020101",
+                timeout=10,
+            )
+        except Exception:
+            pass
+
+        # Make webio use our session (has .get/.post).
+        _webio.requests = _krx_session  # type: ignore
+
+        _orig_get_init = _webio.Get.__init__
+        _orig_post_init = _webio.Post.__init__
+
+        def _get_init(self):
+            _orig_get_init(self)
+            self.headers.update(_KRX_HDRS)
+
+        def _post_init(self, headers=None):
+            _orig_post_init(self, headers=headers)
+            self.headers.update(_KRX_HDRS)
+
+        _webio.Get.__init__ = _get_init  # type: ignore
+        _webio.Post.__init__ = _post_init  # type: ignore
+    except Exception:
+        pass
+
+app = FastAPI(title="kr-stock-daily-brief marketdata", version="0.6.2")
+
 
 
 def _parse_date(date_str: str) -> str:
