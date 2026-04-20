@@ -4,6 +4,8 @@ set -u
 PROJECT="/Users/rose/Desktop/git/kr-stock-daily-brief"
 THREAD_ID="1472490928278208629"
 SEND_WEBHOOK="/Users/rose/.openclaw/workspace/skills/discord-webhook-reporter/scripts/send_webhook.py"
+WORKSPACE="/Users/rose/.openclaw/workspace"
+export DISCORD_WEBHOOK_STATE_PATH="$WORKSPACE/skills/discord-webhook-reporter/state.json"
 
 cd "$PROJECT" || exit 1
 
@@ -110,10 +112,13 @@ fi
 
 # Send to Discord thread
 if [ -f "$SEND_WEBHOOK" ] && [ -n "$THREAD_ID" ]; then
+  # send_webhook.py uses --title + --summary, not --message
   python3 "$SEND_WEBHOOK" \
-    --message "$report" \
+    --title "📊 KR Stock Daily Brief — Status Report ($today_kst)" \
+    --summary "$(echo -e "$report")" \
+    --status "$( [ "$status" = "OK" ] && echo success || echo fail )" \
     --thread-id "$THREAD_ID" \
-    2>/dev/null || echo "Webhook send failed"
+    2>&1 || { echo "Webhook send failed"; exit 1; }
 else
   echo -e "$report"
 fi
