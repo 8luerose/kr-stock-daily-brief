@@ -383,6 +383,10 @@ def leaders(
     kospi_top_loser_ticker = ""
     kosdaq_top_gainer_ticker = ""
     kosdaq_top_loser_ticker = ""
+    kospi_top_gainers: list[dict] = []
+    kospi_top_losers: list[dict] = []
+    kosdaq_top_gainers: list[dict] = []
+    kosdaq_top_losers: list[dict] = []
 
     try:
         prev = _previous_business_day(effective_ymd)
@@ -394,9 +398,12 @@ def leaders(
             raise ValueError("missing_column:등락률")
 
         # KOSPI/KOSDAQ separate top gainers/losers
+        kospi_tickers: set[str] = set()
+        kosdaq_tickers: set[str] = set()
         try:
             df_kospi = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="KOSPI")
             if df_kospi is not None and len(df_kospi.index) > 0 and "등락률" in df_kospi.columns:
+                kospi_tickers = set(df_kospi.index.tolist())
                 kospi_top_gainer_ticker = df_kospi["등락률"].idxmax()
                 kospi_top_loser_ticker = df_kospi["등락률"].idxmin()
         except Exception:
@@ -405,10 +412,16 @@ def leaders(
         try:
             df_kosdaq = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="KOSDAQ")
             if df_kosdaq is not None and len(df_kosdaq.index) > 0 and "등락률" in df_kosdaq.columns:
+                kosdaq_tickers = set(df_kosdaq.index.tolist())
                 kosdaq_top_gainer_ticker = df_kosdaq["등락률"].idxmax()
                 kosdaq_top_loser_ticker = df_kosdaq["등락률"].idxmin()
         except Exception:
             pass
+
+        # If separate calls failed, derive from ALL set
+        if not kospi_tickers and not kosdaq_tickers:
+            kospi_tickers = set(df_change.index.tolist())  # fallback: treat all as kospi
+            kosdaq_tickers = set()
     except Exception as e:
         today_ymd = datetime.now().strftime("%Y%m%d")
         # If this request is for today, keep the API working even when KRX/pykrx is blocked.
@@ -428,6 +441,11 @@ def leaders(
             kospi_top_loser_ticker = kospi_l[0]["code"] if kospi_l else ""
             kosdaq_top_gainer_ticker = kosdaq_g[0]["code"] if kosdaq_g else ""
             kosdaq_top_loser_ticker = kosdaq_l[0]["code"] if kosdaq_l else ""
+
+            kospi_top_gainers = kospi_g[:3]
+            kospi_top_losers = kospi_l[:3]
+            kosdaq_top_gainers = kosdaq_g[:3]
+            kosdaq_top_losers = kosdaq_l[:3]
 
             prev = _previous_business_day(effective_ymd)
             df_change = None
@@ -473,6 +491,15 @@ def leaders(
         scored_sorted = sorted(scored, key=lambda x: x["rate"], reverse=True)
         top_gainers = scored_sorted[:3]
         top_losers = list(sorted(scored, key=lambda x: x["rate"]))[:3]
+
+        # KOSPI/KOSDAQ separate TOP3
+        kospi_scored = [s for s in scored if s["code"] in kospi_tickers] if kospi_tickers else scored
+        kosdaq_scored = [s for s in scored if s["code"] in kosdaq_tickers] if kosdaq_tickers else []
+
+        kospi_top_gainers = sorted(kospi_scored, key=lambda x: x["rate"], reverse=True)[:3]
+        kospi_top_losers = sorted(kospi_scored, key=lambda x: x["rate"])[:3]
+        kosdaq_top_gainers = sorted(kosdaq_scored, key=lambda x: x["rate"], reverse=True)[:3]
+        kosdaq_top_losers = sorted(kosdaq_scored, key=lambda x: x["rate"])[:3]
 
         top_gainer_ticker = top_gainers[0]["code"]
         top_loser_ticker = top_losers[0]["code"]
@@ -579,6 +606,10 @@ def leaders(
         "kosdaqTopLoserCode": kosdaq_top_loser_ticker,
         "topGainers": top_gainers,
         "topLosers": top_losers,
+        "kospiTopGainers": kospi_top_gainers,
+        "kospiTopLosers": kospi_top_losers,
+        "kosdaqTopGainers": kosdaq_top_gainers,
+        "kosdaqTopLosers": kosdaq_top_losers,
         "mostMentionedTop": most_mentioned_list,
         "anomalies": [],
         "rankingWarning": "",
