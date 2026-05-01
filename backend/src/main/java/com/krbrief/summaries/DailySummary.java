@@ -58,6 +58,54 @@ public class DailySummary {
   @Column(name = "most_mentioned_top_json", columnDefinition = "TEXT")
   private String mostMentionedTopJson;
 
+  @Column(name = "kospi_top_gainer")
+  private String kospiTopGainer;
+
+  @Column(name = "kospi_top_loser")
+  private String kospiTopLoser;
+
+  @Column(name = "kosdaq_top_gainer")
+  private String kosdaqTopGainer;
+
+  @Column(name = "kosdaq_top_loser")
+  private String kosdaqTopLoser;
+
+  @Column(name = "kospi_top_gainer_code")
+  private String kospiTopGainerCode;
+
+  @Column(name = "kospi_top_loser_code")
+  private String kospiTopLoserCode;
+
+  @Column(name = "kosdaq_top_gainer_code")
+  private String kosdaqTopGainerCode;
+
+  @Column(name = "kosdaq_top_loser_code")
+  private String kosdaqTopLoserCode;
+
+  @Column(name = "kospi_top_gainer_rate")
+  private Double kospiTopGainerRate;
+
+  @Column(name = "kospi_top_loser_rate")
+  private Double kospiTopLoserRate;
+
+  @Column(name = "kosdaq_top_gainer_rate")
+  private Double kosdaqTopGainerRate;
+
+  @Column(name = "kosdaq_top_loser_rate")
+  private Double kosdaqTopLoserRate;
+
+  @Column(name = "kospi_top_gainers_json", columnDefinition = "TEXT")
+  private String kospiTopGainersJson;
+
+  @Column(name = "kospi_top_losers_json", columnDefinition = "TEXT")
+  private String kospiTopLosersJson;
+
+  @Column(name = "kosdaq_top_gainers_json", columnDefinition = "TEXT")
+  private String kosdaqTopGainersJson;
+
+  @Column(name = "kosdaq_top_losers_json", columnDefinition = "TEXT")
+  private String kosdaqTopLosersJson;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -200,6 +248,39 @@ public class DailySummary {
   public void setMostMentionedTopJson(String mostMentionedTopJson) {
     this.mostMentionedTopJson = mostMentionedTopJson;
   }
+
+  public String getKospiTopGainer() { return kospiTopGainer; }
+  public void setKospiTopGainer(String v) { this.kospiTopGainer = v; }
+  public String getKospiTopLoser() { return kospiTopLoser; }
+  public void setKospiTopLoser(String v) { this.kospiTopLoser = v; }
+  public String getKosdaqTopGainer() { return kosdaqTopGainer; }
+  public void setKosdaqTopGainer(String v) { this.kosdaqTopGainer = v; }
+  public String getKosdaqTopLoser() { return kosdaqTopLoser; }
+  public void setKosdaqTopLoser(String v) { this.kosdaqTopLoser = v; }
+  public String getKospiTopGainerCode() { return kospiTopGainerCode; }
+  public void setKospiTopGainerCode(String v) { this.kospiTopGainerCode = v; }
+  public String getKospiTopLoserCode() { return kospiTopLoserCode; }
+  public void setKospiTopLoserCode(String v) { this.kospiTopLoserCode = v; }
+  public String getKosdaqTopGainerCode() { return kosdaqTopGainerCode; }
+  public void setKosdaqTopGainerCode(String v) { this.kosdaqTopGainerCode = v; }
+  public String getKosdaqTopLoserCode() { return kosdaqTopLoserCode; }
+  public void setKosdaqTopLoserCode(String v) { this.kosdaqTopLoserCode = v; }
+  public Double getKospiTopGainerRate() { return kospiTopGainerRate; }
+  public void setKospiTopGainerRate(Double v) { this.kospiTopGainerRate = v; }
+  public Double getKospiTopLoserRate() { return kospiTopLoserRate; }
+  public void setKospiTopLoserRate(Double v) { this.kospiTopLoserRate = v; }
+  public Double getKosdaqTopGainerRate() { return kosdaqTopGainerRate; }
+  public void setKosdaqTopGainerRate(Double v) { this.kosdaqTopGainerRate = v; }
+  public Double getKosdaqTopLoserRate() { return kosdaqTopLoserRate; }
+  public void setKosdaqTopLoserRate(Double v) { this.kosdaqTopLoserRate = v; }
+  public String getKospiTopGainersJson() { return kospiTopGainersJson; }
+  public void setKospiTopGainersJson(String v) { this.kospiTopGainersJson = v; }
+  public String getKospiTopLosersJson() { return kospiTopLosersJson; }
+  public void setKospiTopLosersJson(String v) { this.kospiTopLosersJson = v; }
+  public String getKosdaqTopGainersJson() { return kosdaqTopGainersJson; }
+  public void setKosdaqTopGainersJson(String v) { this.kosdaqTopGainersJson = v; }
+  public String getKosdaqTopLosersJson() { return kosdaqTopLosersJson; }
+  public void setKosdaqTopLosersJson(String v) { this.kosdaqTopLosersJson = v; }
 
   public Instant getCreatedAt() {
     return createdAt;

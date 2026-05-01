@@ -45,7 +45,23 @@ public class PykrxMarketDataClient implements MarketDataClient {
               nullToEmpty(res.effectiveDate()),
               res.topGainers() == null ? java.util.List.of() : res.topGainers(),
               res.topLosers() == null ? java.util.List.of() : res.topLosers(),
-              res.mostMentionedTop() == null ? java.util.List.of() : res.mostMentionedTop()));
+              res.mostMentionedTop() == null ? java.util.List.of() : res.mostMentionedTop(),
+              res.kospiTopGainer(),
+              res.kospiTopLoser(),
+              res.kosdaqTopGainer(),
+              res.kosdaqTopLoser(),
+              res.kospiTopGainerCode(),
+              res.kospiTopLoserCode(),
+              res.kosdaqTopGainerCode(),
+              res.kosdaqTopLoserCode(),
+              res.kospiTopGainerRate(),
+              res.kospiTopLoserRate(),
+              res.kosdaqTopGainerRate(),
+              res.kosdaqTopLoserRate(),
+              res.kospiTopGainers() == null ? java.util.List.of() : res.kospiTopGainers(),
+              res.kospiTopLosers() == null ? java.util.List.of() : res.kospiTopLosers(),
+              res.kosdaqTopGainers() == null ? java.util.List.of() : res.kosdaqTopGainers(),
+              res.kosdaqTopLosers() == null ? java.util.List.of() : res.kosdaqTopLosers()));
     } catch (Exception e) {
       return Optional.of(
           new DailyMarketBrief(
@@ -103,5 +119,21 @@ public class PykrxMarketDataClient implements MarketDataClient {
       java.util.List<DailyMarketBrief.AnomalyCandidate> anomalies,
       String rankingWarning,
       String source,
-      String notes) {}
+      String notes,
+      String kospiTopGainer,
+      String kospiTopLoser,
+      String kosdaqTopGainer,
+      String kosdaqTopLoser,
+      String kospiTopGainerCode,
+      String kospiTopLoserCode,
+      String kosdaqTopGainerCode,
+      String kosdaqTopLoserCode,
+      Double kospiTopGainerRate,
+      Double kospiTopLoserRate,
+      Double kosdaqTopGainerRate,
+      Double kosdaqTopLoserRate,
+      java.util.List<DailyMarketBrief.LeaderEntry> kospiTopGainers,
+      java.util.List<DailyMarketBrief.LeaderEntry> kospiTopLosers,
+      java.util.List<DailyMarketBrief.LeaderEntry> kosdaqTopGainers,
+      java.util.List<DailyMarketBrief.LeaderEntry> kosdaqTopLosers) {}
 }

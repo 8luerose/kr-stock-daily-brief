@@ -34,7 +34,23 @@ public record SummaryDto(
     String effectiveDate,
     List<LeaderEntryDto> topGainers,
     List<LeaderEntryDto> topLosers,
-    List<MostMentionedEntryDto> mostMentionedTop) {
+    List<MostMentionedEntryDto> mostMentionedTop,
+    String kospiTopGainer,
+    String kospiTopLoser,
+    String kosdaqTopGainer,
+    String kosdaqTopLoser,
+    String kospiTopGainerCode,
+    String kospiTopLoserCode,
+    String kosdaqTopGainerCode,
+    String kosdaqTopLoserCode,
+    Double kospiTopGainerRate,
+    Double kospiTopLoserRate,
+    Double kosdaqTopGainerRate,
+    Double kosdaqTopLoserRate,
+    List<LeaderEntryDto> kospiTopGainers,
+    List<LeaderEntryDto> kospiTopLosers,
+    List<LeaderEntryDto> kosdaqTopGainers,
+    List<LeaderEntryDto> kosdaqTopLosers) {
 
   private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -116,7 +132,23 @@ public record SummaryDto(
         s.getEffectiveDate(),
         topGainers,
         topLosers,
-        mostMentionedTop);
+        mostMentionedTop,
+        s.getKospiTopGainer(),
+        s.getKospiTopLoser(),
+        s.getKosdaqTopGainer(),
+        s.getKosdaqTopLoser(),
+        s.getKospiTopGainerCode(),
+        s.getKospiTopLoserCode(),
+        s.getKosdaqTopGainerCode(),
+        s.getKosdaqTopLoserCode(),
+        s.getKospiTopGainerRate(),
+        s.getKospiTopLoserRate(),
+        s.getKosdaqTopGainerRate(),
+        s.getKosdaqTopLoserRate(),
+        deserializeLeaderEntries(s.getKospiTopGainersJson()),
+        deserializeLeaderEntries(s.getKospiTopLosersJson()),
+        deserializeLeaderEntries(s.getKosdaqTopGainersJson()),
+        deserializeLeaderEntries(s.getKosdaqTopLosersJson()));
   }
 
   private static List<LeaderEntryDto> deserializeLeaderEntries(String json) {

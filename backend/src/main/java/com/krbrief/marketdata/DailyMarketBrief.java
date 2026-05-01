@@ -18,7 +18,23 @@ public record DailyMarketBrief(
     String effectiveDate,
     List<LeaderEntry> topGainers,
     List<LeaderEntry> topLosers,
-    List<MostMentionedEntry> mostMentionedTop) {
+    List<MostMentionedEntry> mostMentionedTop,
+    String kospiTopGainer,
+    String kospiTopLoser,
+    String kosdaqTopGainer,
+    String kosdaqTopLoser,
+    String kospiTopGainerCode,
+    String kospiTopLoserCode,
+    String kosdaqTopGainerCode,
+    String kosdaqTopLoserCode,
+    Double kospiTopGainerRate,
+    Double kospiTopLoserRate,
+    Double kosdaqTopGainerRate,
+    Double kosdaqTopLoserRate,
+    List<LeaderEntry> kospiTopGainers,
+    List<LeaderEntry> kospiTopLosers,
+    List<LeaderEntry> kosdaqTopGainers,
+    List<LeaderEntry> kosdaqTopLosers) {
 
   public DailyMarketBrief(
       String topGainer,
@@ -43,7 +59,11 @@ public record DailyMarketBrief(
         null,
         List.of(),
         List.of(),
-        List.of());
+        List.of(),
+        null, null, null, null,
+        null, null, null, null,
+        null, null, null, null,
+        List.of(), List.of(), List.of(), List.of());
   }
 
   public DailyMarketBrief(
@@ -73,7 +93,11 @@ public record DailyMarketBrief(
         null,
         List.of(),
         List.of(),
-        List.of());
+        List.of(),
+        null, null, null, null,
+        null, null, null, null,
+        null, null, null, null,
+        List.of(), List.of(), List.of(), List.of());
   }
 
   public record AnomalyCandidate(

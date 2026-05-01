@@ -204,6 +204,23 @@ public class DailySummaryService {
     s.setTopLosersJson(serializeJson(brief.topLosers()));
     s.setMostMentionedTopJson(serializeJson(brief.mostMentionedTop()));
 
+    s.setKospiTopGainer(brief.kospiTopGainer());
+    s.setKospiTopLoser(brief.kospiTopLoser());
+    s.setKosdaqTopGainer(brief.kosdaqTopGainer());
+    s.setKosdaqTopLoser(brief.kosdaqTopLoser());
+    s.setKospiTopGainerCode(brief.kospiTopGainerCode());
+    s.setKospiTopLoserCode(brief.kospiTopLoserCode());
+    s.setKosdaqTopGainerCode(brief.kosdaqTopGainerCode());
+    s.setKosdaqTopLoserCode(brief.kosdaqTopLoserCode());
+    s.setKospiTopGainerRate(brief.kospiTopGainerRate());
+    s.setKospiTopLoserRate(brief.kospiTopLoserRate());
+    s.setKosdaqTopGainerRate(brief.kosdaqTopGainerRate());
+    s.setKosdaqTopLoserRate(brief.kosdaqTopLoserRate());
+    s.setKospiTopGainersJson(serializeJson(brief.kospiTopGainers()));
+    s.setKospiTopLosersJson(serializeJson(brief.kospiTopLosers()));
+    s.setKosdaqTopGainersJson(serializeJson(brief.kosdaqTopGainers()));
+    s.setKosdaqTopLosersJson(serializeJson(brief.kosdaqTopLosers()));
+
     DailySummary saved = repo.save(s);
 
     // Discord webhook auto-post (best-effort, does not affect persistence).
@@ -491,7 +508,23 @@ public class DailySummaryService {
               res.effectiveDate(),
               res.topGainers() == null ? java.util.List.of() : res.topGainers(),
               res.topLosers() == null ? java.util.List.of() : res.topLosers(),
-              res.mostMentionedTop() == null ? java.util.List.of() : res.mostMentionedTop()));
+              res.mostMentionedTop() == null ? java.util.List.of() : res.mostMentionedTop(),
+              res.kospiTopGainer(),
+              res.kospiTopLoser(),
+              res.kosdaqTopGainer(),
+              res.kosdaqTopLoser(),
+              res.kospiTopGainerCode(),
+              res.kospiTopLoserCode(),
+              res.kosdaqTopGainerCode(),
+              res.kosdaqTopLoserCode(),
+              res.kospiTopGainerRate(),
+              res.kospiTopLoserRate(),
+              res.kosdaqTopGainerRate(),
+              res.kosdaqTopLoserRate(),
+              res.kospiTopGainers() == null ? java.util.List.of() : res.kospiTopGainers(),
+              res.kospiTopLosers() == null ? java.util.List.of() : res.kospiTopLosers(),
+              res.kosdaqTopGainers() == null ? java.util.List.of() : res.kosdaqTopGainers(),
+              res.kosdaqTopLosers() == null ? java.util.List.of() : res.kosdaqTopLosers()));
     } catch (Exception e) {
       log.info(
           "pykrx leaders unavailable: date={}, reason={}",
@@ -553,7 +586,23 @@ public class DailySummaryService {
         brief.effectiveDate(),
         brief.topGainers(),
         brief.topLosers(),
-        brief.mostMentionedTop());
+        brief.mostMentionedTop(),
+        brief.kospiTopGainer(),
+        brief.kospiTopLoser(),
+        brief.kosdaqTopGainer(),
+        brief.kosdaqTopLoser(),
+        brief.kospiTopGainerCode(),
+        brief.kospiTopLoserCode(),
+        brief.kosdaqTopGainerCode(),
+        brief.kosdaqTopLoserCode(),
+        brief.kospiTopGainerRate(),
+        brief.kospiTopLoserRate(),
+        brief.kosdaqTopGainerRate(),
+        brief.kosdaqTopLoserRate(),
+        brief.kospiTopGainers(),
+        brief.kospiTopLosers(),
+        brief.kosdaqTopGainers(),
+        brief.kosdaqTopLosers());
   }
 
   private boolean same(String a, String b) {
@@ -633,7 +682,23 @@ public class DailySummaryService {
       java.util.List<DailyMarketBrief.AnomalyCandidate> anomalies,
       String rankingWarning,
       String source,
-      String notes) {}
+      String notes,
+      String kospiTopGainer,
+      String kospiTopLoser,
+      String kosdaqTopGainer,
+      String kosdaqTopLoser,
+      String kospiTopGainerCode,
+      String kospiTopLoserCode,
+      String kosdaqTopGainerCode,
+      String kosdaqTopLoserCode,
+      Double kospiTopGainerRate,
+      Double kospiTopLoserRate,
+      Double kosdaqTopGainerRate,
+      Double kosdaqTopLoserRate,
+      java.util.List<DailyMarketBrief.LeaderEntry> kospiTopGainers,
+      java.util.List<DailyMarketBrief.LeaderEntry> kospiTopLosers,
+      java.util.List<DailyMarketBrief.LeaderEntry> kosdaqTopGainers,
+      java.util.List<DailyMarketBrief.LeaderEntry> kosdaqTopLosers) {}
 
   public LocalDate todaySeoul() {
     return LocalDate.now(ZoneId.of("Asia/Seoul"));
