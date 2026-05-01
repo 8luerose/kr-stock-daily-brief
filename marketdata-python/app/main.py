@@ -409,10 +409,6 @@ def leaders(
             df_kospi = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="KOSPI")
             if df_kospi is not None and len(df_kospi.index) > 0 and "등락률" in df_kospi.columns:
                 kospi_tickers = {t for t in df_kospi.index.tolist() if _is_normal_ticker(t)}
-                df_kospi_filtered = df_kospi[df_kospi.index.map(_is_normal_ticker)]
-                if len(df_kospi_filtered) > 0:
-                    kospi_top_gainer_ticker = df_kospi_filtered["등락률"].idxmax()
-                    kospi_top_loser_ticker = df_kospi_filtered["등락률"].idxmin()
         except Exception:
             pass
 
@@ -420,10 +416,6 @@ def leaders(
             df_kosdaq = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="KOSDAQ")
             if df_kosdaq is not None and len(df_kosdaq.index) > 0 and "등락률" in df_kosdaq.columns:
                 kosdaq_tickers = {t for t in df_kosdaq.index.tolist() if _is_normal_ticker(t)}
-                df_kosdaq_filtered = df_kosdaq[df_kosdaq.index.map(_is_normal_ticker)]
-                if len(df_kosdaq_filtered) > 0:
-                    kosdaq_top_gainer_ticker = df_kosdaq_filtered["등락률"].idxmax()
-                    kosdaq_top_loser_ticker = df_kosdaq_filtered["등락률"].idxmin()
         except Exception:
             pass
 
@@ -510,6 +502,16 @@ def leaders(
         kosdaq_top_gainers = sorted(kosdaq_scored, key=lambda x: x["rate"], reverse=True)[:3]
         kosdaq_top_losers = sorted(kosdaq_scored, key=lambda x: x["rate"])[:3]
 
+        # Derive top1/loser1 from scored lists (consistent with TOP3)
+        kospi_top_gainer_ticker = kospi_top_gainers[0]["code"] if kospi_top_gainers else ""
+        kospi_top_loser_ticker = kospi_top_losers[0]["code"] if kospi_top_losers else ""
+        kosdaq_top_gainer_ticker = kosdaq_top_gainers[0]["code"] if kosdaq_top_gainers else ""
+        kosdaq_top_loser_ticker = kosdaq_top_losers[0]["code"] if kosdaq_top_losers else ""
+        kospi_top_gainer_rate = kospi_top_gainers[0]["rate"] if kospi_top_gainers else 0.0
+        kospi_top_loser_rate = kospi_top_losers[0]["rate"] if kospi_top_losers else 0.0
+        kosdaq_top_gainer_rate = kosdaq_top_gainers[0]["rate"] if kosdaq_top_gainers else 0.0
+        kosdaq_top_loser_rate = kosdaq_top_losers[0]["rate"] if kosdaq_top_losers else 0.0
+
         top_gainer_ticker = top_gainers[0]["code"]
         top_loser_ticker = top_losers[0]["code"]
 
@@ -584,26 +586,12 @@ def leaders(
         else "naver(sise_rise/sise_fall) + naver(item board)"
     )
 
-    # Compute pykrx-based rates for top gainer/loser (consistent source)
-    kospi_top_gainer_rate = 0.0
-    kospi_top_loser_rate = 0.0
-    kosdaq_top_gainer_rate = 0.0
-    kosdaq_top_loser_rate = 0.0
-    if df_change is not None:
-        try:
-            if kospi_top_gainer_ticker and 'df_kospi_filtered' in dir() and len(df_kospi_filtered) > 0:
-                kospi_top_gainer_rate = round(float(df_kospi_filtered.loc[kospi_top_gainer_ticker, "등락률"]), 2)
-            if kospi_top_loser_ticker and 'df_kospi_filtered' in dir() and len(df_kospi_filtered) > 0:
-                kospi_top_loser_rate = round(float(df_kospi_filtered.loc[kospi_top_loser_ticker, "등락률"]), 2)
-        except Exception:
-            pass
-        try:
-            if kosdaq_top_gainer_ticker and 'df_kosdaq_filtered' in dir() and len(df_kosdaq_filtered) > 0:
-                kosdaq_top_gainer_rate = round(float(df_kosdaq_filtered.loc[kosdaq_top_gainer_ticker, "등락률"]), 2)
-            if kosdaq_top_loser_ticker and 'df_kosdaq_filtered' in dir() and len(df_kosdaq_filtered) > 0:
-                kosdaq_top_loser_rate = round(float(df_kosdaq_filtered.loc[kosdaq_top_loser_ticker, "등락률"]), 2)
-        except Exception:
-            pass
+    # Ensure rate variables exist in naver fallback path (df_change is None)
+    if df_change is None:
+        kospi_top_gainer_rate = kospi_top_gainers[0]["rate"] if kospi_top_gainers else 0.0
+        kospi_top_loser_rate = kospi_top_losers[0]["rate"] if kospi_top_losers else 0.0
+        kosdaq_top_gainer_rate = kosdaq_top_gainers[0]["rate"] if kosdaq_top_gainers else 0.0
+        kosdaq_top_loser_rate = kosdaq_top_losers[0]["rate"] if kosdaq_top_losers else 0.0
 
     return {
         "date": date,
