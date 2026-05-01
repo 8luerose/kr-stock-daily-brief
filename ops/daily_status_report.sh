@@ -9,6 +9,13 @@ export DISCORD_WEBHOOK_STATE_PATH="$WORKSPACE/skills/discord-webhook-reporter/st
 
 cd "$PROJECT" || exit 1
 
+# 중복 체크: 오늘 이미 보냈으면 스킵
+LOCK_FILE="/tmp/kr-stock-status-report-$(TZ=Asia/Seoul date +%F).sent"
+if [ -f "$LOCK_FILE" ]; then
+    echo "Already sent today. Skipping."
+    exit 0
+fi
+
 today_kst="$(TZ=Asia/Seoul date +%F)"
 
 status="OK"
@@ -119,6 +126,7 @@ if [ -f "$SEND_WEBHOOK" ] && [ -n "$THREAD_ID" ]; then
     --status "$( [ "$status" = "OK" ] && echo success || echo fail )" \
     --thread-id "$THREAD_ID" \
     2>&1 || { echo "Webhook send failed"; exit 1; }
+  touch "$LOCK_FILE"
 else
   echo -e "$report"
 fi

@@ -379,6 +379,11 @@ def leaders(
     # Leader ranking policy: match NAVER sise_day exactly.
     # Strategy: use pykrx to pick a reasonable candidate set, then compute rates from Naver HTML.
     # If pykrx/KRX blocks (403/empty), fall back to Naver "today" movers so the service keeps working.
+    kospi_top_gainer_ticker = ""
+    kospi_top_loser_ticker = ""
+    kosdaq_top_gainer_ticker = ""
+    kosdaq_top_loser_ticker = ""
+
     try:
         prev = _previous_business_day(effective_ymd)
         df_change = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="ALL")
@@ -387,6 +392,23 @@ def leaders(
             raise ValueError("empty_dataframe")
         if "등락률" not in df_change.columns:
             raise ValueError("missing_column:등락률")
+
+        # KOSPI/KOSDAQ separate top gainers/losers
+        try:
+            df_kospi = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="KOSPI")
+            if df_kospi is not None and len(df_kospi.index) > 0 and "등락률" in df_kospi.columns:
+                kospi_top_gainer_ticker = df_kospi["등락률"].idxmax()
+                kospi_top_loser_ticker = df_kospi["등락률"].idxmin()
+        except Exception:
+            pass
+
+        try:
+            df_kosdaq = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="KOSDAQ")
+            if df_kosdaq is not None and len(df_kosdaq.index) > 0 and "등락률" in df_kosdaq.columns:
+                kosdaq_top_gainer_ticker = df_kosdaq["등락률"].idxmax()
+                kosdaq_top_loser_ticker = df_kosdaq["등락률"].idxmin()
+        except Exception:
+            pass
     except Exception as e:
         today_ymd = datetime.now().strftime("%Y%m%d")
         # If this request is for today, keep the API working even when KRX/pykrx is blocked.
@@ -400,6 +422,12 @@ def leaders(
 
             top_gainer_ticker = top_gainers[0]["code"] if top_gainers else ""
             top_loser_ticker = top_losers[0]["code"] if top_losers else ""
+
+            # KOSPI/KOSDAQ from naver fallback
+            kospi_top_gainer_ticker = kospi_g[0]["code"] if kospi_g else ""
+            kospi_top_loser_ticker = kospi_l[0]["code"] if kospi_l else ""
+            kosdaq_top_gainer_ticker = kosdaq_g[0]["code"] if kosdaq_g else ""
+            kosdaq_top_loser_ticker = kosdaq_l[0]["code"] if kosdaq_l else ""
 
             prev = _previous_business_day(effective_ymd)
             df_change = None
@@ -482,10 +510,25 @@ def leaders(
     if adjust_note:
         notes_parts.append(adjust_note)
 
+    # Fallback: if KOSPI/KOSDAQ separate calls failed, use ALL-market top
+    if not kospi_top_gainer_ticker and isinstance(top_gainer_ticker, str):
+        kospi_top_gainer_ticker = top_gainer_ticker
+    if not kosdaq_top_gainer_ticker and isinstance(top_gainer_ticker, str):
+        kosdaq_top_gainer_ticker = top_gainer_ticker
+    if not kospi_top_loser_ticker and isinstance(top_loser_ticker, str):
+        kospi_top_loser_ticker = top_loser_ticker
+    if not kosdaq_top_loser_ticker and isinstance(top_loser_ticker, str):
+        kosdaq_top_loser_ticker = top_loser_ticker
+
+    kospi_top_gainer_name = _name(kospi_top_gainer_ticker) if kospi_top_gainer_ticker else "-"
+    kospi_top_loser_name = _name(kospi_top_loser_ticker) if kospi_top_loser_ticker else "-"
+    kosdaq_top_gainer_name = _name(kosdaq_top_gainer_ticker) if kosdaq_top_gainer_ticker else "-"
+    kosdaq_top_loser_name = _name(kosdaq_top_loser_ticker) if kosdaq_top_loser_ticker else "-"
+
     notes_parts.append(
         "codes: "
         f"topGainer={top_gainer_ticker}, topLoser={top_loser_ticker}, mostMentioned={most_ticker}, "
-        f"kospiPick={top_gainer_ticker}, kosdaqPick={top_gainer_ticker}"
+        f"kospiPick={kospi_top_gainer_ticker}, kosdaqPick={kosdaq_top_gainer_ticker}"
     )
 
     top_gainer_name = (
@@ -515,8 +558,8 @@ def leaders(
         "topGainer": top_gainer_name,
         "topLoser": top_loser_name,
         "mostMentioned": _name(most_ticker) if most_ticker else "-",
-        "kospiPick": top_gainer_name,
-        "kosdaqPick": top_gainer_name,
+        "kospiPick": kospi_top_gainer_name,
+        "kosdaqPick": kosdaq_top_gainer_name,
         "topGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
         "topLoserCode": top_loser_ticker if isinstance(top_loser_ticker, str) else "",
         "rawTopGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
@@ -524,8 +567,16 @@ def leaders(
         "filteredTopGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
         "filteredTopLoserCode": top_loser_ticker if isinstance(top_loser_ticker, str) else "",
         "mostMentionedCode": most_ticker,
-        "kospiPickCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
-        "kosdaqPickCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
+        "kospiPickCode": kospi_top_gainer_ticker,
+        "kosdaqPickCode": kosdaq_top_gainer_ticker,
+        "kospiTopGainer": kospi_top_gainer_name,
+        "kosdaqTopGainer": kosdaq_top_gainer_name,
+        "kospiTopLoser": kospi_top_loser_name,
+        "kosdaqTopLoser": kosdaq_top_loser_name,
+        "kospiTopGainerCode": kospi_top_gainer_ticker,
+        "kosdaqTopGainerCode": kosdaq_top_gainer_ticker,
+        "kospiTopLoserCode": kospi_top_loser_ticker,
+        "kosdaqTopLoserCode": kosdaq_top_loser_ticker,
         "topGainers": top_gainers,
         "topLosers": top_losers,
         "mostMentionedTop": most_mentioned_list,
