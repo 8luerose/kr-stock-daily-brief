@@ -374,16 +374,10 @@ def leaders(
     mentionsUniverse: int = 200,
     mentionsMaxPages: int = 3,
     mentionsTimeoutSeconds: float = 15.0,
-    leaderCandidateN: int = 400,
-    leaderMaxSisePages: int = 3,
-    leaderTimeoutSeconds: float = 25.0,
 ):
     requested_ymd = _parse_date(date)
     effective_ymd, adjust_note = _effective_business_day_or_previous(requested_ymd)
 
-    # Leader ranking policy: match NAVER sise_day exactly.
-    # Strategy: use pykrx to pick a reasonable candidate set, then compute rates from Naver HTML.
-    # If pykrx/KRX blocks (403/empty), fall back to Naver "today" movers so the service keeps working.
     kospi_top_gainer_ticker = ""
     kospi_top_loser_ticker = ""
     kosdaq_top_gainer_ticker = ""
@@ -392,130 +386,69 @@ def leaders(
     kospi_top_losers: list[dict] = []
     kosdaq_top_gainers: list[dict] = []
     kosdaq_top_losers: list[dict] = []
+    top_gainers: list[dict] = []
+    top_losers: list[dict] = []
+    top_gainer_ticker = ""
+    top_loser_ticker = ""
+    kospi_top_gainer_rate = 0.0
+    kospi_top_loser_rate = 0.0
+    kosdaq_top_gainer_rate = 0.0
+    kosdaq_top_loser_rate = 0.0
+    df_change = None
+    prev = ""
 
     try:
         prev = _previous_business_day(effective_ymd)
-        df_change = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="ALL")
 
-        if df_change is None or len(df_change.index) == 0:
+        # --- pykrx primary path ---
+        def _build_ranking(market: str) -> tuple[list[dict], list[dict]]:
+            df = stock.get_market_price_change_by_ticker(prev, effective_ymd, market=market)
+            if df is None or len(df.index) == 0 or "등락률" not in df.columns:
+                return [], []
+            df = df[df.index.map(lambda t: _is_normal_ticker(t))]
+            return _top_rate_lists(df, n=3)
+
+        kospi_top_gainers, kospi_top_losers = _build_ranking("KOSPI")
+        kosdaq_top_gainers, kosdaq_top_losers = _build_ranking("KOSDAQ")
+        top_gainers, top_losers = _build_ranking("ALL")
+
+        if not kospi_top_gainers and not kosdaq_top_gainers and not top_gainers:
             raise ValueError("empty_dataframe")
-        if "등락률" not in df_change.columns:
-            raise ValueError("missing_column:등락률")
 
-        # KOSPI/KOSDAQ separate top gainers/losers
-        kospi_tickers: set[str] = set()
-        kosdaq_tickers: set[str] = set()
-        try:
-            df_kospi = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="KOSPI")
-            if df_kospi is not None and len(df_kospi.index) > 0 and "등락률" in df_kospi.columns:
-                kospi_tickers = {t for t in df_kospi.index.tolist() if _is_normal_ticker(t)}
-        except Exception:
-            pass
+        df_change = True  # sentinel: pykrx succeeded
 
-        try:
-            df_kosdaq = stock.get_market_price_change_by_ticker(prev, effective_ymd, market="KOSDAQ")
-            if df_kosdaq is not None and len(df_kosdaq.index) > 0 and "등락률" in df_kosdaq.columns:
-                kosdaq_tickers = {t for t in df_kosdaq.index.tolist() if _is_normal_ticker(t)}
-        except Exception:
-            pass
-
-        # If separate calls failed, derive from ALL set
-        if not kospi_tickers and not kosdaq_tickers:
-            kospi_tickers = set(df_change.index.tolist())  # fallback: treat all as kospi
-            kosdaq_tickers = set()
     except Exception as e:
         today_ymd = datetime.now().strftime("%Y%m%d")
-        # If this request is for today, keep the API working even when KRX/pykrx is blocked.
         if requested_ymd == today_ymd:
             # Fallback (today only): use Naver sise_rise/sise_fall pages.
+            prev = _previous_business_day(effective_ymd)
             kospi_g, kospi_l = _naver_today_movers(0)
             kosdaq_g, kosdaq_l = _naver_today_movers(1)
 
             top_gainers = (kospi_g + kosdaq_g)[:3]
             top_losers = (kospi_l + kosdaq_l)[:3]
-
-            top_gainer_ticker = top_gainers[0]["code"] if top_gainers else ""
-            top_loser_ticker = top_losers[0]["code"] if top_losers else ""
-
-            # KOSPI/KOSDAQ from naver fallback
-            kospi_top_gainer_ticker = kospi_g[0]["code"] if kospi_g else ""
-            kospi_top_loser_ticker = kospi_l[0]["code"] if kospi_l else ""
-            kosdaq_top_gainer_ticker = kosdaq_g[0]["code"] if kosdaq_g else ""
-            kosdaq_top_loser_ticker = kosdaq_l[0]["code"] if kosdaq_l else ""
-
             kospi_top_gainers = kospi_g[:3]
             kospi_top_losers = kospi_l[:3]
             kosdaq_top_gainers = kosdaq_g[:3]
             kosdaq_top_losers = kosdaq_l[:3]
-
-            prev = _previous_business_day(effective_ymd)
             df_change = None
         else:
             raise HTTPException(status_code=502, detail=f"pykrx_error: {e}") from e
 
-    if df_change is not None:
-        # Candidate pool size: larger by default for higher accuracy (avoid missing true Naver top3
-        # when KRX-derived rate differs for some tickers).
-        candidate_n = max(20, min(int(leaderCandidateN), 2000))
-        candidates = set(df_change["등락률"].nlargest(candidate_n).index.tolist())
-        candidates.update(df_change["등락률"].nsmallest(candidate_n).index.tolist())
+    # Derive top1 tickers/rates from TOP3 lists (consistent by construction)
+    kospi_top_gainer_ticker = kospi_top_gainers[0]["code"] if kospi_top_gainers else ""
+    kospi_top_loser_ticker = kospi_top_losers[0]["code"] if kospi_top_losers else ""
+    kosdaq_top_gainer_ticker = kosdaq_top_gainers[0]["code"] if kosdaq_top_gainers else ""
+    kosdaq_top_loser_ticker = kosdaq_top_losers[0]["code"] if kosdaq_top_losers else ""
+    top_gainer_ticker = top_gainers[0]["code"] if top_gainers else ""
+    top_loser_ticker = top_losers[0]["code"] if top_losers else ""
 
-        max_pages = max(1, min(int(leaderMaxSisePages), 30))
-        time_budget = max(3.0, min(float(leaderTimeoutSeconds), 120.0))
+    kospi_top_gainer_rate = kospi_top_gainers[0]["rate"] if kospi_top_gainers else 0.0
+    kospi_top_loser_rate = kospi_top_losers[0]["rate"] if kospi_top_losers else 0.0
+    kosdaq_top_gainer_rate = kosdaq_top_gainers[0]["rate"] if kosdaq_top_gainers else 0.0
+    kosdaq_top_loser_rate = kosdaq_top_losers[0]["rate"] if kosdaq_top_losers else 0.0
 
-        # Compute Naver rate for candidates (parallel for latency)
-        scored = []
-        started = time.time()
-        max_workers = 32
-
-        def _score_one(code: str):
-            r = _naver_sise_day_rate(code, effective_ymd, max_pages=max_pages)
-            if r is None:
-                return None
-            return {"code": code, "name": _name(code), "rate": round(r, 2)}
-
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futs = {ex.submit(_score_one, c): c for c in candidates}
-            for fut in as_completed(futs):
-                if time.time() - started > time_budget:
-                    break
-                try:
-                    v = fut.result()
-                except Exception:
-                    v = None
-                if v is not None:
-                    scored.append(v)
-
-        if not scored:
-            raise HTTPException(status_code=502, detail="naver_rate_empty")
-
-        scored_sorted = sorted(scored, key=lambda x: x["rate"], reverse=True)
-        top_gainers = scored_sorted[:3]
-        top_losers = list(sorted(scored, key=lambda x: x["rate"]))[:3]
-
-        # KOSPI/KOSDAQ separate TOP3
-        kospi_scored = [s for s in scored if s["code"] in kospi_tickers] if kospi_tickers else scored
-        kosdaq_scored = [s for s in scored if s["code"] in kosdaq_tickers] if kosdaq_tickers else []
-
-        kospi_top_gainers = sorted(kospi_scored, key=lambda x: x["rate"], reverse=True)[:3]
-        kospi_top_losers = sorted(kospi_scored, key=lambda x: x["rate"])[:3]
-        kosdaq_top_gainers = sorted(kosdaq_scored, key=lambda x: x["rate"], reverse=True)[:3]
-        kosdaq_top_losers = sorted(kosdaq_scored, key=lambda x: x["rate"])[:3]
-
-        # Derive top1/loser1 from scored lists (consistent with TOP3)
-        kospi_top_gainer_ticker = kospi_top_gainers[0]["code"] if kospi_top_gainers else ""
-        kospi_top_loser_ticker = kospi_top_losers[0]["code"] if kospi_top_losers else ""
-        kosdaq_top_gainer_ticker = kosdaq_top_gainers[0]["code"] if kosdaq_top_gainers else ""
-        kosdaq_top_loser_ticker = kosdaq_top_losers[0]["code"] if kosdaq_top_losers else ""
-        kospi_top_gainer_rate = kospi_top_gainers[0]["rate"] if kospi_top_gainers else 0.0
-        kospi_top_loser_rate = kospi_top_losers[0]["rate"] if kospi_top_losers else 0.0
-        kosdaq_top_gainer_rate = kosdaq_top_gainers[0]["rate"] if kosdaq_top_gainers else 0.0
-        kosdaq_top_loser_rate = kosdaq_top_losers[0]["rate"] if kosdaq_top_losers else 0.0
-
-        top_gainer_ticker = top_gainers[0]["code"]
-        top_loser_ticker = top_losers[0]["code"]
-
-    # Mentions universe
+    # Mentions universe (naver board posts — unchanged)
     try:
         universe = _top_traded_value_universe(effective_ymd, n=max(1, min(mentionsUniverse, 2000)))
     except Exception:
@@ -530,68 +463,28 @@ def leaders(
     )
     most_ticker = most_mentioned_list[0]["code"] if most_mentioned_list else ""
 
-    source_line = (
-        "Source: pykrx(KRX historical change)"
-        if df_change is not None
-        else "Source: naver(sise_rise/sise_fall) [today fallback; KRX blocked]"
-    )
-
-    notes_parts = [
-        source_line,
-        f"effective_date={effective_ymd}",
-        f"prev_date={prev}",
-        "mostMentioned=naver_board_posts(universe=traded_value_topN)",
-        f"mentions_universe_size={len(universe)}",
-        f"mentions_max_pages={mentionsMaxPages}",
-        f"mentions_timeout_seconds={mentionsTimeoutSeconds}",
-    ]
-    if adjust_note:
-        notes_parts.append(adjust_note)
-
-    # Fallback: if KOSPI/KOSDAQ separate calls failed, use ALL-market top
-    if not kospi_top_gainer_ticker and isinstance(top_gainer_ticker, str):
-        kospi_top_gainer_ticker = top_gainer_ticker
-    if not kosdaq_top_gainer_ticker and isinstance(top_gainer_ticker, str):
-        kosdaq_top_gainer_ticker = top_gainer_ticker
-    if not kospi_top_loser_ticker and isinstance(top_loser_ticker, str):
-        kospi_top_loser_ticker = top_loser_ticker
-    if not kosdaq_top_loser_ticker and isinstance(top_loser_ticker, str):
-        kosdaq_top_loser_ticker = top_loser_ticker
-
     kospi_top_gainer_name = _name(kospi_top_gainer_ticker) if kospi_top_gainer_ticker else "-"
     kospi_top_loser_name = _name(kospi_top_loser_ticker) if kospi_top_loser_ticker else "-"
     kosdaq_top_gainer_name = _name(kosdaq_top_gainer_ticker) if kosdaq_top_gainer_ticker else "-"
     kosdaq_top_loser_name = _name(kosdaq_top_loser_ticker) if kosdaq_top_loser_ticker else "-"
-
-    notes_parts.append(
-        "codes: "
-        f"topGainer={top_gainer_ticker}, topLoser={top_loser_ticker}, mostMentioned={most_ticker}, "
-        f"kospiPick={kospi_top_gainer_ticker}, kosdaqPick={kosdaq_top_gainer_ticker}"
-    )
-
-    top_gainer_name = (
-        _name(top_gainer_ticker)
-        if isinstance(top_gainer_ticker, str) and top_gainer_ticker
-        else (top_gainers[0].get("name") if top_gainers else "-")
-    )
-    top_loser_name = (
-        _name(top_loser_ticker)
-        if isinstance(top_loser_ticker, str) and top_loser_ticker
-        else (top_losers[0].get("name") if top_losers else "-")
-    )
+    top_gainer_name = top_gainers[0]["name"] if top_gainers else "-"
+    top_loser_name = top_losers[0]["name"] if top_losers else "-"
 
     source = (
-        "pykrx(KRX historical change) + naver(item board)"
+        "pykrx(KRX) + naver(board posts)"
         if df_change is not None
-        else "naver(sise_rise/sise_fall) + naver(item board)"
+        else "naver(sise_rise/sise_fall) + naver(board posts)"
     )
 
-    # Ensure rate variables exist in naver fallback path (df_change is None)
-    if df_change is None:
-        kospi_top_gainer_rate = kospi_top_gainers[0]["rate"] if kospi_top_gainers else 0.0
-        kospi_top_loser_rate = kospi_top_losers[0]["rate"] if kospi_top_losers else 0.0
-        kosdaq_top_gainer_rate = kosdaq_top_gainers[0]["rate"] if kosdaq_top_gainers else 0.0
-        kosdaq_top_loser_rate = kosdaq_top_losers[0]["rate"] if kosdaq_top_losers else 0.0
+    notes_parts = [
+        f"source={source}",
+        f"effective_date={effective_ymd}",
+        f"prev_date={prev}",
+        "mostMentioned=naver_board_posts(universe=traded_value_topN)",
+        f"mentions_universe_size={len(universe)}",
+    ]
+    if adjust_note:
+        notes_parts.append(adjust_note)
 
     return {
         "date": date,
@@ -605,12 +498,12 @@ def leaders(
         "mostMentioned": _name(most_ticker) if most_ticker else "-",
         "kospiPick": kospi_top_gainer_name,
         "kosdaqPick": kosdaq_top_gainer_name,
-        "topGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
-        "topLoserCode": top_loser_ticker if isinstance(top_loser_ticker, str) else "",
-        "rawTopGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
-        "rawTopLoserCode": top_loser_ticker if isinstance(top_loser_ticker, str) else "",
-        "filteredTopGainerCode": top_gainer_ticker if isinstance(top_gainer_ticker, str) else "",
-        "filteredTopLoserCode": top_loser_ticker if isinstance(top_loser_ticker, str) else "",
+        "topGainerCode": top_gainer_ticker,
+        "topLoserCode": top_loser_ticker,
+        "rawTopGainerCode": top_gainer_ticker,
+        "rawTopLoserCode": top_loser_ticker,
+        "filteredTopGainerCode": top_gainer_ticker,
+        "filteredTopLoserCode": top_loser_ticker,
         "mostMentionedCode": most_ticker,
         "kospiPickCode": kospi_top_gainer_ticker,
         "kosdaqPickCode": kosdaq_top_gainer_ticker,
