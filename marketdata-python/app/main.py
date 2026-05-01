@@ -302,17 +302,40 @@ def _naver_today_movers(sosok: int) -> tuple[list[dict], list[dict]]:
     return gainers, losers
 
 
-def _top_rate_lists(df, n: int = 3) -> tuple[list[dict], list[dict]]:
-    gainers = []
-    losers = []
-
-    for ticker, row in df["등락률"].nlargest(n).items():
-        gainers.append({"code": ticker, "name": _name(ticker), "rate": round(_safe_float(row), 2)})
-
-    for ticker, row in df["등락률"].nsmallest(n).items():
-        losers.append({"code": ticker, "name": _name(ticker), "rate": round(_safe_float(row), 2)})
-
+def _top_rate_lists_from_rates(rates: dict, universe: set[str] | None = None, n: int = 3) -> tuple[list[dict], list[dict]]:
+    """Build top gainers/losers from a pre-calculated {ticker: rate} dict."""
+    filtered = {t: r for t, r in rates.items() if universe is None or t in universe}
+    if not filtered:
+        return [], []
+    sorted_items = sorted(filtered.items(), key=lambda x: x[1], reverse=True)
+    gainers = [{"code": t, "name": _name(t), "rate": r} for t, r in sorted_items[:n]]
+    losers = [{"code": t, "name": _name(t), "rate": r} for t, r in sorted_items[-n:]][::-1]
     return gainers, losers
+
+
+def _calc_prev_close_rate(eff_ymd: str, prev_ymd: str) -> dict:
+    """eff_ymd의 전일대비 등락률을 모든 종목에 대해 계산.
+    OHLCV에서 전일종가와 당일종가를 읽어서 직접 계산.
+    returns: {ticker: rate} dict
+    """
+    rates = {}
+    for market in ("KOSPI", "KOSDAQ"):
+        market_tickers = stock.get_market_ticker_list(eff_ymd, market=market)
+        if not market_tickers:
+            continue
+        try:
+            df = stock.get_market_ohlcv_by_ticker(eff_ymd, market=market)
+            df_prev = stock.get_market_ohlcv_by_ticker(prev_ymd, market=market)
+            if df is not None and df_prev is not None:
+                for ticker in market_tickers:
+                    if _is_normal_ticker(ticker) and ticker in df.index and ticker in df_prev.index:
+                        curr_close = df.loc[ticker, "종가"]
+                        prev_close_val = df_prev.loc[ticker, "종가"]
+                        if prev_close_val and prev_close_val > 0:
+                            rates[ticker] = round((curr_close - prev_close_val) / prev_close_val * 100, 2)
+        except Exception:
+            pass
+    return rates
 
 
 def _top_traded_value_universe(ymd: str, n: int = 200) -> list[str]:
@@ -401,16 +424,20 @@ def leaders(
         prev = _previous_business_day(effective_ymd)
 
         # --- pykrx primary path ---
-        def _build_ranking(market: str) -> tuple[list[dict], list[dict]]:
-            df = stock.get_market_price_change_by_ticker(prev, effective_ymd, market=market)
-            if df is None or len(df.index) == 0 or "등락률" not in df.columns:
-                return [], []
-            df = df[df.index.map(lambda t: _is_normal_ticker(t))]
-            return _top_rate_lists(df, n=3)
+        # Use OHLCV-based previous-close rate instead of pykrx's "등락률"
+        # (which uses KRX's "비교 기준가", not the actual previous close)
+        rates = _calc_prev_close_rate(effective_ymd, prev)
 
-        kospi_top_gainers, kospi_top_losers = _build_ranking("KOSPI")
-        kosdaq_top_gainers, kosdaq_top_losers = _build_ranking("KOSDAQ")
-        top_gainers, top_losers = _build_ranking("ALL")
+        if not rates:
+            raise ValueError("empty_rates")
+
+        # Get ticker sets for each market
+        kospi_tickers = set(stock.get_market_ticker_list(effective_ymd, market="KOSPI"))
+        kosdaq_tickers = set(stock.get_market_ticker_list(effective_ymd, market="KOSDAQ"))
+
+        kospi_top_gainers, kospi_top_losers = _top_rate_lists_from_rates(rates, kospi_tickers, n=3)
+        kosdaq_top_gainers, kosdaq_top_losers = _top_rate_lists_from_rates(rates, kosdaq_tickers, n=3)
+        top_gainers, top_losers = _top_rate_lists_from_rates(rates, n=3)
 
         if not kospi_top_gainers and not kosdaq_top_gainers and not top_gainers:
             raise ValueError("empty_dataframe")
@@ -471,7 +498,7 @@ def leaders(
     top_loser_name = top_losers[0]["name"] if top_losers else "-"
 
     source = (
-        "pykrx(KRX) + naver(board posts)"
+        "pykrx(KRX OHLCV 전일대비 계산) + naver(board posts)"
         if df_change is not None
         else "naver(sise_rise/sise_fall) + naver(board posts)"
     )
