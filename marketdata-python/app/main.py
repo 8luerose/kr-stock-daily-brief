@@ -394,6 +394,37 @@ def health():
     return {"status": "UP"}
 
 
+@app.get("/market-status")
+def market_status(date: str):
+    """Check if a given date is a Korean stock market business day.
+
+    Returns {"isBusinessDay": true/false, "reason": "..."}.
+    """
+    requested_ymd = _parse_date(date)
+    d = datetime.strptime(requested_ymd, "%Y%m%d").date()
+
+    # Weekend check
+    if d.weekday() >= 5:
+        day_name = "토요일" if d.weekday() == 5 else "일요일"
+        return {"isBusinessDay": False, "reason": f"weekend ({day_name})"}
+
+    # pykrx business day check
+    try:
+        bdays = stock.get_business_days_dates(d, d)
+        if len(bdays) == 0:
+            return {"isBusinessDay": False, "reason": "holiday"}
+    except Exception:
+        # Fallback: check if OHLCV data exists
+        try:
+            df = stock.get_market_ohlcv_by_ticker(requested_ymd, market="ALL")
+            if df is None or len(df.index) == 0:
+                return {"isBusinessDay": False, "reason": "holiday (no OHLCV data)"}
+        except Exception:
+            return {"isBusinessDay": False, "reason": "unknown (pykrx unavailable)"}
+
+    return {"isBusinessDay": True, "reason": "business_day"}
+
+
 @app.get("/leaders")
 def leaders(
     date: str,
