@@ -408,17 +408,18 @@ def market_status(date: str):
         day_name = "토요일" if d.weekday() == 5 else "일요일"
         return {"isBusinessDay": False, "reason": f"weekend ({day_name})"}
 
-    # pykrx business day check
+    # Use OHLCV data to determine if it's a business day
+    # If 삼성전자(005930) has no data for this date, it's a holiday
     try:
-        bdays = stock.get_business_days_dates(d, d)
-        if len(bdays) == 0:
+        df = stock.get_market_ohlcv(requested_ymd, requested_ymd, "005930")
+        if df is None or len(df) == 0:
             return {"isBusinessDay": False, "reason": "holiday"}
     except Exception:
-        # Fallback: check if OHLCV data exists
         try:
-            df = stock.get_market_ohlcv_by_ticker(requested_ymd, market="ALL")
-            if df is None or len(df.index) == 0:
-                return {"isBusinessDay": False, "reason": "holiday (no OHLCV data)"}
+            # Fallback: try OHLCV by ticker
+            df2 = stock.get_market_ohlcv_by_ticker(requested_ymd, market="KOSPI")
+            if df2 is None or len(df2.index) == 0:
+                return {"isBusinessDay": False, "reason": "holiday"}
         except Exception:
             return {"isBusinessDay": False, "reason": "unknown (pykrx unavailable)"}
 
