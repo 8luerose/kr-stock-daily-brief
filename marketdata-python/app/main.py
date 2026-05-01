@@ -332,7 +332,10 @@ def _calc_prev_close_rate(eff_ymd: str, prev_ymd: str) -> dict:
                         curr_close = df.loc[ticker, "종가"]
                         prev_close_val = df_prev.loc[ticker, "종가"]
                         if prev_close_val and prev_close_val > 0:
-                            rates[ticker] = round((curr_close - prev_close_val) / prev_close_val * 100, 2)
+                            prev_vol = df_prev.loc[ticker, "거래량"] if "거래량" in df_prev.columns else 0
+                            curr_vol = df.loc[ticker, "거래량"] if "거래량" in df.columns else 0
+                            if prev_vol > 0 and curr_vol > 0:
+                                rates[ticker] = round((curr_close - prev_close_val) / prev_close_val * 100, 2)
         except Exception:
             pass
     return rates
