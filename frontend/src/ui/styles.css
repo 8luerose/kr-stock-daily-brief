@@ -241,6 +241,33 @@ body {
   gap: 10px;
 }
 
+.appNav {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.appNav button {
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 9px 11px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.appNav button.active,
+.appNav button:hover {
+  background: var(--accent);
+  color: white;
+}
+
 .themeToggle {
   width: 44px;
   height: 44px;
@@ -303,6 +330,20 @@ body {
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 16px;
   align-items: start;
+}
+
+.main.researchLayout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.main.singleLayout {
+  display: block;
+}
+
+.main.singleLayout .sideStack {
+  display: grid;
+  max-width: 920px;
+  margin: 0 auto;
 }
 
 .sideStack {

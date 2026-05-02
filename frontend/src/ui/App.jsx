@@ -178,7 +178,16 @@ function formatRate(value) {
 
 function stockRouteHash(stock) {
   if (!stock?.code) return "#stock";
-  return `#stock-${stock.code}`;
+  return `#research-stock-${stock.code}`;
+}
+
+function pageFromHash(hash) {
+  const value = (hash || "").replace(/^#/, "");
+  if (value.startsWith("research")) return "research";
+  if (value === "learning") return "learning";
+  if (value === "portfolio") return "portfolio";
+  if (value === "admin") return "admin";
+  return "home";
 }
 
 function stockFromEntry(item, group) {
@@ -615,6 +624,7 @@ export default function App() {
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const k = urlParams.get("k") || "";
   const adminKey = urlParams.get("adminKey") || urlParams.get("ak") || "";
+  const [activePage, setActivePage] = useState(() => pageFromHash(window.location.hash));
 
   const [darkMode, setDarkMode] = useState(() => {
     try {
@@ -843,6 +853,7 @@ export default function App() {
 
   function selectStock(stock) {
     if (!stock) return;
+    setActivePage("research");
     setSelectedStock(stock);
     if (stock.code) {
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${stockRouteHash(stock)}`);
@@ -1106,12 +1117,18 @@ export default function App() {
       return;
     }
 
-    const hashCode = window.location.hash.startsWith("#stock-")
-      ? window.location.hash.replace("#stock-", "")
+    const hashCode = window.location.hash.startsWith("#research-stock-")
+      ? window.location.hash.replace("#research-stock-", "")
       : "";
     const matched = hashCode ? stockPicks.find((stock) => stock.code === hashCode) : null;
     setSelectedStock(matched || stockPicks[0]);
   }, [stockPicks]);
+
+  useEffect(() => {
+    const onHashChange = () => setActivePage(pageFromHash(window.location.hash));
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   useEffect(() => {
     setAiResearchResponse(null);
@@ -1120,6 +1137,20 @@ export default function App() {
   }, [currentStock?.code, stockInterval]);
 
   const todayStr = useMemo(() => isoDate(new Date()), []);
+  const navItems = [
+    ["home", "브리프"],
+    ["research", "종목 리서치"],
+    ["learning", "학습"],
+    ["portfolio", "포트폴리오"],
+    ["admin", "운영"]
+  ];
+
+  function navigatePage(page) {
+    setActivePage(page);
+    const hash = page === "home" ? "#home" : `#${page}`;
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
+  }
+
   const assistantPanel = (
     <div className="assistantBox heroAssistant">
       <div className="assistantHead">
@@ -1197,6 +1228,18 @@ export default function App() {
           <div className="brandSub">{COPY.productTagline}</div>
         </div>
         <div className="actions">
+          <nav className="appNav" aria-label="주요 화면">
+            {navItems.map(([page, label]) => (
+              <button
+                key={page}
+                type="button"
+                className={activePage === page ? "active" : ""}
+                onClick={() => navigatePage(page)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
           <button className="btn ghost" onClick={jumpToLatest} disabled={loading}>
             {COPY.moveToLatest}
           </button>
@@ -1210,6 +1253,7 @@ export default function App() {
         </div>
       </header>
 
+      {activePage === "home" ? (
       <section className="marketHero">
         <div className="marketHeroMain">
           <div className="eyebrow">{COPY.todayBrief}</div>
@@ -1250,9 +1294,11 @@ export default function App() {
           })}
         </div>
       </section>
+      ) : null}
 
-      {assistantPanel}
+      {(activePage === "home" || activePage === "learning") ? assistantPanel : null}
 
+      {activePage === "home" ? (
       <section className="card overview">
         <div className="overviewItem">
           <span className="label">{COPY.cumulativeSummaries}</span>
@@ -1267,7 +1313,9 @@ export default function App() {
           <strong>{stats?.latestUpdatedAt ?? "-"}</strong>
         </div>
       </section>
+      ) : null}
 
+      {activePage === "home" ? (
       <section className="card overview insights">
         <div className="overviewItem">
           <span className="label">{COPY.monthlyTotalDays}</span>
@@ -1290,9 +1338,12 @@ export default function App() {
           </strong>
         </div>
       </section>
+      ) : null}
 
-      <main className="main">
+      {activePage !== "home" ? (
+      <main className={`main ${activePage === "research" ? "researchLayout" : "singleLayout"}`}>
         <div className="sideStack">
+        {activePage === "admin" ? (
         <section className="card adminPanel">
           <button
             type="button"
@@ -1306,7 +1357,7 @@ export default function App() {
             </span>
             <span>{showAdminPanel ? COPY.closeAdmin : COPY.openAdmin}</span>
           </button>
-          {showAdminPanel ? (
+          {(showAdminPanel || activePage === "admin") ? (
             <div className="adminBody">
               <div className="adminDateRow">
                 <label className="fieldLabel" htmlFor="selected-date">{COPY.selectedDate}</label>
@@ -1349,7 +1400,9 @@ export default function App() {
             </div>
           ) : null}
         </section>
+        ) : null}
 
+        {activePage === "admin" ? (
         <section className="card calendar">
           <div className="calendarHead">
             <button className="btn ghost" onClick={() => setMonth(addMonths(month, -1))}>
@@ -1395,7 +1448,9 @@ export default function App() {
             })}
           </div>
         </section>
+        ) : null}
 
+        {activePage === "learning" ? (
         <section className="card learningPanel">
           <div className="panelHead">
             <div>
@@ -1496,7 +1551,9 @@ export default function App() {
             </div>
           ) : null}
         </section>
+        ) : null}
 
+        {activePage === "portfolio" ? (
         <section className="card portfolioPanel">
           <div className="panelHead">
             <div>
@@ -1544,8 +1601,10 @@ export default function App() {
             <small>총 가상 비중 {portfolioSummary.totalWeight}% · 최대 비중 {portfolioSummary.maxItem?.name || "-"} {portfolioSummary.maxItem?.weight || 0}%</small>
           </div>
         </section>
+        ) : null}
         </div>
 
+        {activePage === "research" ? (
         <section className="card detail">
           <div className="detailHead">
             <div>
@@ -2056,7 +2115,9 @@ export default function App() {
             </div>
           ) : null}
         </section>
+        ) : null}
       </main>
+      ) : null}
     </div>
   );
 }
