@@ -634,6 +634,69 @@ function LinkOrDash({ href, label }) {
   );
 }
 
+function EvidenceLinks({ links }) {
+  if (links.length === 0) return <span>-</span>;
+  return links.map((link, idx) => (
+    <React.Fragment key={link.href}>
+      {idx > 0 ? " | " : ""}
+      <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
+    </React.Fragment>
+  ));
+}
+
+function LeaderMetricCard({ label, value, explanation, links }) {
+  return (
+    <div className="kvItem">
+      <span>{label}</span>
+      <strong>{valueOrDash(value)}</strong>
+      {explanation ? (
+        <div className={`leaderExplanation ${explanation.level}`}>
+          <div>{explanation.summary}</div>
+          <div className="leaderLinks">
+            {COPY.evidenceLinks}: <EvidenceLinks links={links} />
+          </div>
+        </div>
+      ) : (
+        <div className="leaderLinks">
+          {COPY.evidenceLinks}: <EvidenceLinks links={links} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TopListColumn({ title, items, group, valueType, effectiveDate, onSelect }) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="topList">
+      <h4>{title}</h4>
+      <ul>
+        {items.map((item, idx) => {
+          const stock = stockFromEntry(item, group);
+          return (
+            <li key={item.code || idx}>
+              <button type="button" className="topListButton" onClick={() => onSelect(stock)}>
+                <span className="itemName">{item.name}({item.code})</span>
+                {valueType === "count" ? (
+                  <span className="itemCount">{formatNumber(item.count)}{COPY.postCount}</span>
+                ) : (
+                  <span className={`itemRate ${Number(item.rate) < 0 ? "loss" : "gain"}`}>{formatRate(item.rate)}</span>
+                )}
+              </button>
+              <span className="itemLinks">
+                {buildNaverLinks(item.code, effectiveDate).map((link) => (
+                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
+                ))}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function resolveApiLink(href, apiBaseUrl, k) {
   if (!href) return "";
   if (href.startsWith("http://") || href.startsWith("https://")) {
@@ -792,7 +855,7 @@ export default function App() {
     [learningTerms]
   );
   const visibleTerms = useMemo(
-    () => learningTerms.filter((term) => termMatches(term, termQuery, selectedCategory)).slice(0, 12),
+    () => learningTerms.filter((term) => termMatches(term, termQuery, selectedCategory)).slice(0, 80),
     [learningTerms, termQuery, selectedCategory]
   );
   const selectedTerm = useMemo(
@@ -1225,9 +1288,9 @@ export default function App() {
 
   const todayStr = useMemo(() => isoDate(new Date()), []);
   const navItems = [
-    ["home", "브리프"],
-    ["research", "종목 리서치"],
-    ["learning", "학습"],
+    ["home", "오늘"],
+    ["research", "차트"],
+    ["learning", "배우기"],
     ["portfolio", "포트폴리오"],
     ["admin", "운영"]
   ];
@@ -1577,66 +1640,68 @@ export default function App() {
             ))}
           </div>
 
-          {visibleTerms.length === 0 ? (
-            <div className="empty compact">{COPY.noTerms}</div>
-          ) : (
-            <div className="termList">
-              {visibleTerms.map((term) => (
-                <button
-                  type="button"
-                  key={term.id}
-                  className={`termButton ${selectedTerm?.id === term.id ? "active" : ""}`}
-                  onClick={() => selectTerm(term)}
-                >
-                  <span>{term.term}</span>
-                  <small>{term.category}</small>
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="learningGrid">
+            {visibleTerms.length === 0 ? (
+              <div className="empty compact">{COPY.noTerms}</div>
+            ) : (
+              <div className="termList">
+                {visibleTerms.map((term) => (
+                  <button
+                    type="button"
+                    key={term.id}
+                    className={`termButton ${selectedTerm?.id === term.id ? "active" : ""}`}
+                    onClick={() => selectTerm(term)}
+                  >
+                    <span>{term.term}</span>
+                    <small>{term.category}</small>
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {selectedTerm ? (
-            <div className="termDetail">
-              <div className="termCategory">{selectedTerm.category}</div>
-              <h3>{selectedTerm.term}</h3>
-              <p>{selectedTerm.plainDefinition}</p>
-              <div className="termInfo">
-                <strong>{COPY.whyItMatters}</strong>
-                <span>{selectedTerm.whyItMatters}</span>
-              </div>
-              <div className="termInfo">
-                <strong>{COPY.beginnerCheck}</strong>
-                <span>{selectedTerm.beginnerCheck}</span>
-              </div>
-              <div className="termInfo caution">
-                <strong>{COPY.caution}</strong>
-                <span>{selectedTerm.caution}</span>
-              </div>
-              <div className="relatedTerms">
-                <span>{COPY.relatedTerms}</span>
-                <div>
-                  {asArray(selectedTerm.relatedTerms).slice(0, 5).map((term) => (
-                    <button type="button" key={term} onClick={() => setTermQuery(term)}>
-                      {term}
+            {selectedTerm ? (
+              <div className="termDetail">
+                <div className="termCategory">{selectedTerm.category}</div>
+                <h3>{selectedTerm.term}</h3>
+                <p>{selectedTerm.plainDefinition}</p>
+                <div className="termInfo">
+                  <strong>{COPY.whyItMatters}</strong>
+                  <span>{selectedTerm.whyItMatters}</span>
+                </div>
+                <div className="termInfo">
+                  <strong>{COPY.beginnerCheck}</strong>
+                  <span>{selectedTerm.beginnerCheck}</span>
+                </div>
+                <div className="termInfo caution">
+                  <strong>{COPY.caution}</strong>
+                  <span>{selectedTerm.caution}</span>
+                </div>
+                <div className="relatedTerms">
+                  <span>{COPY.relatedTerms}</span>
+                  <div>
+                    {asArray(selectedTerm.relatedTerms).slice(0, 5).map((term) => (
+                      <button type="button" key={term} onClick={() => setTermQuery(term)}>
+                        {term}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="questionList">
+                  <span>{COPY.exampleQuestions}</span>
+                  {asArray(selectedTerm.exampleQuestions).slice(0, 3).map((question) => (
+                    <button
+                      type="button"
+                      key={question}
+                      onClick={() => askLearningAssistant(question, selectedTerm.id)}
+                      disabled={assistantLoading}
+                    >
+                      {question}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="questionList">
-                <span>{COPY.exampleQuestions}</span>
-                {asArray(selectedTerm.exampleQuestions).slice(0, 2).map((question) => (
-                  <button
-                    type="button"
-                    key={question}
-                    onClick={() => askLearningAssistant(question, selectedTerm.id)}
-                    disabled={assistantLoading}
-                  >
-                    {question}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </section>
         ) : null}
 
@@ -1759,165 +1824,40 @@ export default function App() {
               )}
 
               <div className="kvGrid">
-                <div className="kvItem">
-                  <span>{COPY.topGainer}</span>
-                  <strong>{valueOrDash(summary.topGainer)}</strong>
-                  <div className={`leaderExplanation ${getLeaderExplanation(summary, "topGainer").level}`}>
-                    <div>{getLeaderExplanation(summary, "topGainer").summary}</div>
-                    <div className="leaderLinks">
-                      {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.topGainerDateSearch, summary.verification?.topGainerYahooFinance).length === 0 ? (
-                        "-"
-                      ) : (
-                        buildEvidenceLinks(summary.verification?.topGainerDateSearch, summary.verification?.topGainerYahooFinance).map((x, idx) => (
-                          <React.Fragment key={x.href}>
-                            {idx > 0 ? " | " : ""}
-                            <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
-                          </React.Fragment>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="kvItem">
-                  <span>{COPY.topLoser}</span>
-                  <strong>{valueOrDash(summary.topLoser)}</strong>
-                  <div className={`leaderExplanation ${getLeaderExplanation(summary, "topLoser").level}`}>
-                    <div>{getLeaderExplanation(summary, "topLoser").summary}</div>
-                    <div className="leaderLinks">
-                      {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.topLoserDateSearch, summary.verification?.topLoserYahooFinance).length === 0 ? (
-                        "-"
-                      ) : (
-                        buildEvidenceLinks(summary.verification?.topLoserDateSearch, summary.verification?.topLoserYahooFinance).map((x, idx) => (
-                          <React.Fragment key={x.href}>
-                            {idx > 0 ? " | " : ""}
-                            <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
-                          </React.Fragment>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="kvItem">
-                  <span>{COPY.mostMentioned}</span>
-                  <strong>{valueOrDash(summary.mostMentioned)}</strong>
-                  <div className="leaderLinks">
-                    {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.mostMentionedDateSearch, summary.verification?.mostMentionedYahooFinance).length === 0 ? (
-                      "-"
-                    ) : (
-                      buildEvidenceLinks(summary.verification?.mostMentionedDateSearch, summary.verification?.mostMentionedYahooFinance).map((x, idx) => (
-                        <React.Fragment key={x.href}>
-                          {idx > 0 ? " | " : ""}
-                          <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
-                        </React.Fragment>
-                      ))
-                    )}
-                  </div>
-                </div>
-                <div className="kvItem">
-                  <span>{COPY.kospiPick}</span>
-                  <strong>{valueOrDash(summary.kospiPick)}</strong>
-                  <div className="leaderLinks">
-                    {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.kospiPickDateSearch, summary.verification?.kospiPickYahooFinance).length === 0 ? (
-                      "-"
-                    ) : (
-                      buildEvidenceLinks(summary.verification?.kospiPickDateSearch, summary.verification?.kospiPickYahooFinance).map((x, idx) => (
-                        <React.Fragment key={x.href}>
-                          {idx > 0 ? " | " : ""}
-                          <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
-                        </React.Fragment>
-                      ))
-                    )}
-                  </div>
-                </div>
-                <div className="kvItem">
-                  <span>{COPY.kosdaqPick}</span>
-                  <strong>{valueOrDash(summary.kosdaqPick)}</strong>
-                  <div className="leaderLinks">
-                    {COPY.evidenceLinks}: {buildEvidenceLinks(summary.verification?.kosdaqPickDateSearch, summary.verification?.kosdaqPickYahooFinance).length === 0 ? (
-                      "-"
-                    ) : (
-                      buildEvidenceLinks(summary.verification?.kosdaqPickDateSearch, summary.verification?.kosdaqPickYahooFinance).map((x, idx) => (
-                        <React.Fragment key={x.href}>
-                          {idx > 0 ? " | " : ""}
-                          <a href={x.href} target="_blank" rel="noreferrer">{x.label}</a>
-                        </React.Fragment>
-                      ))
-                    )}
-                  </div>
-                </div>
+                <LeaderMetricCard
+                  label={COPY.topGainer}
+                  value={summary.topGainer}
+                  explanation={getLeaderExplanation(summary, "topGainer")}
+                  links={buildEvidenceLinks(summary.verification?.topGainerDateSearch, summary.verification?.topGainerYahooFinance)}
+                />
+                <LeaderMetricCard
+                  label={COPY.topLoser}
+                  value={summary.topLoser}
+                  explanation={getLeaderExplanation(summary, "topLoser")}
+                  links={buildEvidenceLinks(summary.verification?.topLoserDateSearch, summary.verification?.topLoserYahooFinance)}
+                />
+                <LeaderMetricCard
+                  label={COPY.mostMentioned}
+                  value={summary.mostMentioned}
+                  links={buildEvidenceLinks(summary.verification?.mostMentionedDateSearch, summary.verification?.mostMentionedYahooFinance)}
+                />
+                <LeaderMetricCard
+                  label={COPY.kospiPick}
+                  value={summary.kospiPick}
+                  links={buildEvidenceLinks(summary.verification?.kospiPickDateSearch, summary.verification?.kospiPickYahooFinance)}
+                />
+                <LeaderMetricCard
+                  label={COPY.kosdaqPick}
+                  value={summary.kosdaqPick}
+                  links={buildEvidenceLinks(summary.verification?.kosdaqPickDateSearch, summary.verification?.kosdaqPickYahooFinance)}
+                />
               </div>
 
               {(topGainers.length > 0 || topLosers.length > 0 || topMentioned.length > 0) ? (
                 <div className="topListsSection">
-                  {topGainers.length > 0 && (
-                    <div className="topList">
-                      <h4>{COPY.topGainersTitle}</h4>
-                      <ul>
-                        {topGainers.map((item, idx) => {
-                          const stock = stockFromEntry(item, "상승 TOP3");
-                          return (
-                            <li key={item.code || idx}>
-                              <button type="button" className="topListButton" onClick={() => selectStock(stock)}>
-                                <span className="itemName">{item.name}({item.code})</span>
-                                <span className="itemRate gain">{formatRate(item.rate)}</span>
-                              </button>
-                              <span className="itemLinks">
-                                {buildNaverLinks(item.code, summary.effectiveDate).map((link) => (
-                                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
-                                ))}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  )}
-                  {topLosers.length > 0 && (
-                    <div className="topList">
-                      <h4>{COPY.topLosersTitle}</h4>
-                      <ul>
-                        {topLosers.map((item, idx) => {
-                          const stock = stockFromEntry(item, "하락 TOP3");
-                          return (
-                            <li key={item.code || idx}>
-                              <button type="button" className="topListButton" onClick={() => selectStock(stock)}>
-                                <span className="itemName">{item.name}({item.code})</span>
-                                <span className="itemRate loss">{formatRate(item.rate)}</span>
-                              </button>
-                              <span className="itemLinks">
-                                {buildNaverLinks(item.code, summary.effectiveDate).map((link) => (
-                                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
-                                ))}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  )}
-                  {topMentioned.length > 0 && (
-                    <div className="topList">
-                      <h4>{COPY.mostMentionedTitle}</h4>
-                      <ul>
-                        {topMentioned.map((item, idx) => {
-                          const stock = stockFromEntry(item, "언급 TOP3");
-                          return (
-                            <li key={item.code || idx}>
-                              <button type="button" className="topListButton" onClick={() => selectStock(stock)}>
-                                <span className="itemName">{item.name}({item.code})</span>
-                                <span className="itemCount">{formatNumber(item.count)}{COPY.postCount}</span>
-                              </button>
-                              <span className="itemLinks">
-                                {buildNaverLinks(item.code, summary.effectiveDate).map((link) => (
-                                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
-                                ))}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  )}
+                  <TopListColumn title={COPY.topGainersTitle} items={topGainers} group="상승 TOP3" valueType="rate" effectiveDate={summary.effectiveDate} onSelect={selectStock} />
+                  <TopListColumn title={COPY.topLosersTitle} items={topLosers} group="하락 TOP3" valueType="rate" effectiveDate={summary.effectiveDate} onSelect={selectStock} />
+                  <TopListColumn title={COPY.mostMentionedTitle} items={topMentioned} group="언급 TOP3" valueType="count" effectiveDate={summary.effectiveDate} onSelect={selectStock} />
                 </div>
               ) : null}
 

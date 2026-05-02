@@ -20,6 +20,30 @@ class LearningTermCatalogTest {
   }
 
   @Test
+  void list_containsExpandedBeginnerCurriculum() {
+    LearningTermCatalog catalog = new LearningTermCatalog();
+
+    var terms = catalog.list(null, null, 120);
+
+    assertTrue(terms.size() >= 40);
+    assertTrue(terms.stream().anyMatch(term -> term.id().equals("stop-loss")));
+    assertTrue(terms.stream().anyMatch(term -> term.id().equals("etf")));
+    assertTrue(terms.stream().anyMatch(term -> term.id().equals("bid-ask")));
+    assertTrue(terms.stream().anyMatch(term -> term.exampleQuestions().size() >= 3));
+  }
+
+  @Test
+  void list_canSearchNewTradingTerms() {
+    LearningTermCatalog catalog = new LearningTermCatalog();
+
+    var terms = catalog.list("괴리율", null, 10);
+
+    assertFalse(terms.isEmpty());
+    assertTrue(terms.stream().anyMatch(term -> term.id().equals("nav-disparity")));
+    assertTrue(terms.stream().anyMatch(term -> term.term().contains("NAV")));
+  }
+
+  @Test
   void match_usesPreferredTermFirst() {
     LearningTermCatalog catalog = new LearningTermCatalog();
 
