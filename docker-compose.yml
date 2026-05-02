@@ -29,6 +29,27 @@ services:
     ports:
       - "${MARKETDATA_PORT:-8000}:8000"
 
+  qdrant:
+    image: qdrant/qdrant:v1.12.6
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+    ports:
+      - "${AI_SERVICE_PORT:-8100}:8100"
+    depends_on:
+      - qdrant
+
   backend:
     build:
       context: ./backend
@@ -48,6 +69,7 @@ services:
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:-}
       MARKETDATA_PROVIDER: ${MARKETDATA_PROVIDER:-pykrx}
       MARKETDATA_BASE_URL: ${MARKETDATA_BASE_URL:-http://marketdata:8000}
+      AI_SERVICE_BASE_URL: ${AI_SERVICE_BASE_URL:-http://ai-service:8100}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
       DISCORD_THREAD_ID: ${DISCORD_THREAD_ID:-}
     ports:
@@ -55,6 +77,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      ai-service:
+        condition: service_started
 
   frontend:
     build:
@@ -71,3 +95,4 @@ services:
 
 volumes:
   mysql_data:
+  qdrant_data:

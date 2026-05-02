@@ -6,6 +6,7 @@
 - 저장/제공: `backend`가 요약을 생성/저장하고 REST API로 제공
 - 표시/학습: `frontend`에서 오늘의 시장 브리프, TOP3 종목 리서치 패널, 캔들차트, 월 달력, 초보자 용어 사전, 학습 도우미를 제공
 - AI 확장점: `/api/learning/assistant`는 현재 내부 용어 사전 기반 응답을 제공하며, 이후 `/api/ai/chat` RAG 서비스로 교체/확장한다.
+- AI 서비스: `ai-service`가 `/chat`을 제공하고 backend가 `/api/ai/chat`으로 프록시한다. 현재는 규칙형 RAG 준비 응답이며 Qdrant 연결 지점을 포함한다.
 
 > 추가 목표: Discord **웹훅(Webhook)**으로 지정 **스레드**에 자동 포스팅
 
@@ -16,6 +17,8 @@
 - Backend: Java 17, Spring Boot 3 (Gradle, Flyway, JPA)
 - Frontend: React + JavaScript (Vite)
 - Marketdata: FastAPI + pykrx + Naver(크롤링)
+- AI service: FastAPI + RAG-ready response contract
+- Vector store: Qdrant (RAG 확장용)
 - DB: MySQL
 - Orchestration: Docker Compose + Makefile wrappers
 
@@ -114,6 +117,7 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 - `GET /api/learning/terms`
 - `GET /api/learning/terms/{id}`
 - `POST /api/learning/assistant`
+- `POST /api/ai/chat`
 
 종목 리서치:
 - `GET /api/stocks/{code}/chart?range=1M|3M|6M|1Y|3Y&interval=daily|weekly|monthly`
@@ -178,9 +182,13 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `BACKEND_PORT` | Yes | Backend API port (default: 8080) |
 | `FRONTEND_PORT` | Yes | Frontend UI port (default: 5173) |
 | `MARKETDATA_PORT` | Yes | Market data service port (default: 8000) |
+| `AI_SERVICE_PORT` | No | AI service port (default: 8100) |
+| `QDRANT_PORT` | No | Qdrant port (default: 6333) |
 | `API_BASE_URL` | Yes | Backend URL accessible from frontend |
 | `MARKETDATA_PROVIDER` | No | Provider: `pykrx` or `naver` (default: pykrx) |
 | `MARKETDATA_BASE_URL` | No | Market data service URL (Docker internal) |
+| `AI_SERVICE_BASE_URL` | No | AI service URL (Docker internal) |
+| `QDRANT_URL` | No | Vector store URL for future RAG indexing |
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
 | `ADMIN_KEY` | Recommended | Admin key for protected operations |
 | `APP_ADMIN_TRUSTED_CIDRS` | No | Comma-separated CIDRs for trusted admin bypass |

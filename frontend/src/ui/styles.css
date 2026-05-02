@@ -1711,6 +1711,31 @@ body {
   line-height: 1.5;
 }
 
+.aiResearchAnswer {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.aiResearchAnswer strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.aiResearchAnswer pre {
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 @media (max-width: 768px) {
   .page {
     padding: 20px 14px;

@@ -37,16 +37,16 @@
 ## Phase 3. AI/RAG 기능
 
 - [x] AI 응답 형식의 선행 연결점 추가: `POST /api/learning/assistant`
-- [ ] `ai-service` FastAPI 추가 검토
-- [ ] vector store(Qdrant 또는 pgvector) Docker Compose 연결
-- [ ] RAG 대상 정의
+- [x] `ai-service` FastAPI 추가
+- [x] vector store(Qdrant) Docker Compose 연결
+- [x] RAG 대상 1차 정의
   - 저장된 daily summaries
   - 종목 이벤트
   - OHLCV 기반 지표
   - 네이버 종목토론방 언급량
   - DART 공시
   - 앱 내부 용어 사전
-- [ ] `/api/ai/chat` 또는 `/api/research/ask` 구현
+- [x] `/api/ai/chat` 구현
 - [ ] Risk Reviewer 단계로 매수/매도 단정, 과장, 출처 없는 표현 제거
 
 ## Phase 4. 포트폴리오 샌드박스

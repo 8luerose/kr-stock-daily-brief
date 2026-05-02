@@ -130,4 +130,14 @@ code=$(status_code GET "$BASE_URL/api/stocks/005930/events?from=$EVENT_FROM&to=$
 contains_field /tmp/krbrief_resp.json events || fail "stock events missing events"
 pass "GET /api/stocks/{code}/events"
 
+# 15) AI chat
+code=$(status_code POST "$BASE_URL/api/ai/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"삼성전자 차트를 초보자 관점으로 설명해줘","contextDate":"'"$DATE_TODAY"'","stockCode":"005930","stockName":"삼성전자"}')
+[[ "$code" == "200" ]] || fail "ai chat expected 200, got $code"
+contains_field /tmp/krbrief_resp.json mode || fail "ai chat missing mode"
+contains_field /tmp/krbrief_resp.json limitations || fail "ai chat missing limitations"
+contains_field /tmp/krbrief_resp.json oppositeSignals || fail "ai chat missing oppositeSignals"
+pass "POST /api/ai/chat"
+
 echo "== API smoke test done: ALL PASS =="

@@ -58,6 +58,8 @@ const COPY = {
   oppositeSignals: "반대 신호",
   evidenceData: "근거 데이터",
   analysisDisclaimer: "교육용 분석 보조 정보이며 매수, 매도 지시나 수익 보장이 아닙니다.",
+  askChartAi: "AI로 차트 설명",
+  aiResearchTitle: "AI 차트 해석",
   openAdmin: "관리자 영역",
   closeAdmin: "관리자 영역 닫기",
   adminTitle: "운영 관리",
@@ -643,6 +645,8 @@ export default function App() {
   const [stockEvents, setStockEvents] = useState(null);
   const [stockChartLoading, setStockChartLoading] = useState(false);
   const [stockChartError, setStockChartError] = useState("");
+  const [aiResearchLoading, setAiResearchLoading] = useState(false);
+  const [aiResearchResponse, setAiResearchResponse] = useState(null);
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
@@ -872,6 +876,53 @@ export default function App() {
     }
   }
 
+  async function askChartAi() {
+    if (!currentStock?.code) return;
+    setAiResearchLoading(true);
+    setAiResearchResponse(null);
+    try {
+      const data = await apiFetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: `${currentStock.name} 차트와 이벤트를 초보자 관점으로 설명해줘`,
+          contextDate: stockChart?.asOf || dataAsOf,
+          stockCode: currentStock.code,
+          stockName: currentStock.name,
+          focus: riskMode,
+          summary: summary
+            ? {
+                date: summary.date,
+                topGainer: summary.topGainer,
+                topLoser: summary.topLoser,
+                mostMentioned: summary.mostMentioned
+              }
+            : null,
+          chart: stockChart
+            ? {
+                interval: stockChart.interval,
+                range: stockChart.range,
+                asOf: stockChart.asOf,
+                latest: asArray(stockChart.data).at(-1)
+              }
+            : null,
+          events: asArray(stockEvents?.events).slice(0, 8),
+          terms: briefTerms
+        })
+      });
+      setAiResearchResponse(data);
+    } catch (e) {
+      setAiResearchResponse({
+        answer: formatApiError(e),
+        confidence: "low",
+        sources: [],
+        limitations: ["AI 서비스 응답을 받지 못했습니다."]
+      });
+    } finally {
+      setAiResearchLoading(false);
+    }
+  }
+
   function formatApiError(err) {
     const msg = err.message || String(err);
     if (msg.includes("409") || msg.includes("summary_already_exists")) {
@@ -992,6 +1043,7 @@ export default function App() {
   }, [stockPicks]);
 
   useEffect(() => {
+    setAiResearchResponse(null);
     loadStockResearch(currentStock, stockInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStock?.code, stockInterval]);
@@ -1708,6 +1760,28 @@ export default function App() {
                         </div>
                       ) : null}
                       <div className="analysisDisclaimer">{COPY.analysisDisclaimer} 신뢰도: {decisionPanel.confidence}</div>
+                      <button
+                        type="button"
+                        className="btn primary small"
+                        onClick={askChartAi}
+                        disabled={aiResearchLoading || !currentStock.code}
+                      >
+                        {aiResearchLoading ? COPY.loading : COPY.askChartAi}
+                      </button>
+                      {aiResearchResponse ? (
+                        <div className="aiResearchAnswer">
+                          <strong>{COPY.aiResearchTitle}</strong>
+                          <pre>{aiResearchResponse.answer}</pre>
+                          <div className="assistantMeta limitations">
+                            <strong>{COPY.limitations}</strong>
+                            <ul>
+                              {asArray(aiResearchResponse.limitations).map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="stockLinks">
                         {buildNaverLinks(currentStock.code, summary.effectiveDate).map((link) => (
                           <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}</a>

@@ -5,6 +5,7 @@
 - `backend/src/main/java/com/krbrief/summaries/SummaryController.java`
 - `backend/src/main/java/com/krbrief/learning/LearningController.java`
 - `backend/src/main/java/com/krbrief/stocks/StockController.java`
+- `backend/src/main/java/com/krbrief/ai/AiChatController.java`
 
 ---
 
@@ -489,6 +490,61 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 - 400 Bad Request: 종목 코드/date range가 잘못됨
 - 502 Bad Gateway: marketdata 조회 실패
+
+---
+
+## 15) AI/RAG 준비형 채팅
+
+### `POST /api/ai/chat`
+
+차트, 이벤트, 브리프, 용어 사전 컨텍스트를 받아 AI 분석 응답 형식으로 반환한다. 현재는 별도 `ai-service`의 규칙형 응답이며, 이후 LLM/RAG로 교체한다.
+
+#### 요청 예시
+
+```json
+{
+  "question": "삼성전자 차트와 이벤트를 초보자 관점으로 설명해줘",
+  "contextDate": "2026-04-30",
+  "stockCode": "005930",
+  "stockName": "삼성전자",
+  "focus": "neutral",
+  "events": [
+    {
+      "date": "2026-04-30",
+      "type": "volume_spike",
+      "severity": "medium",
+      "title": "거래량 급증"
+    }
+  ],
+  "terms": []
+}
+```
+
+#### 성공 응답 (200)
+
+```json
+{
+  "mode": "rag_ready_rule_based",
+  "answer": "기준일: 2026-04-30\n대상: 삼성전자(005930)...",
+  "basisDate": "2026-04-30",
+  "confidence": "medium",
+  "sources": [
+    { "title": "종목 차트 API", "type": "ohlcv", "url": "/api/stocks/005930/chart" }
+  ],
+  "limitations": [
+    "현재 ai-service는 외부 LLM 호출 없이 규칙형 응답을 제공합니다.",
+    "투자 지시가 아니라 교육용 분석 보조입니다."
+  ],
+  "oppositeSignals": ["거래량 없는 상승"],
+  "nextQuestions": ["이 이벤트가 거래량과 같이 나온 건 왜 중요해?"]
+}
+```
+
+#### 응답 정책
+
+- 반드시 기준일, 출처, 신뢰도, 한계, 반대 신호를 포함한다.
+- “지금 사라/팔아라”가 아니라 조건, 리스크, 대안 시나리오로 설명한다.
+- 개인화 투자 조언이나 수익 보장을 하지 않는다.
 
 ---
 

@@ -108,3 +108,18 @@ curl -s 'http://localhost:8080/api/stocks/005930/events?from=2024-01-02&to=2024-
 - chart 응답에 `data[]` OHLCV와 `asOf` 포함
 - events 응답에 `date`, `type`, `severity`, `priceChangeRate`, `volumeChangeRate`, `title`, `explanation`, `evidenceLinks` 포함
 - 잘못된 종목 코드/range/interval/date range는 400 반환
+
+## 8) AI 서비스 점검
+
+```bash
+curl -s 'http://localhost:8100/health'
+curl -s -X POST 'http://localhost:8080/api/ai/chat' \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"삼성전자 차트를 초보자 관점으로 설명해줘","contextDate":"2026-04-30","stockCode":"005930","stockName":"삼성전자"}' \
+  | jq '.mode,.confidence,.sources,.limitations,.oppositeSignals'
+```
+
+정상 기준:
+- ai-service health가 `{"status":"UP"}`
+- `/api/ai/chat` 응답에 `mode`, `answer`, `basisDate`, `confidence`, `sources`, `limitations`, `oppositeSignals`, `nextQuestions` 포함
+- 답변이 투자 지시가 아니라 조건/리스크/반대 신호 중심으로 표시됨
