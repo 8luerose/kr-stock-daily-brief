@@ -213,4 +213,5 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 - AI 개발 방향: `./docs/AI_DEVELOPMENT_DIRECTION_AND_PROMPT.md`
 - 운영/배포 가이드: `./docs/OPERATIONS.md`
 - 다음 AI 인수인계 프롬프트: `./docs/AI_HANDOFF_PROMPT.md`
+- AI 자가 점검/품질 개선 프롬프트: `./docs/AI_SELF_REVIEW_QUALITY_PROMPT.md`
 - (추가 문서가 생기면) `docs/` 폴더에 정리
