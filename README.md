@@ -4,7 +4,7 @@
 
 - 데이터 계산: `marketdata` 서비스(`/leaders`)가 “상승/하락/언급 TOP”을 산출
 - 저장/제공: `backend`가 요약을 생성/저장하고 REST API로 제공
-- 표시/학습: `frontend`에서 오늘의 시장 브리프, TOP3 종목 리서치 패널, 월 달력, 초보자 용어 사전, 학습 도우미를 제공
+- 표시/학습: `frontend`에서 오늘의 시장 브리프, TOP3 종목 리서치 패널, 캔들차트, 월 달력, 초보자 용어 사전, 학습 도우미를 제공
 - AI 확장점: `/api/learning/assistant`는 현재 내부 용어 사전 기반 응답을 제공하며, 이후 `/api/ai/chat` RAG 서비스로 교체/확장한다.
 
 > 추가 목표: Discord **웹훅(Webhook)**으로 지정 **스레드**에 자동 포스팅
@@ -82,6 +82,8 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 - 첫 화면에서 오늘의 시장 브리프, 데이터 기준일, 주요 종목 흐름, AI 학습 도우미를 먼저 표시
 - 월 달력에서 날짜를 선택하면 backend API로 조회해서 표시
 - 상승/하락/언급 TOP3 항목을 선택하면 종목 상세 리서치 패널로 연결
+- 종목 상세에서 일봉/주봉/월봉 캔들차트, 20일 이동평균선, 거래량, 급등/급락/거래량 이벤트 마커를 확인
+- 차트 옆에서 공격형/중립형/보수형 시나리오별 매수 검토, 매도 검토, 리스크 관리 조건을 교육용으로 확인
 - 브리프 옆에서 `등락률`, `거래량`, `PER`, `공시`, `종목토론방 언급량` 같은 핵심 용어를 바로 확인
 - 학습 도우미에서 선택 날짜와 용어를 묶어 초보자용 설명/주의점/출처/한계를 확인
 - 운영 버튼은 접힌 관리자/운영 패널에서 실행
@@ -113,11 +115,16 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 - `GET /api/learning/terms/{id}`
 - `POST /api/learning/assistant`
 
+종목 리서치:
+- `GET /api/stocks/{code}/chart?range=1M|3M|6M|1Y|3Y&interval=daily|weekly|monthly`
+- `GET /api/stocks/{code}/events?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
 정책:
 - 날짜 포맷은 ISO `YYYY-MM-DD`
 - 미래 날짜는 생성/백필/보관 모두 차단
 - 이미 존재하는 날짜의 재생성은 admin만 허용(일반 요청은 409)
 - 학습 도우미는 투자 지시가 아니라 용어 설명/체크리스트/주의점 제공 목적이다.
+- 종목 판단 패널은 교육용 분석 보조이며 “지금 사라/팔아라”가 아니라 조건, 리스크, 반대 신호를 제공한다.
 
 ---
 

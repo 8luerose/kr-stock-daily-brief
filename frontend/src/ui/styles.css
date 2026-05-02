@@ -1495,56 +1495,35 @@ body {
 .chartPreview {
   position: relative;
   min-height: 320px;
-  padding: 38px 22px 24px 52px;
-  background:
-    linear-gradient(to bottom, transparent 24%, var(--line) 24%, transparent calc(24% + 1px)),
-    linear-gradient(to bottom, transparent 49%, var(--line) 49%, transparent calc(49% + 1px)),
-    linear-gradient(to bottom, transparent 74%, var(--line) 74%, transparent calc(74% + 1px)),
-    var(--bg);
+  padding: 42px 12px 10px 12px;
+  background: var(--bg);
 }
 
 .chartBasis {
   position: absolute;
-  left: 52px;
+  left: 16px;
   top: 14px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
 
-.chartYAxis {
-  position: absolute;
-  left: 18px;
-  top: 44px;
-  bottom: 24px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+.realChart {
+  width: 100%;
+  min-height: 360px;
+}
+
+.chartState {
+  display: grid;
+  min-height: 320px;
+  place-items: center;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
 }
 
-.chartBars {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
-  height: 100%;
-  min-height: 250px;
-}
-
-.chartBars span {
-  flex: 1;
-  min-width: 8px;
-  border-radius: 6px 6px 0 0;
-  background: var(--danger);
-  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.16);
-}
-
-.chartBars span.down {
-  background: var(--accent);
-  box-shadow: 0 8px 18px rgba(49, 130, 246, 0.16);
+.errorText {
+  color: var(--danger);
 }
 
 .stockSignalPanel {
@@ -1553,6 +1532,33 @@ body {
   gap: 12px;
   padding: 20px;
   border-left: 1px solid var(--line);
+}
+
+.riskTabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.riskTabs button {
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.riskTabs button.active,
+.riskTabs button:hover {
+  background: var(--card);
+  color: var(--accent);
+  box-shadow: var(--shadow);
 }
 
 .stockMetricRow {
@@ -1594,6 +1600,13 @@ body {
   line-height: 1.65;
 }
 
+.beginnerSignalList p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
 .beginnerSignalList li {
   margin: 5px 0;
 }
@@ -1618,6 +1631,84 @@ body {
 .stockLinks a:hover {
   background: var(--accent);
   color: white;
+}
+
+.decisionZones {
+  display: grid;
+  gap: 8px;
+}
+
+.zone {
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--card);
+}
+
+.zone span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.zone p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.zone.buy {
+  border-left-color: var(--success);
+}
+
+.zone.watch {
+  border-left-color: var(--warning);
+}
+
+.zone.split {
+  border-left-color: #14b8a6;
+}
+
+.zone.risk {
+  border-left-color: var(--danger);
+}
+
+.zone.neutral {
+  border-left-color: var(--accent);
+}
+
+.zone.opposite {
+  border-left-color: var(--muted);
+}
+
+.eventList {
+  display: grid;
+  gap: 6px;
+}
+
+.eventList a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.eventList a strong {
+  color: var(--text);
+}
+
+.analysisDisclaimer {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 @media (max-width: 768px) {
@@ -1689,9 +1780,8 @@ body {
     padding-right: 14px;
   }
 
-  .chartBars {
-    gap: 5px;
-    min-height: 180px;
+  .realChart {
+    min-height: 300px;
   }
   
   .topList {

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { CandlestickSeries, HistogramSeries, LineSeries, createChart, createSeriesMarkers } from "lightweight-charts";
 
 function naverMainFromDayUrl(dayUrl) {
   if (!dayUrl) return "";
@@ -42,6 +43,21 @@ const COPY = {
   dataAsOf: "데이터 기준일",
   sourceConfidence: "신뢰도",
   beginnerSignals: "초보자가 지금 확인할 신호",
+  chartLoading: "차트 불러오는 중...",
+  chartFailed: "차트 데이터를 불러오지 못했습니다.",
+  riskMode: "판단 성향",
+  aggressive: "공격형",
+  neutral: "중립형",
+  conservative: "보수형",
+  chartSummary: "현재 차트 상태 요약",
+  buyConditions: "매수 검토 조건",
+  splitBuyConditions: "분할매수 검토 조건",
+  watchConditions: "관망 조건",
+  sellConditions: "매도 검토 조건",
+  stopConditions: "손절/리스크 관리 조건",
+  oppositeSignals: "반대 신호",
+  evidenceData: "근거 데이터",
+  analysisDisclaimer: "교육용 분석 보조 정보이며 매수, 매도 지시나 수익 보장이 아닙니다.",
   openAdmin: "관리자 영역",
   closeAdmin: "관리자 영역 닫기",
   adminTitle: "운영 관리",
@@ -219,6 +235,158 @@ function getStockSignalLines(stock) {
     lines.push("언급량 증가가 거래량, 공시, 뉴스와 같은 방향인지 확인");
   }
   return lines.length > 0 ? lines : ["선택한 종목의 거래량, 공시, 뉴스, 시장 전체 흐름을 함께 확인"];
+}
+
+function rangeForInterval(interval) {
+  if (interval === "monthly") return "3Y";
+  if (interval === "weekly") return "1Y";
+  return "6M";
+}
+
+function fromForEvents(chart) {
+  const data = asArray(chart?.data);
+  if (data.length === 0) return "";
+  return data[Math.max(0, data.length - 90)]?.date || data[0]?.date || "";
+}
+
+function calculateMa(data, period) {
+  return asArray(data)
+    .map((item, index, arr) => {
+      if (index < period - 1) return null;
+      const windowItems = arr.slice(index - period + 1, index + 1);
+      const value = windowItems.reduce((sum, row) => sum + Number(row.close || 0), 0) / period;
+      return { time: item.date, value: Number(value.toFixed(2)) };
+    })
+    .filter(Boolean);
+}
+
+function summarizeChart(chart, events) {
+  const data = asArray(chart?.data);
+  if (data.length < 2) {
+    return {
+      trend: "차트 데이터가 부족해 추세 판단을 보류합니다.",
+      changeRate: null,
+      latest: null,
+      volumeRate: null
+    };
+  }
+  const latest = data[data.length - 1];
+  const prev = data[data.length - 2];
+  const first = data[0];
+  const changeRate = prev.close ? ((latest.close - prev.close) / prev.close) * 100 : 0;
+  const rangeRate = first.close ? ((latest.close - first.close) / first.close) * 100 : 0;
+  const avgVolume = data.slice(-20).reduce((sum, row) => sum + Number(row.volume || 0), 0) / Math.min(20, data.length);
+  const volumeRate = avgVolume ? (latest.volume / avgVolume) * 100 : 0;
+  const eventCount = asArray(events?.events).length;
+  const trend =
+    rangeRate >= 12
+      ? "중기 상승 흐름이 강합니다. 추격보다 눌림과 거래량 지속 여부가 중요합니다."
+      : rangeRate <= -12
+        ? "중기 하락 압력이 큽니다. 반등보다 하락 추세 완화 신호를 먼저 확인해야 합니다."
+        : "뚜렷한 한 방향보다 변동 구간에 가깝습니다. 지지, 저항, 거래량 변화를 함께 봅니다.";
+  return { trend, changeRate, rangeRate, latest, volumeRate, eventCount };
+}
+
+function buildDecisionPanel(chart, events, riskMode) {
+  const s = summarizeChart(chart, events);
+  const eventCount = s.eventCount || 0;
+  const modeText = riskMode === "aggressive" ? "공격형" : riskMode === "conservative" ? "보수형" : "중립형";
+  const buy =
+    riskMode === "aggressive"
+      ? "20일선 근처에서 반등하고 거래량이 평균 이상으로 붙으면 소액 분할 진입을 검토할 수 있음"
+      : riskMode === "conservative"
+        ? "20일선과 직전 고점을 모두 회복하고 거래량이 2거래일 이상 유지될 때까지 기다리는 편이 적합"
+        : "20일선 회복, 전일 대비 거래량 증가, 직전 저점 방어가 동시에 보이면 매수 검토 구간으로 볼 수 있음";
+  return {
+    summary: s.trend,
+    buy,
+    splitBuy: "한 번에 진입하지 않고 지지선 확인, 거래량 유지, 눌림 반등을 나누어 확인할 때 분할매수 검토 구간으로 볼 수 있음",
+    watch: "가격 방향과 거래량 방향이 엇갈리거나 주요 이벤트 근거가 부족하면 새 신호가 확인될 때까지 관망이 우선",
+    sell: "급등 후 거래량 감소, 긴 윗꼬리 반복, 직전 고점 돌파 실패가 겹치면 일부 차익 실현을 검토할 수 있음",
+    stop: "전저점 이탈 또는 하락일 거래량 급증이 나오면 비중 축소, 손절 기준, 재진입 조건을 다시 세워야 함",
+    opposite: "가격은 오르지만 거래량이 줄거나, 거래량은 늘지만 종가가 저가 근처에서 끝나면 상승 해석을 낮춰야 함",
+    evidence: [
+      `기준일: ${s.latest?.date || chart?.asOf || "-"}`,
+      `최근 등락률: ${s.changeRate === null ? "-" : formatRate(s.changeRate)}`,
+      `20일 평균 대비 거래량: ${s.volumeRate ? `${s.volumeRate.toFixed(0)}%` : "-"}`,
+      `감지 이벤트: ${eventCount}건`,
+      `시나리오: ${modeText}`
+    ],
+    confidence: asArray(chart?.data).length >= 60 ? "중간-높음" : "중간"
+  };
+}
+
+function StockPriceChart({ chart, events, darkMode }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!containerRef.current || !chart || asArray(chart.data).length === 0) return undefined;
+
+    const rootStyle = getComputedStyle(document.documentElement);
+    const textColor = rootStyle.getPropertyValue("--text-secondary").trim() || "#4b5563";
+    const lineColor = rootStyle.getPropertyValue("--line").trim() || "#e5e7eb";
+    const bgColor = rootStyle.getPropertyValue("--bg").trim() || "#f9fafb";
+
+    const instance = createChart(containerRef.current, {
+      autoSize: true,
+      height: 360,
+      layout: { background: { color: bgColor }, textColor },
+      grid: { vertLines: { color: lineColor }, horzLines: { color: lineColor } },
+      rightPriceScale: { borderColor: lineColor },
+      timeScale: { borderColor: lineColor, timeVisible: false }
+    });
+
+    const candles = instance.addSeries(CandlestickSeries, {
+      upColor: "#ef4444",
+      downColor: "#3182f6",
+      borderUpColor: "#ef4444",
+      borderDownColor: "#3182f6",
+      wickUpColor: "#ef4444",
+      wickDownColor: "#3182f6"
+    });
+    candles.setData(
+      asArray(chart.data).map((row) => ({
+        time: row.date,
+        open: Number(row.open),
+        high: Number(row.high),
+        low: Number(row.low),
+        close: Number(row.close)
+      }))
+    );
+
+    const ma20 = instance.addSeries(LineSeries, { color: "#10b981", lineWidth: 2, priceLineVisible: false });
+    ma20.setData(calculateMa(chart.data, 20));
+
+    const volume = instance.addSeries(HistogramSeries, {
+      priceFormat: { type: "volume" },
+      priceScaleId: "",
+      color: "#9ca3af"
+    });
+    volume.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+    volume.setData(
+      asArray(chart.data).map((row) => ({
+        time: row.date,
+        value: Number(row.volume || 0),
+        color: Number(row.close) >= Number(row.open) ? "rgba(239, 68, 68, 0.32)" : "rgba(49, 130, 246, 0.32)"
+      }))
+    );
+
+    createSeriesMarkers(
+      candles,
+      asArray(events?.events).slice(0, 30).map((event) => ({
+        time: event.date,
+        position: event.type === "price_drop" ? "belowBar" : "aboveBar",
+        color: event.severity === "high" ? "#ef4444" : event.severity === "medium" ? "#f59e0b" : "#3182f6",
+        shape: event.type === "price_drop" ? "arrowDown" : "arrowUp",
+        text: event.title
+      }))
+    );
+
+    instance.timeScale().fitContent();
+    return () => instance.remove();
+  }, [chart, events, darkMode]);
+
+  return <div ref={containerRef} className="realChart" aria-label={`${chart?.name || "종목"} 캔들 차트`} />;
 }
 
 function formatEffectiveDate(yyyymmdd) {
@@ -470,6 +638,11 @@ export default function App() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
   const [stockInterval, setStockInterval] = useState("daily");
+  const [riskMode, setRiskMode] = useState("neutral");
+  const [stockChart, setStockChart] = useState(null);
+  const [stockEvents, setStockEvents] = useState(null);
+  const [stockChartLoading, setStockChartLoading] = useState(false);
+  const [stockChartError, setStockChartError] = useState("");
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
@@ -500,6 +673,10 @@ export default function App() {
   const currentStock = selectedStock || stockPicks[0] || null;
   const dataAsOf = useMemo(() => getDataAsOf(summary, selected), [summary, selected]);
   const confidenceLabel = useMemo(() => getConfidenceLabel(summary), [summary]);
+  const decisionPanel = useMemo(
+    () => buildDecisionPanel(stockChart, stockEvents, riskMode),
+    [riskMode, stockChart, stockEvents]
+  );
 
   async function apiFetch(path, opts = {}) {
     const url = new URL(cfg.apiBaseUrl + path);
@@ -524,6 +701,7 @@ export default function App() {
     try {
       const s = await apiFetch(`/api/summaries/${dateStr}`);
       setSummary(s);
+      setLoading(false);
 
       try {
         const artifact = await apiFetch(`/api/summaries/${dateStr}/verification/krx`);
@@ -661,6 +839,39 @@ export default function App() {
     }
   }
 
+  async function loadStockResearch(stock, interval) {
+    if (!stock?.code) {
+      setStockChart(null);
+      setStockEvents(null);
+      setStockChartError("");
+      return;
+    }
+
+    setStockChartLoading(true);
+    setStockChartError("");
+    try {
+      const range = rangeForInterval(interval);
+      const chart = await apiFetch(`/api/stocks/${stock.code}/chart?range=${range}&interval=${interval}`);
+      setStockChart(chart);
+
+      const from = fromForEvents(chart);
+      const to = chart.asOf || asArray(chart.data).at(-1)?.date || "";
+      if (from && to) {
+        const events = await apiFetch(`/api/stocks/${stock.code}/events?from=${from}&to=${to}`);
+        setStockEvents(events);
+      } else {
+        setStockEvents(null);
+      }
+    } catch (e) {
+      console.warn("Failed to load stock research", e);
+      setStockChart(null);
+      setStockEvents(null);
+      setStockChartError(COPY.chartFailed);
+    } finally {
+      setStockChartLoading(false);
+    }
+  }
+
   function formatApiError(err) {
     const msg = err.message || String(err);
     if (msg.includes("409") || msg.includes("summary_already_exists")) {
@@ -779,6 +990,11 @@ export default function App() {
     const matched = hashCode ? stockPicks.find((stock) => stock.code === hashCode) : null;
     setSelectedStock(matched || stockPicks[0]);
   }, [stockPicks]);
+
+  useEffect(() => {
+    loadStockResearch(currentStock, stockInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStock?.code, stockInterval]);
 
   const todayStr = useMemo(() => isoDate(new Date()), []);
   const assistantPanel = (
@@ -1415,27 +1631,32 @@ export default function App() {
 
                   <div className="stockResearchGrid">
                     <div className="chartPreview">
-                      <div className="chartBasis">{stockInterval === "daily" ? "일간 랭킹 신호" : `${stockInterval === "weekly" ? "주간" : "월간"} 관찰 모드`}</div>
-                      <div className="chartYAxis">
-                        <span>고</span>
-                        <span>중</span>
-                        <span>저</span>
+                      <div className="chartBasis">
+                        {stockChart?.name || currentStock.name} · {stockChart?.asOf || dataAsOf} · 20일선/거래량/이벤트
                       </div>
-                      <div className="chartBars" aria-label={`${currentStock.name} ${stockInterval} 흐름`}>
-                        {[34, 48, 42, 56, 68, 61, 74, 70, 82, 76, 88, 84].map((height, idx) => {
-                          const positive = Number(currentStock.rate || 0) >= 0;
-                          const adjusted = positive ? height : 100 - height + 24;
-                          return (
-                            <span
-                              key={idx}
-                              className={positive ? "up" : "down"}
-                              style={{ height: `${Math.min(92, Math.max(18, adjusted))}%` }}
-                            />
-                          );
-                        })}
-                      </div>
+                      {stockChartLoading ? <div className="chartState">{COPY.chartLoading}</div> : null}
+                      {stockChartError ? <div className="chartState errorText">{stockChartError}</div> : null}
+                      {!stockChartLoading && !stockChartError && stockChart ? (
+                        <StockPriceChart chart={stockChart} events={stockEvents} darkMode={darkMode} />
+                      ) : null}
                     </div>
                     <div className="stockSignalPanel">
+                      <div className="riskTabs" aria-label={COPY.riskMode}>
+                        {[
+                          ["aggressive", COPY.aggressive],
+                          ["neutral", COPY.neutral],
+                          ["conservative", COPY.conservative]
+                        ].map(([value, label]) => (
+                          <button
+                            type="button"
+                            key={value}
+                            className={riskMode === value ? "active" : ""}
+                            onClick={() => setRiskMode(value)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                       <div className="stockMetricRow">
                         <span>랭킹</span>
                         <strong>{currentStock.group}</strong>
@@ -1451,13 +1672,42 @@ export default function App() {
                         </div>
                       ) : null}
                       <div className="beginnerSignalList">
-                        <strong>{COPY.beginnerSignals}</strong>
+                        <strong>{COPY.chartSummary}</strong>
+                        <p>{decisionPanel.summary}</p>
+                      </div>
+                      <div className="decisionZones">
+                        <div className="zone buy"><span>{COPY.buyConditions}</span><p>{decisionPanel.buy}</p></div>
+                        <div className="zone split"><span>{COPY.splitBuyConditions}</span><p>{decisionPanel.splitBuy}</p></div>
+                        <div className="zone neutral"><span>{COPY.watchConditions}</span><p>{decisionPanel.watch}</p></div>
+                        <div className="zone watch"><span>{COPY.sellConditions}</span><p>{decisionPanel.sell}</p></div>
+                        <div className="zone risk"><span>{COPY.stopConditions}</span><p>{decisionPanel.stop}</p></div>
+                        <div className="zone opposite"><span>{COPY.oppositeSignals}</span><p>{decisionPanel.opposite}</p></div>
+                      </div>
+                      <div className="beginnerSignalList">
+                        <strong>{COPY.evidenceData}</strong>
                         <ul>
-                          {getStockSignalLines(currentStock).map((line) => (
+                          {decisionPanel.evidence.map((line) => (
                             <li key={line}>{line}</li>
                           ))}
                         </ul>
                       </div>
+                      {asArray(stockEvents?.events).length > 0 ? (
+                        <div className="eventList">
+                          {asArray(stockEvents.events).slice(0, 4).map((event) => (
+                            <a
+                              key={`${event.date}-${event.type}`}
+                              href={asArray(event.evidenceLinks)[0] || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={event.explanation}
+                            >
+                              <span>{event.date}</span>
+                              <strong>{event.title}</strong>
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="analysisDisclaimer">{COPY.analysisDisclaimer} 신뢰도: {decisionPanel.confidence}</div>
                       <div className="stockLinks">
                         {buildNaverLinks(currentStock.code, summary.effectiveDate).map((link) => (
                           <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}</a>

@@ -4,6 +4,7 @@
 기준 코드:
 - `backend/src/main/java/com/krbrief/summaries/SummaryController.java`
 - `backend/src/main/java/com/krbrief/learning/LearningController.java`
+- `backend/src/main/java/com/krbrief/stocks/StockController.java`
 
 ---
 
@@ -403,6 +404,91 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 - 투자 판단을 직접 지시하지 않는다.
 - 답변에는 기준일, 출처, 한계, 연결된 용어를 포함한다.
 - LLM/RAG 도입 시에도 이 응답 정책을 유지한다.
+
+---
+
+## 13) 종목 차트 조회
+
+### `GET /api/stocks/{code}/chart?range=1M|3M|6M|1Y|3Y&interval=daily|weekly|monthly`
+
+종목별 OHLCV 차트 데이터를 조회한다. backend는 공개 API 게이트웨이 역할을 하고, 실제 데이터는 `marketdata-python`의 pykrx 기반 엔드포인트를 호출한다.
+
+#### Path Parameters
+
+- `code` (required): 6자리 한국 종목 코드. 예: `005930`
+
+#### Query Parameters
+
+- `range` (optional): `1M | 3M | 6M | 1Y | 3Y`, 기본 `6M`
+- `interval` (optional): `daily | weekly | monthly`, 기본 `daily`
+
+#### 성공 응답 (200)
+
+```json
+{
+  "code": "005930",
+  "name": "삼성전자",
+  "interval": "daily",
+  "range": "6M",
+  "priceBasis": "close",
+  "adjusted": false,
+  "asOf": "2026-05-03",
+  "data": [
+    { "date": "2026-05-03", "open": 0, "high": 0, "low": 0, "close": 0, "volume": 0 }
+  ]
+}
+```
+
+#### 실패 응답
+
+- 400 Bad Request: 종목 코드/range/interval이 잘못됨
+- 502 Bad Gateway: marketdata 조회 실패
+
+---
+
+## 14) 종목 이벤트 조회
+
+### `GET /api/stocks/{code}/events?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+가격 급등/급락, 거래량 급증 같은 차트 이벤트 후보를 조회한다. 이벤트는 교육용 분석 보조 신호이며 매수/매도 지시가 아니다.
+
+#### Path Parameters
+
+- `code` (required): 6자리 한국 종목 코드. 예: `005930`
+
+#### Query Parameters
+
+- `from` (required): 시작일
+- `to` (required): 종료일
+
+#### 성공 응답 (200)
+
+```json
+{
+  "code": "005930",
+  "name": "삼성전자",
+  "events": [
+    {
+      "date": "2026-05-03",
+      "type": "volume_spike",
+      "severity": "medium",
+      "priceChangeRate": 3.2,
+      "volumeChangeRate": 230.5,
+      "title": "거래량 급증",
+      "explanation": "최근 20거래일 평균 대비 거래량이 크게 증가했습니다.",
+      "evidenceLinks": [
+        "https://finance.naver.com/item/sise_day.naver?code=005930",
+        "https://finance.naver.com/item/main.naver?code=005930"
+      ]
+    }
+  ]
+}
+```
+
+#### 실패 응답
+
+- 400 Bad Request: 종목 코드/date range가 잘못됨
+- 502 Bad Gateway: marketdata 조회 실패
 
 ---
 

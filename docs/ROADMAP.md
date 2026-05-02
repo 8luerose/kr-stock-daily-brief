@@ -24,13 +24,15 @@
 
 ## Phase 2. 종목 상세 + 차트 이벤트
 
-- [ ] 종목별 OHLCV 조회 API 설계
+- [x] 종목별 OHLCV 조회 API 설계/구현
   - 예: `GET /api/stocks/{code}/chart?range=1M|3M|6M|1Y|3Y&interval=daily|weekly|monthly`
-- [ ] 급등/급락/거래량 급증 이벤트 탐지 API 설계
+- [x] 급등/급락/거래량 급증 이벤트 탐지 API 설계/구현
   - 예: `GET /api/stocks/{code}/events?from=YYYY-MM-DD&to=YYYY-MM-DD`
-- [ ] `lightweight-charts` 등 검증된 차트 라이브러리 도입
-- [ ] 차트 마커와 호버 툴팁 구현
-- [ ] 이벤트별 공시/뉴스/거래량/언급량 근거 링크 저장
+- [x] `lightweight-charts` 등 검증된 차트 라이브러리 도입
+- [x] 캔들차트, 20일 이동평균선, 거래량, 이벤트 마커 구현
+- [x] 공격형/중립형/보수형 시나리오별 조건형 매수/분할매수/관망/매도/손절 UX 구현
+- [ ] 차트 마커 호버 상세 툴팁 고도화
+- [ ] 이벤트별 공시/뉴스/언급량 근거 링크 저장 고도화
 
 ## Phase 3. AI/RAG 기능
 
@@ -56,7 +58,7 @@
 
 ## Phase 5. 배포/운영
 
-- [ ] Docker Compose 전체 실행 보장
+- [x] Docker Compose 전체 실행 보장
 - [ ] `.env.example` 갱신
 - [ ] healthcheck 추가
 - [ ] README/PRD/API_SPEC 최신화

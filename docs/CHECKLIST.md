@@ -55,6 +55,8 @@ make check-month MONTH=2026-02
 - 첫 화면 상단에 `오늘의 시장 브리프`, 데이터 기준일, 신뢰도, 주요 종목 흐름, AI 학습 도우미 입력창이 보이는지 확인
 - 생성/선택일 생성/보관/백필 버튼이 접힌 `운영 관리` 패널 안에 있는지 확인
 - 상승/하락/언급 TOP3 항목을 클릭했을 때 종목 상세 패널과 일봉/주봉/월봉 전환 버튼이 보이는지 확인
+- 종목 상세에 캔들차트, 20일선, 거래량, 이벤트 마커가 보이는지 확인
+- 차트 옆 판단 패널에 공격형/중립형/보수형 전환과 매수 검토, 분할매수 검토, 관망, 매도 검토, 손절/리스크 관리, 반대 신호가 조건형 문구로 표시되는지 확인
 - 날짜 선택 후 Generate
 - 생성 직후 해당 날짜 dot가 즉시 표시되는지 확인
 - 휴장일 날짜를 선택했을 때:
@@ -94,3 +96,15 @@ make qa
 - 각 날짜 generate 성공
 - `leaderExplanations.topGainer/topLoser.summary` 존재
 - 5개 출처 링크(`*DateSearch`)가 종목 직접 링크 형식으로 채워짐
+
+## 7) 종목 차트/이벤트 API 점검
+
+```bash
+curl -s 'http://localhost:8080/api/stocks/005930/chart?range=6M&interval=daily' | jq '.code,.name,.asOf,(.data | length)'
+curl -s 'http://localhost:8080/api/stocks/005930/events?from=2024-01-02&to=2024-03-29' | jq '.code,.name,(.events | length)'
+```
+
+정상 기준:
+- chart 응답에 `data[]` OHLCV와 `asOf` 포함
+- events 응답에 `date`, `type`, `severity`, `priceChangeRate`, `volumeChangeRate`, `title`, `explanation`, `evidenceLinks` 포함
+- 잘못된 종목 코드/range/interval/date range는 400 반환

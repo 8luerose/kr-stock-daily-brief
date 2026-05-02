@@ -116,4 +116,18 @@ contains_field /tmp/krbrief_resp.json futureAiEndpoint || fail "learning assista
 contains_field /tmp/krbrief_resp.json limitations || fail "learning assistant missing limitations"
 pass "POST /api/learning/assistant"
 
+# 13) Stock chart
+code=$(status_code GET "$BASE_URL/api/stocks/005930/chart?range=6M&interval=daily")
+[[ "$code" == "200" ]] || fail "stock chart expected 200, got $code"
+contains_field /tmp/krbrief_resp.json data || fail "stock chart missing data"
+contains_field /tmp/krbrief_resp.json asOf || fail "stock chart missing asOf"
+pass "GET /api/stocks/{code}/chart"
+
+# 14) Stock events
+EVENT_FROM="$(date -v-90d +%F 2>/dev/null || date -d '90 days ago' +%F)"
+code=$(status_code GET "$BASE_URL/api/stocks/005930/events?from=$EVENT_FROM&to=$DATE_TODAY")
+[[ "$code" == "200" ]] || fail "stock events expected 200, got $code"
+contains_field /tmp/krbrief_resp.json events || fail "stock events missing events"
+pass "GET /api/stocks/{code}/events"
+
 echo "== API smoke test done: ALL PASS =="

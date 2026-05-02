@@ -14,7 +14,7 @@ from functools import lru_cache
 
 import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from pykrx import stock
 import pandas as pd
 
@@ -341,6 +341,194 @@ def _calc_prev_close_rate(eff_ymd: str, prev_ymd: str) -> dict:
     return rates
 
 
+def _normalize_stock_code(code: str) -> str:
+    code = str(code or "").strip()
+    if not _is_normal_ticker(code):
+        raise HTTPException(status_code=400, detail=f"invalid_stock_code: {code}")
+    return code
+
+
+def _range_start_ymd(range_value: str, end_ymd: str) -> str:
+    value = (range_value or "6M").upper()
+    end = datetime.strptime(end_ymd, "%Y%m%d").date()
+    days = {
+        "1M": 45,
+        "3M": 110,
+        "6M": 210,
+        "1Y": 400,
+        "3Y": 1120,
+    }.get(value)
+    if days is None:
+        raise HTTPException(status_code=400, detail=f"invalid_range: {range_value}")
+    return (end - timedelta(days=days)).strftime("%Y%m%d")
+
+
+def _parse_date_to_ymd(date_str: str, field: str) -> str:
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        return dt.strftime("%Y%m%d")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"invalid_{field}: {date_str}") from e
+
+
+def _load_ohlcv_frame(code: str, from_ymd: str, to_ymd: str) -> pd.DataFrame:
+    try:
+        try:
+            df = stock.get_market_ohlcv_by_date(from_ymd, to_ymd, code, adjusted=False)
+        except TypeError:
+            df = stock.get_market_ohlcv_by_date(from_ymd, to_ymd, code)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"pykrx_ohlcv_error: {type(e).__name__}") from e
+
+    if df is None or len(df.index) == 0:
+        raise HTTPException(status_code=502, detail="pykrx_ohlcv_empty")
+
+    out = df.rename(
+        columns={
+            "시가": "open",
+            "고가": "high",
+            "저가": "low",
+            "종가": "close",
+            "거래량": "volume",
+        }
+    ).copy()
+    required = ["open", "high", "low", "close", "volume"]
+    missing = [c for c in required if c not in out.columns]
+    if missing:
+        raise HTTPException(status_code=502, detail=f"pykrx_ohlcv_missing_columns: {','.join(missing)}")
+
+    out = out[required]
+    out.index = pd.to_datetime(out.index)
+    out = out.sort_index()
+    out = out.dropna(subset=["open", "high", "low", "close"])
+    return out
+
+
+def _aggregate_ohlcv(df: pd.DataFrame, interval: str) -> pd.DataFrame:
+    value = (interval or "daily").lower()
+    if value == "daily":
+        out = df.copy()
+        out["date"] = out.index
+        return out
+
+    if value not in {"weekly", "monthly"}:
+        raise HTTPException(status_code=400, detail=f"invalid_interval: {interval}")
+
+    rule = "W-FRI" if value == "weekly" else "M"
+    with_dates = df.copy()
+    with_dates["date"] = with_dates.index
+    grouped = with_dates.resample(rule).agg(
+        {
+            "open": "first",
+            "high": "max",
+            "low": "min",
+            "close": "last",
+            "volume": "sum",
+            "date": "max",
+        }
+    )
+    grouped = grouped.dropna(subset=["open", "high", "low", "close", "date"])
+    return grouped
+
+
+def _ohlcv_records(df: pd.DataFrame) -> list[dict]:
+    records: list[dict] = []
+    for _, row in df.iterrows():
+        date_value = row["date"]
+        if hasattr(date_value, "strftime"):
+            date_str = date_value.strftime("%Y-%m-%d")
+        else:
+            date_str = str(date_value)[:10]
+        records.append(
+            {
+                "date": date_str,
+                "open": int(row["open"]),
+                "high": int(row["high"]),
+                "low": int(row["low"]),
+                "close": int(row["close"]),
+                "volume": int(row["volume"]),
+            }
+        )
+    return records
+
+
+def _naver_evidence_links(code: str) -> list[str]:
+    return [
+        f"https://finance.naver.com/item/sise_day.naver?code={code}",
+        f"https://finance.naver.com/item/main.naver?code={code}",
+    ]
+
+
+def _event_severity(abs_price_rate: float, volume_rate: float) -> str:
+    if abs_price_rate >= 12 or volume_rate >= 450:
+        return "high"
+    if abs_price_rate >= 6 or volume_rate >= 220:
+        return "medium"
+    return "low"
+
+
+def _detect_chart_events(code: str, df: pd.DataFrame, from_ymd: str, to_ymd: str) -> list[dict]:
+    events: list[dict] = []
+    daily = df.copy().sort_index()
+    daily["prev_close"] = daily["close"].shift(1)
+    daily["price_rate"] = ((daily["close"] - daily["prev_close"]) / daily["prev_close"] * 100).fillna(0)
+    daily["vol_avg20"] = daily["volume"].shift(1).rolling(20, min_periods=5).mean()
+    daily["volume_rate"] = (daily["volume"] / daily["vol_avg20"] * 100).replace([float("inf"), -float("inf")], 0).fillna(0)
+
+    start = pd.to_datetime(from_ymd)
+    end = pd.to_datetime(to_ymd)
+    target = daily[(daily.index >= start) & (daily.index <= end)]
+    evidence = _naver_evidence_links(code)
+
+    for idx, row in target.iterrows():
+        price_rate = round(float(row["price_rate"]), 2)
+        volume_rate = round(float(row["volume_rate"]), 2)
+        abs_price = abs(price_rate)
+        day_events: list[tuple[str, str, str]] = []
+
+        if price_rate >= 5:
+            day_events.append(
+                (
+                    "price_surge",
+                    "가격 급등",
+                    "전일 종가 대비 상승폭이 큽니다. 공시, 뉴스, 거래량 증가가 함께 있었는지 확인해야 합니다.",
+                )
+            )
+        elif price_rate <= -5:
+            day_events.append(
+                (
+                    "price_drop",
+                    "가격 급락",
+                    "전일 종가 대비 하락폭이 큽니다. 일시적 충격인지 추세 훼손인지 구분해야 합니다.",
+                )
+            )
+
+        if volume_rate >= 180:
+            day_events.append(
+                (
+                    "volume_spike",
+                    "거래량 급증",
+                    "최근 20거래일 평균 대비 거래량이 크게 늘었습니다. 관심 변화나 수급 이벤트 가능성을 점검합니다.",
+                )
+            )
+
+        for event_type, title, explanation in day_events:
+            events.append(
+                {
+                    "date": idx.strftime("%Y-%m-%d"),
+                    "type": event_type,
+                    "severity": _event_severity(abs_price, volume_rate),
+                    "priceChangeRate": price_rate,
+                    "volumeChangeRate": volume_rate,
+                    "title": title,
+                    "explanation": explanation,
+                    "evidenceLinks": evidence,
+                }
+            )
+
+    return events[:80]
+
+
 def _top_traded_value_universe(ymd: str, n: int = 200) -> list[str]:
     ohlcv = stock.get_market_ohlcv_by_ticker(ymd, market="ALL")
     if ohlcv is None or len(ohlcv.index) == 0:
@@ -424,6 +612,50 @@ def market_status(date: str):
             return {"isBusinessDay": False, "reason": "unknown (pykrx unavailable)"}
 
     return {"isBusinessDay": True, "reason": "business_day"}
+
+
+@app.get("/stocks/{code}/chart")
+def stock_chart(code: str, range: str = "6M", interval: str = "daily"):
+    ticker = _normalize_stock_code(code)
+    today_ymd = datetime.now().strftime("%Y%m%d")
+    as_of_ymd, _ = _effective_business_day_or_previous(today_ymd)
+    from_ymd = _range_start_ymd(range, as_of_ymd)
+    raw = _load_ohlcv_frame(ticker, from_ymd, as_of_ymd)
+    aggregated = _aggregate_ohlcv(raw, interval)
+
+    return {
+        "code": ticker,
+        "name": _name(ticker),
+        "interval": (interval or "daily").lower(),
+        "range": (range or "6M").upper(),
+        "priceBasis": "close",
+        "adjusted": False,
+        "asOf": f"{as_of_ymd[0:4]}-{as_of_ymd[4:6]}-{as_of_ymd[6:8]}",
+        "data": _ohlcv_records(aggregated),
+    }
+
+
+@app.get("/stocks/{code}/events")
+def stock_events(code: str, from_date: str | None = Query(default=None, alias="from"), to: str | None = None):
+    if not from_date or not to:
+        raise HTTPException(status_code=400, detail="from_and_to_required")
+
+    ticker = _normalize_stock_code(code)
+    from_ymd = _parse_date_to_ymd(from_date, "from")
+    to_ymd = _parse_date_to_ymd(to, "to")
+    if from_ymd > to_ymd:
+        raise HTTPException(status_code=400, detail="from_must_be_on_or_before_to")
+
+    lookback_from = (datetime.strptime(from_ymd, "%Y%m%d").date() - timedelta(days=90)).strftime("%Y%m%d")
+    raw = _load_ohlcv_frame(ticker, lookback_from, to_ymd)
+
+    return {
+        "code": ticker,
+        "name": _name(ticker),
+        "from": f"{from_ymd[0:4]}-{from_ymd[4:6]}-{from_ymd[6:8]}",
+        "to": f"{to_ymd[0:4]}-{to_ymd[4:6]}-{to_ymd[6:8]}",
+        "events": _detect_chart_events(ticker, raw, from_ymd, to_ymd),
+    }
 
 
 @app.get("/leaders")
