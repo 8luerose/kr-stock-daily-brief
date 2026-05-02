@@ -28,6 +28,11 @@ services:
       TZ: Asia/Seoul
     ports:
       - "${MARKETDATA_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   qdrant:
     image: qdrant/qdrant:v1.12.6
@@ -49,6 +54,11 @@ services:
       - "${AI_SERVICE_PORT:-8100}:8100"
     depends_on:
       - qdrant
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health', timeout=5).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   backend:
     build:
@@ -90,6 +100,11 @@ services:
       API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     depends_on:
       - backend
 

@@ -61,9 +61,10 @@
 ## Phase 5. 배포/운영
 
 - [x] Docker Compose 전체 실행 보장
-- [ ] `.env.example` 갱신
-- [ ] healthcheck 추가
-- [ ] README/PRD/API_SPEC 최신화
+- [x] `.env.example` 갱신
+- [x] healthcheck 추가
+- [x] README/PRD/API_SPEC 최신화
+- [x] 운영/배포 가이드 문서화
 - [ ] 주요 UX 브라우저 검증 자동화
 
 ## 원칙

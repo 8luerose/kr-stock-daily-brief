@@ -25,6 +25,10 @@ app.get("/config.js", (req, res) => {
   );
 });
 
+app.get("/health", (req, res) => {
+  res.json({ status: "UP" });
+});
+
 // Optional gate for UI HTML routes (assets/config are still reachable).
 app.use((req, res, next) => {
   if (!publicKey) return next();
