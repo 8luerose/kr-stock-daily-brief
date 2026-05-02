@@ -355,6 +355,7 @@ function portfolioRisk(items) {
 
 function StockPriceChart({ chart, events, darkMode }) {
   const containerRef = useRef(null);
+  const tooltipRef = useRef(null);
 
   useEffect(() => {
     if (!containerRef.current || !chart || asArray(chart.data).length === 0) return undefined;
@@ -373,6 +374,16 @@ function StockPriceChart({ chart, events, darkMode }) {
       timeScale: { borderColor: lineColor, timeVisible: false }
     });
 
+    const candleData = asArray(chart.data).map((row) => ({
+      time: row.date,
+      open: Number(row.open),
+      high: Number(row.high),
+      low: Number(row.low),
+      close: Number(row.close),
+      volume: Number(row.volume || 0)
+    }));
+    const candleByTime = new Map(candleData.map((row) => [row.time, row]));
+
     const candles = instance.addSeries(CandlestickSeries, {
       upColor: "#ef4444",
       downColor: "#3182f6",
@@ -381,15 +392,46 @@ function StockPriceChart({ chart, events, darkMode }) {
       wickUpColor: "#ef4444",
       wickDownColor: "#3182f6"
     });
-    candles.setData(
-      asArray(chart.data).map((row) => ({
-        time: row.date,
-        open: Number(row.open),
-        high: Number(row.high),
-        low: Number(row.low),
-        close: Number(row.close)
-      }))
-    );
+    candles.setData(candleData);
+
+    const latest = candleData.at(-1);
+    const recentLow = Math.min(...candleData.slice(-40).map((row) => row.low).filter(Number.isFinite));
+    if (latest && Number.isFinite(latest.close)) {
+      candles.createPriceLine({
+        price: latest.close,
+        color: textColor,
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "현재가"
+      });
+      candles.createPriceLine({
+        price: latest.close * 1.05,
+        color: "#f59e0b",
+        lineWidth: 1,
+        lineStyle: 1,
+        axisLabelVisible: true,
+        title: "매도 검토"
+      });
+      candles.createPriceLine({
+        price: latest.close * 0.97,
+        color: "#10b981",
+        lineWidth: 1,
+        lineStyle: 1,
+        axisLabelVisible: true,
+        title: "분할매수 검토"
+      });
+    }
+    if (Number.isFinite(recentLow)) {
+      candles.createPriceLine({
+        price: recentLow,
+        color: "#ef4444",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "리스크 기준"
+      });
+    }
 
     const ma20 = instance.addSeries(LineSeries, { color: "#10b981", lineWidth: 2, priceLineVisible: false });
     ma20.setData(calculateMa(chart.data, 20));
@@ -419,11 +461,56 @@ function StockPriceChart({ chart, events, darkMode }) {
       }))
     );
 
+    const tooltip = tooltipRef.current;
+    const handleCrosshairMove = (param) => {
+      if (!tooltip || !param.point || !param.time || param.point.x < 0 || param.point.y < 0) {
+        if (tooltip) tooltip.classList.remove("visible");
+        return;
+      }
+
+      const row = candleByTime.get(param.time);
+      if (!row) {
+        tooltip.classList.remove("visible");
+        return;
+      }
+
+      const chartWidth = containerRef.current.clientWidth;
+      const chartHeight = containerRef.current.clientHeight;
+      const date = document.createElement("strong");
+      date.textContent = row.time;
+      const openHigh = document.createElement("span");
+      openHigh.textContent = `시가 ${formatNumber(row.open)} · 고가 ${formatNumber(row.high)}`;
+      const lowClose = document.createElement("span");
+      lowClose.textContent = `저가 ${formatNumber(row.low)} · 종가 ${formatNumber(row.close)}`;
+      const volumeLine = document.createElement("span");
+      volumeLine.textContent = `거래량 ${formatNumber(row.volume)}`;
+      tooltip.replaceChildren(date, openHigh, lowClose, volumeLine);
+      tooltip.classList.add("visible");
+
+      const box = tooltip.getBoundingClientRect();
+      const left = Math.min(Math.max(8, param.point.x + 14), Math.max(8, chartWidth - box.width - 8));
+      const top = Math.min(Math.max(8, param.point.y + 14), Math.max(8, chartHeight - box.height - 8));
+      tooltip.style.transform = `translate(${left}px, ${top}px)`;
+    };
+    instance.subscribeCrosshairMove(handleCrosshairMove);
     instance.timeScale().fitContent();
-    return () => instance.remove();
+    return () => {
+      instance.unsubscribeCrosshairMove(handleCrosshairMove);
+      instance.remove();
+    };
   }, [chart, events, darkMode]);
 
-  return <div ref={containerRef} className="realChart" aria-label={`${chart?.name || "종목"} 캔들 차트`} />;
+  return (
+    <div className="realChartWrap">
+      <div className="chartZoneLegend" aria-hidden="true">
+        <span className="legendBuy">분할매수 검토</span>
+        <span className="legendSell">매도 검토</span>
+        <span className="legendRisk">리스크 기준</span>
+      </div>
+      <div ref={containerRef} className="realChart" aria-label={`${chart?.name || "종목"} 캔들 차트`} />
+      <div ref={tooltipRef} className="chartTooltip" aria-hidden="true" />
+    </div>
+  );
 }
 
 function formatEffectiveDate(yyyymmdd) {

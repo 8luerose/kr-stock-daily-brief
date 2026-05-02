@@ -1636,9 +1636,91 @@ body {
   font-weight: 800;
 }
 
+.realChartWrap {
+  position: relative;
+  min-height: 360px;
+}
+
 .realChart {
   width: 100%;
   min-height: 360px;
+}
+
+.chartZoneLegend {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: min(520px, calc(100% - 24px));
+  pointer-events: none;
+}
+
+.chartZoneLegend span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: var(--shadow);
+}
+
+.chartZoneLegend span::before {
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 999px;
+  content: "";
+}
+
+.chartZoneLegend .legendBuy::before {
+  background: var(--success);
+}
+
+.chartZoneLegend .legendSell::before {
+  background: var(--warning);
+}
+
+.chartZoneLegend .legendRisk::before {
+  background: var(--danger);
+}
+
+.chartTooltip {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  display: none;
+  min-width: 180px;
+  max-width: 260px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.55;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+.chartTooltip.visible {
+  display: grid;
+  gap: 2px;
+}
+
+.chartTooltip strong {
+  color: var(--text);
+  font-size: 13px;
 }
 
 .chartState {
@@ -1911,6 +1993,10 @@ body {
     justify-content: flex-start;
   }
 
+  .kvGrid {
+    grid-template-columns: 1fr;
+  }
+
   .topListsSection {
     grid-template-columns: 1fr;
   }
@@ -1930,11 +2016,18 @@ body {
 
   .chartPreview {
     min-height: 240px;
-    padding-right: 14px;
+    padding: 58px 14px 10px 12px;
   }
 
+  .realChartWrap,
   .realChart {
     min-height: 300px;
+  }
+
+  .chartZoneLegend {
+    left: 12px;
+    right: 12px;
+    justify-content: flex-start;
   }
   
   .topList {
