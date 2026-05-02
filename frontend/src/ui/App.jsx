@@ -60,6 +60,12 @@ const COPY = {
   analysisDisclaimer: "교육용 분석 보조 정보이며 매수, 매도 지시나 수익 보장이 아닙니다.",
   askChartAi: "AI로 차트 설명",
   aiResearchTitle: "AI 차트 해석",
+  portfolioTitle: "포트폴리오 샌드박스",
+  portfolioSubtitle: "실계좌 연동 없이 관심 종목과 가상 비중으로 리스크를 봅니다.",
+  addToPortfolio: "관심 추가",
+  virtualWeight: "가상 비중",
+  concentration: "집중도",
+  volatility: "변동성",
   openAdmin: "관리자 영역",
   closeAdmin: "관리자 영역 닫기",
   adminTitle: "운영 관리",
@@ -315,6 +321,26 @@ function buildDecisionPanel(chart, events, riskMode) {
       `시나리오: ${modeText}`
     ],
     confidence: asArray(chart?.data).length >= 60 ? "중간-높음" : "중간"
+  };
+}
+
+function portfolioRisk(items) {
+  const list = asArray(items);
+  const totalWeight = list.reduce((sum, item) => sum + Number(item.weight || 0), 0);
+  const maxItem = list.reduce((max, item) => (Number(item.weight || 0) > Number(max?.weight || 0) ? item : max), null);
+  const volatileCount = list.filter((item) => Math.abs(Number(item.rate || 0)) >= 10).length;
+  return {
+    totalWeight,
+    maxItem,
+    volatileCount,
+    concentration:
+      Number(maxItem?.weight || 0) >= 50
+        ? "한 종목 비중이 큽니다. 급락 이벤트가 생기면 전체 변동성이 커질 수 있습니다."
+        : "비중이 한 종목에 과도하게 몰리지는 않았습니다.",
+    volatility:
+      volatileCount > 0
+        ? `${volatileCount}개 종목이 큰 변동률 구간입니다. 이벤트 근거와 손실 허용 기준을 먼저 확인합니다.`
+        : "큰 변동률 종목은 아직 적습니다. 다만 이벤트 발생 시 비중 변화를 다시 확인합니다."
   };
 }
 
@@ -647,6 +673,13 @@ export default function App() {
   const [stockChartError, setStockChartError] = useState("");
   const [aiResearchLoading, setAiResearchLoading] = useState(false);
   const [aiResearchResponse, setAiResearchResponse] = useState(null);
+  const [portfolio, setPortfolio] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("portfolioSandbox") || "[]");
+    } catch {
+      return [];
+    }
+  });
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
@@ -681,6 +714,7 @@ export default function App() {
     () => buildDecisionPanel(stockChart, stockEvents, riskMode),
     [riskMode, stockChart, stockEvents]
   );
+  const portfolioSummary = useMemo(() => portfolioRisk(portfolio), [portfolio]);
 
   async function apiFetch(path, opts = {}) {
     const url = new URL(cfg.apiBaseUrl + path);
@@ -921,6 +955,43 @@ export default function App() {
     } finally {
       setAiResearchLoading(false);
     }
+  }
+
+  function savePortfolio(next) {
+    setPortfolio(next);
+    try {
+      localStorage.setItem("portfolioSandbox", JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }
+
+  function addCurrentStockToPortfolio() {
+    if (!currentStock?.code) return;
+    const exists = portfolio.some((item) => item.code === currentStock.code);
+    const next = exists
+      ? portfolio
+      : [
+          ...portfolio,
+          {
+            code: currentStock.code,
+            name: currentStock.name,
+            group: currentStock.group,
+            rate: currentStock.rate,
+            count: currentStock.count,
+            weight: 10
+          }
+        ];
+    savePortfolio(next);
+  }
+
+  function updatePortfolioWeight(code, weight) {
+    const value = Math.max(0, Math.min(100, Number(weight || 0)));
+    savePortfolio(portfolio.map((item) => (item.code === code ? { ...item, weight: value } : item)));
+  }
+
+  function removePortfolioItem(code) {
+    savePortfolio(portfolio.filter((item) => item.code !== code));
   }
 
   function formatApiError(err) {
@@ -1425,6 +1496,54 @@ export default function App() {
             </div>
           ) : null}
         </section>
+
+        <section className="card portfolioPanel">
+          <div className="panelHead">
+            <div>
+              <div className="panelTitle">{COPY.portfolioTitle}</div>
+              <div className="panelSubtitle">{COPY.portfolioSubtitle}</div>
+            </div>
+          </div>
+          <button type="button" className="btn primary small fullWidth" onClick={addCurrentStockToPortfolio} disabled={!currentStock?.code}>
+            {currentStock?.name ? `${currentStock.name} ${COPY.addToPortfolio}` : COPY.addToPortfolio}
+          </button>
+          {portfolio.length === 0 ? (
+            <div className="empty compact">관심 종목을 추가하면 비중과 변동성 리스크를 비교합니다.</div>
+          ) : (
+            <div className="portfolioList">
+              {portfolio.map((item) => (
+                <div className="portfolioItem" key={item.code}>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <span>{item.code} · {item.group}</span>
+                  </div>
+                  <label>
+                    {COPY.virtualWeight}
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={item.weight}
+                      onChange={(e) => updatePortfolioWeight(item.code, e.target.value)}
+                    />
+                  </label>
+                  <button type="button" onClick={() => removePortfolioItem(item.code)}>제외</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="portfolioRisk">
+            <div>
+              <span>{COPY.concentration}</span>
+              <p>{portfolioSummary.concentration}</p>
+            </div>
+            <div>
+              <span>{COPY.volatility}</span>
+              <p>{portfolioSummary.volatility}</p>
+            </div>
+            <small>총 가상 비중 {portfolioSummary.totalWeight}% · 최대 비중 {portfolioSummary.maxItem?.name || "-"} {portfolioSummary.maxItem?.weight || 0}%</small>
+          </div>
+        </section>
         </div>
 
         <section className="card detail">
@@ -1760,6 +1879,14 @@ export default function App() {
                         </div>
                       ) : null}
                       <div className="analysisDisclaimer">{COPY.analysisDisclaimer} 신뢰도: {decisionPanel.confidence}</div>
+                      <button
+                        type="button"
+                        className="btn ghost small"
+                        onClick={addCurrentStockToPortfolio}
+                        disabled={!currentStock.code}
+                      >
+                        {COPY.addToPortfolio}
+                      </button>
                       <button
                         type="button"
                         className="btn primary small"
