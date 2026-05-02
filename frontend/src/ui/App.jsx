@@ -33,7 +33,20 @@ function buildEvidenceLinks(naverDayUrl, yahooUrl) {
 }
 
 const COPY = {
-  brand: "주식 일간 브리프",
+  brand: "한국 주식 AI 리서치",
+  productTagline: "오늘 시장을 초보자 언어로 읽는 브리프",
+  todayBrief: "오늘의 시장 브리프",
+  marketBrief: "시장 브리프",
+  marketOneLine: "오늘 시장에서 눈에 띄는 종목과 확인할 근거를 먼저 보여줍니다.",
+  noMarketOneLine: "아직 저장된 브리프가 없습니다. 최신 요약을 불러오거나 관리자 영역에서 생성할 수 있습니다.",
+  dataAsOf: "데이터 기준일",
+  sourceConfidence: "신뢰도",
+  beginnerSignals: "초보자가 지금 확인할 신호",
+  openAdmin: "관리자 영역",
+  closeAdmin: "관리자 영역 닫기",
+  adminTitle: "운영 관리",
+  adminSubtitle: "생성, 보관, 일괄 생성은 접힌 패널에서만 실행합니다.",
+  selectedDate: "조회 기준일",
   generateToday: "오늘 생성",
   moveToLatest: "최신 요약",
   toggleDarkOn: "다크 모드",
@@ -82,7 +95,7 @@ const COPY = {
   monthlyTotalDays: "월 총 일수",
   monthlyGenerated: "생성 완료",
   monthlyMissing: "미생성",
-  monthlyTopMentioned: "월 최다 거래",
+  monthlyTopMentioned: "월 최다 언급",
   days: ["일", "월", "화", "수", "목", "금", "토"],
   verifyField: "항목",
   verifySource: "출처",
@@ -123,6 +136,89 @@ const COPY = {
 
 function valueOrDash(v) {
   return v && String(v).trim() ? v : "-";
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  return n.toLocaleString("ko-KR");
+}
+
+function formatRate(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  return `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
+}
+
+function stockRouteHash(stock) {
+  if (!stock?.code) return "#stock";
+  return `#stock-${stock.code}`;
+}
+
+function stockFromEntry(item, group) {
+  if (!item) return null;
+  return {
+    code: item.code || "",
+    name: item.name || "",
+    rate: item.rate,
+    count: item.count,
+    group
+  };
+}
+
+function buildStockPicks(summary) {
+  if (!summary) return [];
+  return [
+    ...sortTopGainers(summary.topGainers).slice(0, 3).map((item) => stockFromEntry(item, "상승 TOP3")),
+    ...sortTopLosers(summary.topLosers).slice(0, 3).map((item) => stockFromEntry(item, "하락 TOP3")),
+    ...filterMostMentioned(summary.mostMentionedTop).slice(0, 3).map((item) => stockFromEntry(item, "언급 TOP3"))
+  ].filter(Boolean);
+}
+
+function getDataAsOf(summary, selected) {
+  if (!summary) return selected;
+  return formatEffectiveDate(summary.effectiveDate) || summary.date || selected;
+}
+
+function getConfidenceLabel(summary) {
+  if (!summary) return "대기";
+  if (summary.marketClosed) return "휴장";
+  if (summary.rankingWarning || asArray(summary.anomalies).length > 0) return "주의 필요";
+  if (summary.rawNotes && summary.rawNotes.includes("Source: pykrx")) return "높음";
+  return "중간";
+}
+
+function getMarketHeadline(summary, selected) {
+  if (!summary) return `${selected} 브리프가 아직 없습니다.`;
+  if (summary.marketClosed) return `${selected} 한국 증시는 휴장일입니다.`;
+  const gainer = valueOrDash(summary.topGainer);
+  const loser = valueOrDash(summary.topLoser);
+  const mentioned = valueOrDash(summary.mostMentioned);
+  return `${gainer} 상승, ${loser} 하락, ${mentioned} 관심 집중`;
+}
+
+function getStockSignalLines(stock) {
+  if (!stock) return [];
+  const lines = [];
+  if (stock.rate !== undefined && stock.rate !== null) {
+    const rate = Number(stock.rate);
+    if (Number.isFinite(rate)) {
+      if (rate > 0) {
+        lines.push(`등락률 ${formatRate(rate)}: 상승 원인이 공시, 뉴스, 거래량 증가와 연결되는지 확인`);
+        lines.push("급등 후 거래량이 줄면 단기 과열 가능성도 함께 점검");
+      } else {
+        lines.push(`등락률 ${formatRate(rate)}: 하락 원인이 일시 이슈인지 구조적 변화인지 구분`);
+        lines.push("전저점 이탈 여부와 거래량 증가 여부를 함께 확인");
+      }
+    }
+  }
+  if (stock.count !== undefined && stock.count !== null) {
+    lines.push(`토론방 언급 ${formatNumber(stock.count)}건: 관심도는 높지만 공식 근거와 분리해서 확인`);
+    lines.push("언급량 증가가 거래량, 공시, 뉴스와 같은 방향인지 확인");
+  }
+  return lines.length > 0 ? lines : ["선택한 종목의 거래량, 공시, 뉴스, 시장 전체 흐름을 함께 확인"];
 }
 
 function formatEffectiveDate(yyyymmdd) {
@@ -371,6 +467,9 @@ export default function App() {
   const [assistantQuestion, setAssistantQuestion] = useState("");
   const [assistantResponse, setAssistantResponse] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
+  const [stockInterval, setStockInterval] = useState("daily");
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
@@ -394,6 +493,13 @@ export default function App() {
     [learningTerms, selectedTermId, visibleTerms]
   );
   const briefTerms = useMemo(() => pickBriefTerms(learningTerms), [learningTerms]);
+  const stockPicks = useMemo(() => buildStockPicks(summary), [summary]);
+  const topGainers = useMemo(() => sortTopGainers(summary?.topGainers).slice(0, 3), [summary]);
+  const topLosers = useMemo(() => sortTopLosers(summary?.topLosers).slice(0, 3), [summary]);
+  const topMentioned = useMemo(() => filterMostMentioned(summary?.mostMentionedTop).slice(0, 3), [summary]);
+  const currentStock = selectedStock || stockPicks[0] || null;
+  const dataAsOf = useMemo(() => getDataAsOf(summary, selected), [summary, selected]);
+  const confidenceLabel = useMemo(() => getConfidenceLabel(summary), [summary]);
 
   async function apiFetch(path, opts = {}) {
     const url = new URL(cfg.apiBaseUrl + path);
@@ -517,6 +623,17 @@ export default function App() {
     setSelectedTermId(term.id);
     setAssistantQuestion(buildTermQuestion(term));
     setAssistantResponse(null);
+  }
+
+  function selectStock(stock) {
+    if (!stock) return;
+    setSelectedStock(stock);
+    if (stock.code) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${stockRouteHash(stock)}`);
+    }
+    window.setTimeout(() => {
+      document.getElementById("stock-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   }
 
   async function askLearningAssistant(questionOverride, termIdOverride) {
@@ -650,12 +767,96 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (stockPicks.length === 0) {
+      setSelectedStock(null);
+      return;
+    }
+
+    const hashCode = window.location.hash.startsWith("#stock-")
+      ? window.location.hash.replace("#stock-", "")
+      : "";
+    const matched = hashCode ? stockPicks.find((stock) => stock.code === hashCode) : null;
+    setSelectedStock(matched || stockPicks[0]);
+  }, [stockPicks]);
+
   const todayStr = useMemo(() => isoDate(new Date()), []);
+  const assistantPanel = (
+    <div className="assistantBox heroAssistant">
+      <div className="assistantHead">
+        <div>
+          <div className="assistantTitle">{COPY.assistantTitle}</div>
+          <div className="assistantSubtitle">{COPY.assistantSubtitle}</div>
+        </div>
+        <span className="assistantDate">{selected}</span>
+      </div>
+      <div className="assistantInputRow">
+        <input
+          value={assistantQuestion}
+          onChange={(e) => setAssistantQuestion(e.target.value)}
+          placeholder={COPY.assistantInputPlaceholder}
+          disabled={assistantLoading}
+        />
+        <button
+          className="btn primary small"
+          type="button"
+          onClick={() => askLearningAssistant()}
+          disabled={assistantLoading}
+        >
+          {assistantLoading ? COPY.loading : COPY.assistantAsk}
+        </button>
+      </div>
+      {assistantResponse ? (
+        <div className="assistantAnswer">
+          <div className="assistantAnswerHead">
+            <strong>{COPY.assistantAnswer}</strong>
+            <span>{COPY.confidence}: {assistantResponse.confidence}</span>
+          </div>
+          <pre>{assistantResponse.answer}</pre>
+          {asArray(assistantResponse.matchedTerms).length > 0 ? (
+            <div className="assistantMeta">
+              <strong>{COPY.matchedTerms}</strong>
+              <div>
+                {asArray(assistantResponse.matchedTerms).map((term) => (
+                  <button type="button" key={term.id} onClick={() => selectTerm(term)}>
+                    {term.term}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {asArray(assistantResponse.sources).length > 0 ? (
+            <div className="assistantMeta">
+              <strong>{COPY.sources}</strong>
+              <div>
+                {asArray(assistantResponse.sources).map((source) => (
+                  <span key={`${source.type}-${source.title}`}>{source.title}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {asArray(assistantResponse.limitations).length > 0 ? (
+            <div className="assistantMeta limitations">
+              <strong>{COPY.limitations}</strong>
+              <ul>
+                {asArray(assistantResponse.limitations).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="page">
       <header className="top">
-        <div className="brand">{COPY.brand}</div>
+        <div>
+          <div className="brand">{COPY.brand}</div>
+          <div className="brandSub">{COPY.productTagline}</div>
+        </div>
         <div className="actions">
           <button className="btn ghost" onClick={jumpToLatest} disabled={loading}>
             {COPY.moveToLatest}
@@ -667,15 +868,51 @@ export default function App() {
           >
             {darkMode ? COPY.toggleDarkOff : COPY.toggleDarkOn}
           </button>
-          <button
-            className="btn primary"
-            onClick={() => generate(todayStr)}
-            disabled={loading}
-          >
-            {COPY.generateToday}
-          </button>
         </div>
       </header>
+
+      <section className="marketHero">
+        <div className="marketHeroMain">
+          <div className="eyebrow">{COPY.todayBrief}</div>
+          <h1>{getMarketHeadline(summary, selected)}</h1>
+          <p>{summary ? COPY.marketOneLine : COPY.noMarketOneLine}</p>
+          <div className="heroMeta">
+            <span>{COPY.dataAsOf}: {dataAsOf}</span>
+            <span>{COPY.sourceConfidence}: {confidenceLabel}</span>
+            <span>{COPY.selectedDate}: {selected}</span>
+          </div>
+        </div>
+        <div className="marketPulse" aria-label="주요 종목 흐름">
+          {(stockPicks.length > 0 ? stockPicks.slice(0, 5) : [
+            { name: COPY.topGainer, group: "상승", rate: 0 },
+            { name: COPY.topLoser, group: "하락", rate: 0 },
+            { name: COPY.mostMentioned, group: "관심", count: 0 }
+          ]).map((stock, index) => {
+            const rate = Number(stock.rate || 0);
+            const width = stock.count ? Math.min(100, Math.max(18, Number(stock.count))) : Math.min(100, Math.max(18, Math.abs(rate) * 2.2));
+            return (
+              <button
+                type="button"
+                key={`${stock.group}-${stock.code || stock.name}-${index}`}
+                className={`pulseRow ${currentStock?.code && stock.code === currentStock.code ? "active" : ""}`}
+                onClick={() => stock.code ? selectStock(stock) : null}
+              >
+                <span className="pulseName">{stock.name}</span>
+                <span className="pulseGroup">{stock.group}</span>
+                <span className="pulseTrack">
+                  <span
+                    className={`pulseFill ${rate < 0 ? "down" : stock.count ? "mention" : "up"}`}
+                    style={{ width: `${width}%` }}
+                  />
+                </span>
+                <strong>{stock.count ? `${formatNumber(stock.count)}건` : formatRate(stock.rate)}</strong>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {assistantPanel}
 
       <section className="card overview">
         <div className="overviewItem">
@@ -717,6 +954,63 @@ export default function App() {
 
       <main className="main">
         <div className="sideStack">
+        <section className="card adminPanel">
+          <button
+            type="button"
+            className="adminToggle"
+            onClick={() => setShowAdminPanel((v) => !v)}
+            aria-expanded={showAdminPanel}
+          >
+            <span>
+              <strong>{COPY.adminTitle}</strong>
+              <small>{COPY.adminSubtitle}</small>
+            </span>
+            <span>{showAdminPanel ? COPY.closeAdmin : COPY.openAdmin}</span>
+          </button>
+          {showAdminPanel ? (
+            <div className="adminBody">
+              <div className="adminDateRow">
+                <label className="fieldLabel" htmlFor="selected-date">{COPY.selectedDate}</label>
+                <input
+                  id="selected-date"
+                  type="date"
+                  value={selected}
+                  onChange={(e) => setSelected(e.target.value)}
+                  className="dateInput"
+                  disabled={loading}
+                />
+              </div>
+              <div className="adminActions">
+                <button className="btn primary" onClick={() => generate(todayStr)} disabled={loading}>
+                  {COPY.generateToday}
+                </button>
+                <button className="btn" onClick={() => generate(selected)} disabled={loading}>
+                  {COPY.generateSelected}
+                </button>
+                {adminKey ? (
+                  <button className="btn ghost" onClick={archiveSelected} disabled={loading}>
+                    {COPY.archiveSelected}
+                  </button>
+                ) : null}
+              </div>
+              {adminKey ? (
+                <div className="backfillBar compact">
+                  <input type="date" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
+                  <input type="date" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
+                  <button className="btn ghost" onClick={runBackfill} disabled={loading}>
+                    {COPY.backfillRun}
+                  </button>
+                </div>
+              ) : null}
+              {backfillResult ? (
+                <div className="hint compact">
+                  완료: 성공 {backfillResult.successCount}, 저신뢰 {backfillResult.lowConfidenceCount}, 실패 {backfillResult.failCount}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+
         <section className="card calendar">
           <div className="calendarHead">
             <button className="btn ghost" onClick={() => setMonth(addMonths(month, -1))}>
@@ -867,44 +1161,14 @@ export default function App() {
 
         <section className="card detail">
           <div className="detailHead">
-            <div className="detailTitle">{selected}</div>
-            <div className="actions">
-              <input
-                type="date"
-                value={selected}
-                onChange={(e) => setSelected(e.target.value)}
-                className="dateInput"
-                disabled={loading}
-                aria-label="과거 날짜 선택"
-              />
-              <button className="btn primary" onClick={() => generate(selected)} disabled={loading}>
-                {COPY.generateSelected}
-              </button>
-              {adminKey ? (
-                <button className="btn ghost" onClick={archiveSelected} disabled={loading}>
-                  {COPY.archiveSelected}
-                </button>
-              ) : null}
+            <div>
+              <div className="detailTitle">{COPY.marketBrief}</div>
+              <div className="detailSub">{selected} 기준</div>
             </div>
           </div>
 
           {cfg.gateEnabled && !k ? (
             <div className="hint">{COPY.gatedHint}</div>
-          ) : null}
-
-          {adminKey ? (
-            <div className="backfillBar">
-              <input type="date" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
-              <input type="date" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
-              <button className="btn ghost" onClick={runBackfill} disabled={loading}>
-                {COPY.backfillRun}
-              </button>
-            </div>
-          ) : null}
-          {backfillResult ? (
-            <div className="hint">
-              완료: 성공 {backfillResult.successCount}, 저신뢰 {backfillResult.lowConfidenceCount}, 실패 {backfillResult.failCount}
-            </div>
           ) : null}
 
           {error ? <div className="error">{error}</div> : null}
@@ -940,73 +1204,6 @@ export default function App() {
                   </div>
                 </div>
               ) : null}
-
-              <div className="assistantBox">
-                <div className="assistantHead">
-                  <div>
-                    <div className="assistantTitle">{COPY.assistantTitle}</div>
-                    <div className="assistantSubtitle">{COPY.assistantSubtitle}</div>
-                  </div>
-                  <span className="assistantDate">{selected}</span>
-                </div>
-                <div className="assistantInputRow">
-                  <input
-                    value={assistantQuestion}
-                    onChange={(e) => setAssistantQuestion(e.target.value)}
-                    placeholder={COPY.assistantInputPlaceholder}
-                    disabled={assistantLoading}
-                  />
-                  <button
-                    className="btn primary small"
-                    type="button"
-                    onClick={() => askLearningAssistant()}
-                    disabled={assistantLoading}
-                  >
-                    {assistantLoading ? COPY.loading : COPY.assistantAsk}
-                  </button>
-                </div>
-                {assistantResponse ? (
-                  <div className="assistantAnswer">
-                    <div className="assistantAnswerHead">
-                      <strong>{COPY.assistantAnswer}</strong>
-                      <span>{COPY.confidence}: {assistantResponse.confidence}</span>
-                    </div>
-                    <pre>{assistantResponse.answer}</pre>
-                    {asArray(assistantResponse.matchedTerms).length > 0 ? (
-                      <div className="assistantMeta">
-                        <strong>{COPY.matchedTerms}</strong>
-                        <div>
-                          {asArray(assistantResponse.matchedTerms).map((term) => (
-                            <button type="button" key={term.id} onClick={() => selectTerm(term)}>
-                              {term.term}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {asArray(assistantResponse.sources).length > 0 ? (
-                      <div className="assistantMeta">
-                        <strong>{COPY.sources}</strong>
-                        <div>
-                          {asArray(assistantResponse.sources).map((source) => (
-                            <span key={`${source.type}-${source.title}`}>{source.title}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {asArray(assistantResponse.limitations).length > 0 ? (
-                      <div className="assistantMeta limitations">
-                        <strong>{COPY.limitations}</strong>
-                        <ul>
-                          {asArray(assistantResponse.limitations).map((item) => (
-                            <li key={item}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
 
               {summary.marketClosed === true && (
                 <div className="marketClosedBanner">
@@ -1117,71 +1314,159 @@ export default function App() {
                 </div>
               </div>
 
-              {(() => {
-                  const sortedGainers = sortTopGainers(summary.topGainers).slice(0, 3);
-                  const sortedLosers = sortTopLosers(summary.topLosers).slice(0, 3);
-                  const filteredMentioned = filterMostMentioned(summary.mostMentionedTop).slice(0, 3);
-                  const hasAny = sortedGainers.length > 0 || sortedLosers.length > 0 || filteredMentioned.length > 0;
-                  if (!hasAny) return null;
-                  return (
-                    <div className="topListsSection">
-                      {sortedGainers.length > 0 && (
-                        <div className="topList">
-                          <h4>{COPY.topGainersTitle}</h4>
-                          <ul>
-                            {sortedGainers.map((item, idx) => (
-                              <li key={item.code || idx}>
+              {(topGainers.length > 0 || topLosers.length > 0 || topMentioned.length > 0) ? (
+                <div className="topListsSection">
+                  {topGainers.length > 0 && (
+                    <div className="topList">
+                      <h4>{COPY.topGainersTitle}</h4>
+                      <ul>
+                        {topGainers.map((item, idx) => {
+                          const stock = stockFromEntry(item, "상승 TOP3");
+                          return (
+                            <li key={item.code || idx}>
+                              <button type="button" className="topListButton" onClick={() => selectStock(stock)}>
                                 <span className="itemName">{item.name}({item.code})</span>
-                                <span className="itemRate gain">+{item.rate}%</span>
-                                <span className="itemLinks">
-                                  {buildNaverLinks(item.code, summary.effectiveDate).map((link, i) => (
-                                    <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
-                                  ))}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {sortedLosers.length > 0 && (
-                        <div className="topList">
-                          <h4>{COPY.topLosersTitle}</h4>
-                          <ul>
-                            {sortedLosers.map((item, idx) => (
-                              <li key={item.code || idx}>
-                                <span className="itemName">{item.name}({item.code})</span>
-                                <span className="itemRate loss">{item.rate}%</span>
-                                <span className="itemLinks">
-                                  {buildNaverLinks(item.code, summary.effectiveDate).map((link, i) => (
-                                    <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
-                                  ))}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {filteredMentioned.length > 0 && (
-                        <div className="topList">
-                          <h4>{COPY.mostMentionedTitle}</h4>
-                          <ul>
-                            {filteredMentioned.map((item, idx) => (
-                              <li key={item.code || idx}>
-                                <span className="itemName">{item.name}({item.code})</span>
-                                <span className="itemCount">{item.count}{COPY.postCount}</span>
-                                <span className="itemLinks">
-                                  {buildNaverLinks(item.code, summary.effectiveDate).map((link, i) => (
-                                    <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
-                                  ))}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                                <span className="itemRate gain">{formatRate(item.rate)}</span>
+                              </button>
+                              <span className="itemLinks">
+                                {buildNaverLinks(item.code, summary.effectiveDate).map((link) => (
+                                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
+                                ))}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
-                  );
-                })()}
+                  )}
+                  {topLosers.length > 0 && (
+                    <div className="topList">
+                      <h4>{COPY.topLosersTitle}</h4>
+                      <ul>
+                        {topLosers.map((item, idx) => {
+                          const stock = stockFromEntry(item, "하락 TOP3");
+                          return (
+                            <li key={item.code || idx}>
+                              <button type="button" className="topListButton" onClick={() => selectStock(stock)}>
+                                <span className="itemName">{item.name}({item.code})</span>
+                                <span className="itemRate loss">{formatRate(item.rate)}</span>
+                              </button>
+                              <span className="itemLinks">
+                                {buildNaverLinks(item.code, summary.effectiveDate).map((link) => (
+                                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
+                                ))}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                  {topMentioned.length > 0 && (
+                    <div className="topList">
+                      <h4>{COPY.mostMentionedTitle}</h4>
+                      <ul>
+                        {topMentioned.map((item, idx) => {
+                          const stock = stockFromEntry(item, "언급 TOP3");
+                          return (
+                            <li key={item.code || idx}>
+                              <button type="button" className="topListButton" onClick={() => selectStock(stock)}>
+                                <span className="itemName">{item.name}({item.code})</span>
+                                <span className="itemCount">{formatNumber(item.count)}{COPY.postCount}</span>
+                              </button>
+                              <span className="itemLinks">
+                                {buildNaverLinks(item.code, summary.effectiveDate).map((link) => (
+                                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
+                                ))}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {currentStock ? (
+                <section id="stock-detail" className="stockResearch">
+                  <div className="stockResearchHead">
+                    <div>
+                      <span className="stockGroup">{currentStock.group}</span>
+                      <h3>{currentStock.name} {currentStock.code ? <small>{currentStock.code}</small> : null}</h3>
+                    </div>
+                    <div className="intervalTabs" aria-label="차트 기간">
+                      {[
+                        ["daily", "일봉"],
+                        ["weekly", "주봉"],
+                        ["monthly", "월봉"]
+                      ].map(([value, label]) => (
+                        <button
+                          type="button"
+                          key={value}
+                          className={stockInterval === value ? "active" : ""}
+                          onClick={() => setStockInterval(value)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="stockResearchGrid">
+                    <div className="chartPreview">
+                      <div className="chartBasis">{stockInterval === "daily" ? "일간 랭킹 신호" : `${stockInterval === "weekly" ? "주간" : "월간"} 관찰 모드`}</div>
+                      <div className="chartYAxis">
+                        <span>고</span>
+                        <span>중</span>
+                        <span>저</span>
+                      </div>
+                      <div className="chartBars" aria-label={`${currentStock.name} ${stockInterval} 흐름`}>
+                        {[34, 48, 42, 56, 68, 61, 74, 70, 82, 76, 88, 84].map((height, idx) => {
+                          const positive = Number(currentStock.rate || 0) >= 0;
+                          const adjusted = positive ? height : 100 - height + 24;
+                          return (
+                            <span
+                              key={idx}
+                              className={positive ? "up" : "down"}
+                              style={{ height: `${Math.min(92, Math.max(18, adjusted))}%` }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="stockSignalPanel">
+                      <div className="stockMetricRow">
+                        <span>랭킹</span>
+                        <strong>{currentStock.group}</strong>
+                      </div>
+                      <div className="stockMetricRow">
+                        <span>등락률</span>
+                        <strong>{formatRate(currentStock.rate)}</strong>
+                      </div>
+                      {currentStock.count !== undefined && currentStock.count !== null ? (
+                        <div className="stockMetricRow">
+                          <span>언급량</span>
+                          <strong>{formatNumber(currentStock.count)}건</strong>
+                        </div>
+                      ) : null}
+                      <div className="beginnerSignalList">
+                        <strong>{COPY.beginnerSignals}</strong>
+                        <ul>
+                          {getStockSignalLines(currentStock).map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="stockLinks">
+                        {buildNaverLinks(currentStock.code, summary.effectiveDate).map((link) => (
+                          <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
 
               <div className="notesWrap">
                 <h4>{COPY.rankingBasis}</h4>
