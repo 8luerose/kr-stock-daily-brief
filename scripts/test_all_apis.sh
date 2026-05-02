@@ -3,8 +3,8 @@ set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
 DATE_TODAY="$(TZ=Asia/Seoul date +%F)"
-FROM="${FROM:-2026-02-01}"
-TO="${TO:-2026-02-28}"
+FROM="${FROM:-$DATE_TODAY}"
+TO="${TO:-$FROM}"
 
 pass() { echo "[PASS] $*"; }
 fail() { echo "[FAIL] $*"; exit 1; }
@@ -100,5 +100,20 @@ code=$(status_code GET "$BASE_URL/api/summaries/2026-02-29")
 [[ "$code" == "400" ]] || fail "invalid date expected 400, got $code"
 contains_field /tmp/krbrief_resp.json error || fail "invalid date missing error field"
 pass "GET /api/summaries/{invalid-date} returns 400 JSON"
+
+# 11) Learning terms
+code=$(status_code GET "$BASE_URL/api/learning/terms?query=PER&limit=5")
+[[ "$code" == "200" ]] || fail "learning terms expected 200, got $code"
+contains_field /tmp/krbrief_resp.json plainDefinition || fail "learning terms missing plainDefinition"
+pass "GET /api/learning/terms"
+
+# 12) Learning assistant
+code=$(status_code POST "$BASE_URL/api/learning/assistant" \
+  -H "Content-Type: application/json" \
+  -d '{"question":"거래량이 왜 중요해?","contextDate":"'"$DATE_TODAY"'","termId":"volume"}')
+[[ "$code" == "200" ]] || fail "learning assistant expected 200, got $code"
+contains_field /tmp/krbrief_resp.json futureAiEndpoint || fail "learning assistant missing futureAiEndpoint"
+contains_field /tmp/krbrief_resp.json limitations || fail "learning assistant missing limitations"
+pass "POST /api/learning/assistant"
 
 echo "== API smoke test done: ALL PASS =="

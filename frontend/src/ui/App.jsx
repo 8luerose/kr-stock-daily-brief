@@ -50,7 +50,7 @@ const COPY = {
   generatedAt: "생성 시각",
   topGainer: "최대 상승",
   topLoser: "최대 하락",
-  mostMentioned: "최다 거래",
+  mostMentioned: "최다 언급",
   kospiPick: "코스피 픽",
   kosdaqPick: "코스닥 픽",
   rankingBasis: "랭킹 계산 근거",
@@ -96,7 +96,29 @@ const COPY = {
   postCount: "게시물 수",
   naverDaily: "일별",
   naverMain: "종합",
-  naverBoard: "토론"
+  naverBoard: "토론",
+  learningTitle: "초보자 용어 사전",
+  learningSubtitle: "브리프를 읽을 때 막히는 단어를 바로 풀어봅니다.",
+  learningSearch: "용어 검색",
+  learningSearchPlaceholder: "예: 등락률, PER, 거래량",
+  allCategories: "전체",
+  whyItMatters: "왜 중요한가",
+  beginnerCheck: "먼저 확인할 것",
+  caution: "주의할 점",
+  relatedTerms: "관련 용어",
+  exampleQuestions: "바로 물어보기",
+  learningLoadFailed: "용어 사전을 불러오지 못했습니다.",
+  noTerms: "검색 결과가 없습니다.",
+  assistantTitle: "AI 학습 도우미",
+  assistantSubtitle: "오늘 브리프와 용어 사전을 묶어 초보자 관점으로 설명합니다.",
+  assistantInputPlaceholder: "궁금한 점을 입력하세요. 예: 거래량이 왜 중요해?",
+  assistantAsk: "질문",
+  assistantAnswer: "답변",
+  confidence: "신뢰도",
+  sources: "출처",
+  limitations: "한계",
+  matchedTerms: "연결된 용어",
+  briefTermsTitle: "브리프 읽기 전 확인할 용어"
 };
 
 function valueOrDash(v) {
@@ -151,6 +173,40 @@ function sortMostMentioned(arr) {
 
 function filterMostMentioned(arr) {
   return sortMostMentioned(asArray(arr)).filter(item => (item.count || 0) > 0);
+}
+
+function normalizeText(value) {
+  return (value || "").trim().toLowerCase();
+}
+
+function termMatches(term, query, category) {
+  const q = normalizeText(query);
+  const c = normalizeText(category);
+  if (c && normalizeText(term.category) !== c) return false;
+  if (!q) return true;
+  const haystack = [
+    term.id,
+    term.term,
+    term.category,
+    term.plainDefinition,
+    term.whyItMatters,
+    term.beginnerCheck,
+    term.caution,
+    ...asArray(term.relatedTerms),
+    ...asArray(term.exampleQuestions)
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(q);
+}
+
+function buildTermQuestion(term) {
+  return asArray(term?.exampleQuestions)[0] || `${term?.term || "이 용어"}가 무슨 뜻이야?`;
+}
+
+function pickBriefTerms(terms) {
+  const ids = ["price-change-rate", "volume", "board-mentions", "kospi", "kosdaq", "disclosure"];
+  return ids.map((id) => terms.find((term) => term.id === id)).filter(Boolean);
 }
 
 // effectiveDate(YYYYMMDD)로부터 page 파라미터 계산
@@ -307,6 +363,14 @@ export default function App() {
   const [backfillFrom, setBackfillFrom] = useState("2026-02-01");
   const [backfillTo, setBackfillTo] = useState("2026-02-05");
   const [backfillResult, setBackfillResult] = useState(null);
+  const [learningTerms, setLearningTerms] = useState([]);
+  const [learningError, setLearningError] = useState("");
+  const [termQuery, setTermQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedTermId, setSelectedTermId] = useState("");
+  const [assistantQuestion, setAssistantQuestion] = useState("");
+  const [assistantResponse, setAssistantResponse] = useState(null);
+  const [assistantLoading, setAssistantLoading] = useState(false);
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
@@ -317,6 +381,19 @@ export default function App() {
       }),
     [month]
   );
+  const categories = useMemo(
+    () => Array.from(new Set(learningTerms.map((term) => term.category).filter(Boolean))),
+    [learningTerms]
+  );
+  const visibleTerms = useMemo(
+    () => learningTerms.filter((term) => termMatches(term, termQuery, selectedCategory)).slice(0, 12),
+    [learningTerms, termQuery, selectedCategory]
+  );
+  const selectedTerm = useMemo(
+    () => visibleTerms.find((term) => term.id === selectedTermId) || visibleTerms[0] || learningTerms.find((term) => term.id === selectedTermId) || learningTerms[0] || null,
+    [learningTerms, selectedTermId, visibleTerms]
+  );
+  const briefTerms = useMemo(() => pickBriefTerms(learningTerms), [learningTerms]);
 
   async function apiFetch(path, opts = {}) {
     const url = new URL(cfg.apiBaseUrl + path);
@@ -412,6 +489,58 @@ export default function App() {
       // Month overview is non-critical; show error only if we have nothing else.
       console.warn("Failed to load month overview", e);
       setMonthHasSummary(new Set());
+    }
+  }
+
+  async function loadLearningTerms() {
+    if (cfg.gateEnabled && !k) {
+      setLearningTerms([]);
+      return;
+    }
+
+    setLearningError("");
+    try {
+      const data = await apiFetch("/api/learning/terms?limit=80");
+      setLearningTerms(data);
+      if (!selectedTermId && data.length > 0) {
+        setSelectedTermId(data[0].id);
+        setAssistantQuestion(buildTermQuestion(data[0]));
+      }
+    } catch (e) {
+      console.warn("Failed to load learning terms", e);
+      setLearningTerms([]);
+      setLearningError(COPY.learningLoadFailed);
+    }
+  }
+
+  function selectTerm(term) {
+    setSelectedTermId(term.id);
+    setAssistantQuestion(buildTermQuestion(term));
+    setAssistantResponse(null);
+  }
+
+  async function askLearningAssistant(questionOverride, termIdOverride) {
+    const question = (questionOverride || assistantQuestion || buildTermQuestion(selectedTerm)).trim();
+    if (!question) return;
+
+    setAssistantLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/api/learning/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          contextDate: selected,
+          termId: termIdOverride || selectedTerm?.id || ""
+        })
+      });
+      setAssistantQuestion(question);
+      setAssistantResponse(data);
+    } catch (e) {
+      setError(formatApiError(e));
+    } finally {
+      setAssistantLoading(false);
     }
   }
 
@@ -516,6 +645,11 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    loadLearningTerms();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const todayStr = useMemo(() => isoDate(new Date()), []);
 
   return (
@@ -582,6 +716,7 @@ export default function App() {
       </section>
 
       <main className="main">
+        <div className="sideStack">
         <section className="card calendar">
           <div className="calendarHead">
             <button className="btn ghost" onClick={() => setMonth(addMonths(month, -1))}>
@@ -627,6 +762,108 @@ export default function App() {
             })}
           </div>
         </section>
+
+        <section className="card learningPanel">
+          <div className="panelHead">
+            <div>
+              <div className="panelTitle">{COPY.learningTitle}</div>
+              <div className="panelSubtitle">{COPY.learningSubtitle}</div>
+            </div>
+          </div>
+
+          {learningError ? <div className="hint">{learningError}</div> : null}
+
+          <label className="fieldLabel" htmlFor="term-search">{COPY.learningSearch}</label>
+          <input
+            id="term-search"
+            className="searchInput"
+            value={termQuery}
+            onChange={(e) => setTermQuery(e.target.value)}
+            placeholder={COPY.learningSearchPlaceholder}
+          />
+
+          <div className="categoryTabs" aria-label="용어 카테고리">
+            <button
+              type="button"
+              className={`categoryTab ${selectedCategory === "" ? "active" : ""}`}
+              onClick={() => setSelectedCategory("")}
+            >
+              {COPY.allCategories}
+            </button>
+            {categories.map((category) => (
+              <button
+                type="button"
+                key={category}
+                className={`categoryTab ${selectedCategory === category ? "active" : ""}`}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+
+          {visibleTerms.length === 0 ? (
+            <div className="empty compact">{COPY.noTerms}</div>
+          ) : (
+            <div className="termList">
+              {visibleTerms.map((term) => (
+                <button
+                  type="button"
+                  key={term.id}
+                  className={`termButton ${selectedTerm?.id === term.id ? "active" : ""}`}
+                  onClick={() => selectTerm(term)}
+                >
+                  <span>{term.term}</span>
+                  <small>{term.category}</small>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {selectedTerm ? (
+            <div className="termDetail">
+              <div className="termCategory">{selectedTerm.category}</div>
+              <h3>{selectedTerm.term}</h3>
+              <p>{selectedTerm.plainDefinition}</p>
+              <div className="termInfo">
+                <strong>{COPY.whyItMatters}</strong>
+                <span>{selectedTerm.whyItMatters}</span>
+              </div>
+              <div className="termInfo">
+                <strong>{COPY.beginnerCheck}</strong>
+                <span>{selectedTerm.beginnerCheck}</span>
+              </div>
+              <div className="termInfo caution">
+                <strong>{COPY.caution}</strong>
+                <span>{selectedTerm.caution}</span>
+              </div>
+              <div className="relatedTerms">
+                <span>{COPY.relatedTerms}</span>
+                <div>
+                  {asArray(selectedTerm.relatedTerms).slice(0, 5).map((term) => (
+                    <button type="button" key={term} onClick={() => setTermQuery(term)}>
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="questionList">
+                <span>{COPY.exampleQuestions}</span>
+                {asArray(selectedTerm.exampleQuestions).slice(0, 2).map((question) => (
+                  <button
+                    type="button"
+                    key={question}
+                    onClick={() => askLearningAssistant(question, selectedTerm.id)}
+                    disabled={assistantLoading}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+        </div>
 
         <section className="card detail">
           <div className="detailHead">
@@ -684,6 +921,91 @@ export default function App() {
                 {summary.effectiveDate && summary.effectiveDate !== summary.date?.replace(/-/g, "") && (
                   <span className="effectiveDate"> | {COPY.actualCalcDate}: {formatEffectiveDate(summary.effectiveDate)}</span>
                 )}
+              </div>
+
+              {briefTerms.length > 0 ? (
+                <div className="briefTerms">
+                  <div className="briefTermsTitle">{COPY.briefTermsTitle}</div>
+                  <div className="briefTermButtons">
+                    {briefTerms.map((term) => (
+                      <button
+                        type="button"
+                        key={term.id}
+                        onClick={() => selectTerm(term)}
+                        className={selectedTerm?.id === term.id ? "active" : ""}
+                      >
+                        {term.term}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="assistantBox">
+                <div className="assistantHead">
+                  <div>
+                    <div className="assistantTitle">{COPY.assistantTitle}</div>
+                    <div className="assistantSubtitle">{COPY.assistantSubtitle}</div>
+                  </div>
+                  <span className="assistantDate">{selected}</span>
+                </div>
+                <div className="assistantInputRow">
+                  <input
+                    value={assistantQuestion}
+                    onChange={(e) => setAssistantQuestion(e.target.value)}
+                    placeholder={COPY.assistantInputPlaceholder}
+                    disabled={assistantLoading}
+                  />
+                  <button
+                    className="btn primary small"
+                    type="button"
+                    onClick={() => askLearningAssistant()}
+                    disabled={assistantLoading}
+                  >
+                    {assistantLoading ? COPY.loading : COPY.assistantAsk}
+                  </button>
+                </div>
+                {assistantResponse ? (
+                  <div className="assistantAnswer">
+                    <div className="assistantAnswerHead">
+                      <strong>{COPY.assistantAnswer}</strong>
+                      <span>{COPY.confidence}: {assistantResponse.confidence}</span>
+                    </div>
+                    <pre>{assistantResponse.answer}</pre>
+                    {asArray(assistantResponse.matchedTerms).length > 0 ? (
+                      <div className="assistantMeta">
+                        <strong>{COPY.matchedTerms}</strong>
+                        <div>
+                          {asArray(assistantResponse.matchedTerms).map((term) => (
+                            <button type="button" key={term.id} onClick={() => selectTerm(term)}>
+                              {term.term}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {asArray(assistantResponse.sources).length > 0 ? (
+                      <div className="assistantMeta">
+                        <strong>{COPY.sources}</strong>
+                        <div>
+                          {asArray(assistantResponse.sources).map((source) => (
+                            <span key={`${source.type}-${source.title}`}>{source.title}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {asArray(assistantResponse.limitations).length > 0 ? (
+                      <div className="assistantMeta limitations">
+                        <strong>{COPY.limitations}</strong>
+                        <ul>
+                          {asArray(assistantResponse.limitations).map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               {summary.marketClosed === true && (

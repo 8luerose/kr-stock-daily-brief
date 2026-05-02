@@ -1,10 +1,11 @@
 # kr-stock-daily-brief (MVP)
 
-**목표:** 한국 주식 시장을 날짜별로 요약 생성하고(MySQL에 저장), **프론트 화면(달력 UI)**에서 조회한다.
+**목표:** 한국 주식 시장을 날짜별로 요약 생성하고(MySQL에 저장), 초보자도 이해하기 쉬운 **일간 브리프 + 용어 학습 UI**에서 조회한다.
 
 - 데이터 계산: `marketdata` 서비스(`/leaders`)가 “상승/하락/언급 TOP”을 산출
 - 저장/제공: `backend`가 요약을 생성/저장하고 REST API로 제공
-- 표시/운영: `frontend`에서 월 달력으로 조회 + 운영 버튼(생성/백필/보관)
+- 표시/학습: `frontend`에서 월 달력, 일간 브리프, 초보자 용어 사전, 학습 도우미를 제공
+- AI 확장점: `/api/learning/assistant`는 현재 내부 용어 사전 기반 응답을 제공하며, 이후 `/api/ai/chat` RAG 서비스로 교체/확장한다.
 
 > 추가 목표: Discord **웹훅(Webhook)**으로 지정 **스레드**에 자동 포스팅
 
@@ -76,9 +77,11 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
   3) MySQL에 저장한 후
   4) 저장된 결과를 JSON으로 반환
 
-### 3) frontend: 달력 UI
+### 3) frontend: 브리프 + 학습 UI
 - 서비스: Vite/React (port 5173)
 - 월 달력에서 날짜를 선택하면 backend API로 조회해서 표시
+- 브리프 옆에서 `등락률`, `거래량`, `PER`, `공시`, `종목토론방 언급량` 같은 핵심 용어를 바로 확인
+- 학습 도우미에서 선택 날짜와 용어를 묶어 초보자용 설명/주의점/출처/한계를 확인
 - 운영 버튼
   - 오늘 생성
   - 선택일 생성
@@ -103,10 +106,16 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 - `POST /api/summaries/backfill?from=YYYY-MM-DD&to=YYYY-MM-DD` (admin)
 - `PUT /api/summaries/{date}/archive` (admin)
 
+학습/AI 연결:
+- `GET /api/learning/terms`
+- `GET /api/learning/terms/{id}`
+- `POST /api/learning/assistant`
+
 정책:
 - 날짜 포맷은 ISO `YYYY-MM-DD`
 - 미래 날짜는 생성/백필/보관 모두 차단
 - 이미 존재하는 날짜의 재생성은 admin만 허용(일반 요청은 409)
+- 학습 도우미는 투자 지시가 아니라 용어 설명/체크리스트/주의점 제공 목적이다.
 
 ---
 

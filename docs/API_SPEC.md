@@ -1,7 +1,9 @@
 # API 명세서 (kr-stock-daily-brief)
 
-최종 업데이트: 2026-02-19
-기준 코드: `backend/src/main/java/com/krbrief/summaries/SummaryController.java`
+최종 업데이트: 2026-05-03
+기준 코드:
+- `backend/src/main/java/com/krbrief/summaries/SummaryController.java`
+- `backend/src/main/java/com/krbrief/learning/LearningController.java`
 
 ---
 
@@ -289,6 +291,118 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 #### 성공 응답 (200)
 
 생성된 `SummaryDto` 반환.
+
+---
+
+## 10) 초보자 용어 목록 조회
+
+### `GET /api/learning/terms?query=&category=&limit=`
+
+브리프를 읽을 때 필요한 주요 주식 용어와 초보자용 설명을 조회한다.
+
+#### Query Parameters
+
+- `query` (optional): 용어/설명 검색어. 예: `PER`, `거래량`, `공시`
+- `category` (optional): `시장`, `차트`, `재무`, `공시/뉴스`, `리스크`
+- `limit` (optional): 반환 개수. 기본 80, 최대 120
+
+#### 성공 응답 (200)
+
+```json
+[
+  {
+    "id": "price-change-rate",
+    "term": "등락률",
+    "category": "시장",
+    "plainDefinition": "전일 종가와 비교해 오늘 가격이 몇 퍼센트 오르거나 내렸는지 보여주는 숫자입니다.",
+    "whyItMatters": "하루 동안 시장이 어떤 종목에 강하게 반응했는지 빠르게 볼 수 있습니다.",
+    "beginnerCheck": "등락률만 보지 말고 거래량, 공시, 뉴스, 시장 전체 흐름을 같이 확인하세요.",
+    "caution": "가격이 낮거나 거래가 적은 종목은 등락률이 과장되어 보일 수 있습니다.",
+    "relatedTerms": ["상승률", "하락률", "전일대비", "rate"],
+    "exampleQuestions": ["등락률이 높으면 좋은 종목인가요?", "전일대비 등락률은 어떻게 계산해요?"]
+  }
+]
+```
+
+---
+
+## 11) 초보자 용어 단건 조회
+
+### `GET /api/learning/terms/{id}`
+
+용어 ID로 단건 조회한다.
+
+#### Path Parameters
+
+- `id` (required): 예: `per`, `volume`, `board-mentions`
+
+#### 성공 응답 (200)
+
+`LearningTermDto` 1건 반환.
+
+#### 실패 응답
+
+- 404 Not Found: 해당 용어 없음
+
+---
+
+## 12) 학습 도우미 응답
+
+### `POST /api/learning/assistant`
+
+현재는 내부 용어 사전 기반의 규칙형 응답을 반환한다. 이후 LLM/RAG를 붙일 때 같은 입력을 `/api/ai/chat` 또는 `ai-service`로 라우팅하는 연결 지점으로 사용한다.
+
+#### Request Body
+
+```json
+{
+  "question": "거래량이 왜 중요해?",
+  "contextDate": "2026-05-03",
+  "termId": "volume"
+}
+```
+
+#### 성공 응답 (200)
+
+```json
+{
+  "mode": "rule_based_learning_preview",
+  "answer": "질문: 거래량이 왜 중요해?\n\n기준일: 2026-05-03\n\n핵심 설명\n- 거래량: 하루 동안 거래된 주식 수입니다...",
+  "confidence": "medium",
+  "matchedTerms": [
+    {
+      "id": "volume",
+      "term": "거래량",
+      "category": "시장",
+      "plainDefinition": "하루 동안 거래된 주식 수입니다.",
+      "whyItMatters": "가격 움직임에 실제 참여가 있었는지 확인하는 기본 지표입니다.",
+      "beginnerCheck": "급등/급락이 거래량 증가와 함께 나타났는지 확인하세요.",
+      "caution": "거래량이 갑자기 늘었다고 항상 좋은 신호는 아닙니다.",
+      "relatedTerms": ["거래 주식 수", "volume", "수급"],
+      "exampleQuestions": ["거래량이 늘면 왜 중요해요?", "거래량 없이 오른 종목은 어떻게 봐야 해요?"]
+    }
+  ],
+  "sources": [
+    {
+      "title": "앱 내부 초보자 용어 사전",
+      "type": "internal_glossary",
+      "url": "/api/learning/terms"
+    }
+  ],
+  "limitations": [
+    "현재 응답은 LLM이 아니라 내부 용어 사전 기반의 규칙형 학습 응답입니다.",
+    "개별 종목의 매수, 매도, 가격, 시점 판단을 직접 지시하지 않습니다."
+  ],
+  "nextQuestions": ["거래량이 늘면 왜 중요해요?", "거래량 없이 오른 종목은 어떻게 봐야 해요?"],
+  "futureAiEndpoint": "/api/ai/chat"
+}
+```
+
+#### 응답 정책
+
+- 투자 판단을 직접 지시하지 않는다.
+- 답변에는 기준일, 출처, 한계, 연결된 용어를 포함한다.
+- LLM/RAG 도입 시에도 이 응답 정책을 유지한다.
 
 ---
 
