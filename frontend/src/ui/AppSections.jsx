@@ -16,6 +16,10 @@ function primaryEventHref(event) {
   return eventEvidenceSources(event)[0]?.url || "#";
 }
 
+function eventCausalScores(event) {
+  return Array.isArray(event?.causalScores) ? event.causalScores : [];
+}
+
 export function MarketHero({
   copy,
   summary,
@@ -482,21 +486,29 @@ export function StockResearchPanel({
           </div>
           {asArray(stockEvents?.events).length > 0 ? (
             <div className="eventList">
-              {asArray(stockEvents.events).slice(0, 4).map((event) => (
-                <a
-                  key={`${event.date}-${event.type}`}
-                  href={primaryEventHref(event)}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={event.explanation}
-                >
-                  <span>{event.date}</span>
-                  <strong>{event.title}</strong>
-                  <em>
-                    {eventEvidenceSources(event).slice(0, 4).map((source) => source.title).join(" · ")}
-                  </em>
-                </a>
-              ))}
+              {asArray(stockEvents.events).slice(0, 4).map((event) => {
+                const topCausal = eventCausalScores(event)[0];
+                return (
+                  <a
+                    key={`${event.date}-${event.type}`}
+                    href={primaryEventHref(event)}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={event.explanation}
+                  >
+                    <span>{event.date}</span>
+                    <strong>{event.title}</strong>
+                    <em>
+                      {eventEvidenceSources(event).slice(0, 4).map((source) => source.title).join(" · ")}
+                    </em>
+                    {topCausal ? (
+                      <small>
+                        원인 점수 {topCausal.label} {topCausal.score}/100 · {topCausal.confidence}
+                      </small>
+                    ) : null}
+                  </a>
+                );
+              })}
             </div>
           ) : null}
           <div className="analysisDisclaimer">{copy.analysisDisclaimer} 신뢰도: {decisionPanel.confidence}</div>

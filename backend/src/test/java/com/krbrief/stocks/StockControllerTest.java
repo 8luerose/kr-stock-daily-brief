@@ -66,14 +66,25 @@ class StockControllerTest {
                                 "news",
                                 "네이버 뉴스 검색",
                                 "https://search.naver.com/search.naver?where=news&query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90",
-                                "가격/거래량 변화와 같은 시점의 뉴스 후보를 확인합니다."))))));
+                                "가격/거래량 변화와 같은 시점의 뉴스 후보를 확인합니다.")),
+                        List.of(
+                            new StockEventsDto.CausalScoreDto(
+                                "price_history",
+                                "네이버 일별 시세",
+                                86,
+                                "high",
+                                "등락률 +3.20%, 20일 평균 대비 거래량 230%",
+                                "가격/거래량 원자료에서 이벤트 자체가 확인됩니다."))))));
 
     mvc.perform(get("/api/stocks/005930/events?from=2026-04-01&to=2026-05-01"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.events[0].type").value("volume_spike"))
         .andExpect(jsonPath("$.events[0].evidenceLinks").isArray())
         .andExpect(jsonPath("$.events[0].evidenceSources").isArray())
-        .andExpect(jsonPath("$.events[0].evidenceSources[0].type").value("news"));
+        .andExpect(jsonPath("$.events[0].evidenceSources[0].type").value("news"))
+        .andExpect(jsonPath("$.events[0].causalScores").isArray())
+        .andExpect(jsonPath("$.events[0].causalScores[0].sourceType").value("price_history"))
+        .andExpect(jsonPath("$.events[0].causalScores[0].score").value(86));
   }
 
   @Test

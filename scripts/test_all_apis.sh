@@ -129,8 +129,11 @@ code=$(status_code GET "$BASE_URL/api/stocks/005930/events?from=$EVENT_FROM&to=$
 [[ "$code" == "200" ]] || fail "stock events expected 200, got $code"
 contains_field /tmp/krbrief_resp.json events || fail "stock events missing events"
 contains_field /tmp/krbrief_resp.json evidenceSources || fail "stock events missing evidenceSources"
+contains_field /tmp/krbrief_resp.json causalScores || fail "stock events missing causalScores"
 grep -q '"type":"news"' /tmp/krbrief_resp.json || fail "stock events missing news evidence source"
 grep -q '"type":"disclosure"' /tmp/krbrief_resp.json || fail "stock events missing disclosure evidence source"
+grep -q '"sourceType":"price_history"' /tmp/krbrief_resp.json || fail "stock events missing price_history causal score"
+grep -q '"score":' /tmp/krbrief_resp.json || fail "stock events missing causal score value"
 pass "GET /api/stocks/{code}/events"
 
 # 15) Stock trade zones

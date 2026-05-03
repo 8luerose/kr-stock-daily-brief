@@ -501,11 +501,33 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
           "url": "https://dart.fss.or.kr/",
           "description": "확정 원인 판단 전 공식 공시 여부를 별도로 확인합니다."
         }
+      ],
+      "causalScores": [
+        {
+          "sourceType": "price_history",
+          "label": "네이버 일별 시세",
+          "score": 86,
+          "confidence": "high",
+          "basis": "등락률 +3.20%, 20일 평균 대비 거래량 230%",
+          "interpretation": "상승 이벤트 기준. 가격/거래량 원자료에서 이벤트 자체가 확인됩니다."
+        },
+        {
+          "sourceType": "news",
+          "label": "네이버 뉴스 검색",
+          "score": 52,
+          "confidence": "low",
+          "basis": "등락률 +3.20%, 20일 평균 대비 거래량 230%",
+          "interpretation": "상승 이벤트 기준. 같은 시점 뉴스가 원인 후보일 수 있으나 원문 확인 전에는 확정하지 않습니다."
+        }
       ]
     }
   ]
 }
 ```
+
+- `causalScores`: 출처 유형별 원인 후보 점수다. `price_history`는 실제 가격/거래량 데이터 근거이고, `news`, `disclosure`, `discussion`은 원문 확인 전 후보 신호로 낮은 확신을 유지한다.
+- `score`: 0~100 범위의 휴리스틱 점수다. 투자 지시가 아니라 이벤트 원인 후보를 정렬하기 위한 설명 보조값이다.
+- `confidence`: `high | medium | low`. 뉴스/공시/토론은 원문 미확인 상태에서는 최대 `medium`으로 제한한다.
 
 #### 실패 응답
 

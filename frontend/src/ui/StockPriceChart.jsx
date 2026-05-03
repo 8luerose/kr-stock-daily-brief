@@ -204,6 +204,14 @@ export default function StockPriceChart({ chart, events, darkMode }) {
             `근거: 등락률 ${formatRate(event.priceChangeRate)} · 거래량 ${formatRate(event.volumeChangeRate)} · ${sourceLabels}`,
             "tooltipEventText"
           );
+          const topCausal = asArray(event.causalScores)[0];
+          if (topCausal) {
+            appendLine(
+              lines,
+              `원인 점수: ${topCausal.label} ${topCausal.score}/100 · ${topCausal.confidence}`,
+              "tooltipEventText"
+            );
+          }
         });
       }
 

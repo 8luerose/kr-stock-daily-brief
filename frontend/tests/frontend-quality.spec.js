@@ -167,6 +167,7 @@ test("chart tab supports interval switching and bounded tooltip display", async 
   await expect(page.locator(".realChart canvas").first()).toBeVisible();
   await expect(page.locator(".eventList")).toContainText("네이버 뉴스 검색");
   await expect(page.locator(".eventList")).toContainText("DART 공시 검색");
+  await expect(page.locator(".eventList")).toContainText("원인 점수");
 
   let chart = page.locator(".realChart").first();
   let box = await chart.boundingBox();
@@ -192,6 +193,7 @@ test("chart tab supports interval switching and bounded tooltip display", async 
   expect(eventTooltipText).toContain("이유:");
   expect(eventTooltipText).toContain("근거:");
   expect(eventTooltipText).toContain("신뢰도");
+  expect(eventTooltipText).toContain("원인 점수");
 
   await page.getByRole("button", { name: "주봉" }).click();
   await expect(page.locator(".intervalTabs button.active", { hasText: "주봉" })).toHaveCount(1);

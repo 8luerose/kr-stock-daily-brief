@@ -513,6 +513,84 @@ def _event_severity(abs_price_rate: float, volume_rate: float) -> str:
     return "low"
 
 
+def _causal_confidence(score: int, source_type: str) -> str:
+    if source_type in {"news", "disclosure", "discussion"}:
+        if score >= 62:
+            return "medium"
+        return "low"
+    if score >= 75:
+        return "high"
+    if score >= 50:
+        return "medium"
+    return "low"
+
+
+def _clamp_score(value: float, low: int, high: int) -> int:
+    return max(low, min(high, int(round(value))))
+
+
+def _event_causal_scores(
+    sources: list[dict[str, str]],
+    event_type: str,
+    price_rate: float,
+    volume_rate: float,
+) -> list[dict]:
+    abs_price = abs(price_rate)
+    direction = "상승" if price_rate > 0 else "하락" if price_rate < 0 else "변동"
+    basis = f"등락률 {price_rate:+.2f}%, 20일 평균 대비 거래량 {volume_rate:.0f}%"
+    scores: list[dict] = []
+
+    for source in sources:
+        source_type = source.get("type", "source")
+        if source_type == "price_history":
+            score = _clamp_score(
+                58 + min(abs_price * 2.2, 24) + min(max(volume_rate - 100, 0) / 12, 16) + (8 if event_type == "volume_spike" else 0),
+                45,
+                96,
+            )
+            interpretation = "가격/거래량 원자료에서 이벤트 자체가 확인됩니다."
+        elif source_type == "news":
+            score = _clamp_score(
+                34 + min(abs_price * 1.4, 18) + min(max(volume_rate - 120, 0) / 22, 14),
+                20,
+                72,
+            )
+            interpretation = "같은 시점 뉴스가 원인 후보일 수 있으나 원문 확인 전에는 확정하지 않습니다."
+        elif source_type == "disclosure":
+            score = _clamp_score(
+                30 + min(abs_price * 1.1, 14) + min(max(volume_rate - 180, 0) / 28, 12),
+                18,
+                68,
+            )
+            interpretation = "공식 공시는 강한 원인 후보지만 DART 원문 확인이 필요합니다."
+        elif source_type == "discussion":
+            score = _clamp_score(
+                24 + min(max(volume_rate - 120, 0) / 18, 18) + min(abs_price, 8),
+                15,
+                58,
+            )
+            interpretation = "토론방 언급은 관심도 후보이며 가격 원인으로 단정하지 않습니다."
+        elif source_type == "finance_summary":
+            score = _clamp_score(22 + min(abs_price * 1.2, 14) + min(max(volume_rate - 150, 0) / 35, 8), 15, 52)
+            interpretation = "종목 요약은 배경 정보이며 직접 원인 증거로는 약합니다."
+        else:
+            score = _clamp_score(18 + min(abs_price, 10), 10, 45)
+            interpretation = "보조 근거이며 직접 원인 여부는 추가 확인이 필요합니다."
+
+        scores.append(
+            {
+                "sourceType": source_type,
+                "label": source.get("title", source_type),
+                "score": score,
+                "confidence": _causal_confidence(score, source_type),
+                "basis": basis,
+                "interpretation": f"{direction} 이벤트 기준. {interpretation}",
+            }
+        )
+
+    return sorted(scores, key=lambda item: item["score"], reverse=True)
+
+
 def _detect_chart_events(code: str, name: str, df: pd.DataFrame, from_ymd: str, to_ymd: str) -> list[dict]:
     events: list[dict] = []
     daily = df.copy().sort_index()
@@ -571,6 +649,7 @@ def _detect_chart_events(code: str, name: str, df: pd.DataFrame, from_ymd: str, 
                     "explanation": explanation,
                     "evidenceLinks": evidence_links,
                     "evidenceSources": evidence_sources,
+                    "causalScores": _event_causal_scores(evidence_sources, event_type, price_rate, volume_rate),
                 }
             )
 

@@ -17,11 +17,20 @@ public record StockEventsDto(
       String title,
       String explanation,
       List<String> evidenceLinks,
-      List<EvidenceSourceDto> evidenceSources) {}
+      List<EvidenceSourceDto> evidenceSources,
+      List<CausalScoreDto> causalScores) {}
 
   public record EvidenceSourceDto(
       String type,
       String title,
       String url,
       String description) {}
+
+  public record CausalScoreDto(
+      String sourceType,
+      String label,
+      Integer score,
+      String confidence,
+      String basis,
+      String interpretation) {}
 }
