@@ -8,7 +8,7 @@ def _is_normal_ticker(code: str) -> bool:
     """Return True if code is a standard 6-digit Korean stock code."""
     return bool(re.match(r'^[0-9]{6}$', str(code)))
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import datetime, timedelta
 from functools import lru_cache
 
@@ -558,20 +558,26 @@ def _most_mentioned_by_board_posts(
     started = time.time()
     results: list[dict] = []
 
-    max_workers = 64
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        fut_map = {ex.submit(_naver_board_posts_on_date, t, ymd, max_pages): t for t in tickers}
-
-        for fut in as_completed(fut_map):
-            t = fut_map[fut]
-            if time.time() - started > timeout_seconds:
-                # Stop collecting; use partial results.
-                break
-            try:
-                c = int(fut.result() or 0)
-            except Exception:
-                c = 0
-            results.append({"code": t, "name": _name(t), "count": c})
+    max_workers = min(64, len(tickers))
+    ex = ThreadPoolExecutor(max_workers=max_workers)
+    fut_map = {ex.submit(_naver_board_posts_on_date, t, ymd, max_pages): t for t in tickers}
+    try:
+        try:
+            for fut in as_completed(fut_map, timeout=timeout_seconds):
+                t = fut_map[fut]
+                if time.time() - started > timeout_seconds:
+                    break
+                try:
+                    c = int(fut.result() or 0)
+                except Exception:
+                    c = 0
+                results.append({"code": t, "name": _name(t), "count": c})
+        except FuturesTimeoutError:
+            pass
+    finally:
+        for fut in fut_map:
+            fut.cancel()
+        ex.shutdown(wait=False, cancel_futures=True)
 
     results.sort(key=lambda x: (x.get("count", 0), x.get("code", "")), reverse=True)
     return results[:topk]
