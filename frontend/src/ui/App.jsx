@@ -1483,9 +1483,9 @@ export default function App() {
     ["home", "오늘"],
     ["research", "차트"],
     ["learning", "배우기"],
-    ["portfolio", "포트폴리오"],
-    ["admin", "운영"]
+    ["portfolio", "포트폴리오"]
   ];
+  const visibleNavItems = adminKey ? [...navItems, ["admin", "운영"]] : navItems;
 
   function navigatePage(page) {
     setActivePage(page);
@@ -1571,14 +1571,14 @@ export default function App() {
         </div>
         <div className="actions">
           <nav className="appNav" aria-label="주요 화면">
-            {navItems.map(([page, label]) => (
+            {visibleNavItems.map(([page, label]) => (
               <button
-	                key={page}
-	                type="button"
-	                className={activePage === page ? "active" : ""}
-	                aria-current={activePage === page ? "page" : undefined}
-	                onClick={() => navigatePage(page)}
-	              >
+                key={page}
+                type="button"
+                className={activePage === page ? "active" : ""}
+                aria-current={activePage === page ? "page" : undefined}
+                onClick={() => navigatePage(page)}
+              >
                 {label}
               </button>
             ))}

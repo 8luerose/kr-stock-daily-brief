@@ -27,6 +27,7 @@ for (const viewport of viewports) {
 
     await expect(page.locator(".marketHero")).toBeVisible();
     await expect(page.locator(".appNav button[aria-current='page']")).toHaveText("오늘");
+    await expect(page.getByRole("button", { name: "운영" })).toHaveCount(0);
     await expect(page.locator(".heroSearch")).toBeVisible();
     await expect(page.getByText("AI 시장 해석")).toBeVisible();
     await expect(page.locator(".realChart canvas").first()).toBeVisible();
