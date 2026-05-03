@@ -432,12 +432,13 @@ function StockPriceChart({ chart, events, darkMode }) {
       borderUpColor: "#ef4444",
       borderDownColor: "#3182f6",
       wickUpColor: "#ef4444",
-      wickDownColor: "#3182f6"
+      wickDownColor: "#3182f6",
+      priceLineVisible: false
     });
     candles.setData(candleData);
 
     const latest = candleData.at(-1);
-    const recentLow = Math.min(...candleData.slice(-40).map((row) => row.low).filter(Number.isFinite));
+    const recentLow = Math.min(...candleData.slice(-40).map((row) => row.low).filter((low) => Number.isFinite(low) && low > 0));
     if (latest && Number.isFinite(latest.close)) {
       candles.createPriceLine({
         price: latest.close,
@@ -452,7 +453,7 @@ function StockPriceChart({ chart, events, darkMode }) {
         color: "#f59e0b",
         lineWidth: 1,
         lineStyle: 1,
-        axisLabelVisible: true,
+        axisLabelVisible: false,
         title: "매도 검토"
       });
       candles.createPriceLine({
@@ -460,7 +461,7 @@ function StockPriceChart({ chart, events, darkMode }) {
         color: "#10b981",
         lineWidth: 1,
         lineStyle: 1,
-        axisLabelVisible: true,
+        axisLabelVisible: false,
         title: "분할매수 검토"
       });
     }
@@ -470,7 +471,7 @@ function StockPriceChart({ chart, events, darkMode }) {
         color: "#ef4444",
         lineWidth: 1,
         lineStyle: 2,
-        axisLabelVisible: true,
+        axisLabelVisible: false,
         title: "리스크 기준"
       });
     }
