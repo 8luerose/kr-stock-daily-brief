@@ -44,7 +44,9 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
       - name: Prepare local environment
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          echo "APP_ADMIN_TRUSTED_CIDRS=127.0.0.1/32,::1/128,172.16.0.0/12" >> .env
       - name: Start full stack
         run: docker compose up -d --build
       - name: Wait for stack health
