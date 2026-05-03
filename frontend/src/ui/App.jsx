@@ -167,6 +167,14 @@ const COPY = {
   briefTermsTitle: "브리프 읽기 전 확인할 용어"
 };
 
+const PAGE_LABELS = {
+  home: "오늘",
+  research: "차트",
+  learning: "배우기",
+  portfolio: "포트폴리오",
+  admin: "운영"
+};
+
 const SEARCH_THEME_FALLBACKS = [
   {
     id: "theme-semiconductor",
@@ -1315,15 +1323,15 @@ export default function App() {
 
   const todayStr = useMemo(() => isoDate(new Date()), []);
   const navItems = [
-    ["home", "오늘"],
-    ["research", "차트"],
-    ["learning", "배우기"],
-    ["portfolio", "포트폴리오"]
+    ["home", PAGE_LABELS.home],
+    ["research", PAGE_LABELS.research],
+    ["learning", PAGE_LABELS.learning],
+    ["portfolio", PAGE_LABELS.portfolio]
   ];
-  const visibleNavItems = adminKey ? [...navItems, ["admin", "운영"]] : navItems;
+  const visibleNavItems = adminKey ? [...navItems, ["admin", PAGE_LABELS.admin]] : navItems;
 
   useEffect(() => {
-    const pageLabel = [...navItems, ["admin", "운영"]].find(([page]) => page === activePage)?.[1] || "오늘";
+    const pageLabel = PAGE_LABELS[activePage] || PAGE_LABELS.home;
     document.title = `${pageLabel} | ${COPY.brand}`;
   }, [activePage]);
 
