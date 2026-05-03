@@ -139,9 +139,11 @@ const COPY = {
   learningSearch: "용어 검색",
   learningSearchPlaceholder: "예: 등락률, PER, 거래량",
   allCategories: "전체",
+  coreSummary: "핵심요약",
   whyItMatters: "왜 중요한가",
   beginnerCheck: "먼저 확인할 것",
   caution: "주의할 점",
+  scenarioExample: "시나리오 예시",
   relatedTerms: "관련 용어",
   exampleQuestions: "바로 물어보기",
   learningLoadFailed: "용어 사전을 불러오지 못했습니다.",
@@ -586,6 +588,36 @@ function termMatches(term, query, category) {
     .join(" ")
     .toLowerCase();
   return haystack.includes(q);
+}
+
+function buildTermCoreSummary(term) {
+  if (!term) return "";
+  return `${term.term}은(는) ${term.plainDefinition}`;
+}
+
+function buildTermScenario(term) {
+  if (!term) return "";
+  const name = term.term;
+  const category = term.category;
+  if (category === "차트") {
+    return `예: ${name} 신호를 봤다면 바로 매수하기보다 거래량, 지지선, 전일 흐름을 함께 확인합니다. 조건이 두세 가지 이상 맞을 때만 소액으로 검토하고, 반대 신호가 나오면 관망합니다.`;
+  }
+  if (category === "매매") {
+    return `예: ${name}을(를) 사용할 때는 주문 전 목표 가격, 손실 제한, 전체 비중을 먼저 정합니다. 체결 후에는 계획과 다르게 움직이는지 확인하고, 감정적으로 추가 주문하지 않습니다.`;
+  }
+  if (category === "리스크") {
+    return `예: ${name}이(가) 커진 종목은 수익 기회보다 먼저 손실 가능 금액을 계산합니다. 거래량과 뉴스 근거가 약하면 비중을 줄이고, 기준을 이탈하면 다시 판단합니다.`;
+  }
+  if (category === "재무") {
+    return `예: ${name} 지표가 좋아 보여도 같은 업종 평균, 최근 실적 흐름, 일회성 요인을 같이 봅니다. 숫자 하나만으로 저평가나 우량주라고 단정하지 않습니다.`;
+  }
+  if (category === "공시/뉴스") {
+    return `예: ${name}이(가) 등장하면 제목만 보지 말고 원문 날짜, 금액, 조건, 정정 여부를 확인합니다. 이후 가격과 거래량이 같은 방향으로 반응하는지 봅니다.`;
+  }
+  if (category === "상품") {
+    return `예: ${name} 상품을 고를 때는 추종 대상, 보수, 거래량, 괴리율, 보유 기간을 먼저 봅니다. 구조를 이해하지 못하면 매수하지 않고 더 단순한 상품부터 비교합니다.`;
+  }
+  return `예: ${name}을(를) 볼 때는 오늘 브리프의 종목 움직임과 연결해 생각합니다. 시장 전체 흐름인지 개별 이슈인지 나눈 뒤 다음 행동을 정합니다.`;
 }
 
 function buildTermQuestion(term) {
@@ -1620,24 +1652,19 @@ export default function App() {
             placeholder={COPY.learningSearchPlaceholder}
           />
 
-          <div className="categoryTabs" aria-label="용어 카테고리">
-            <button
-              type="button"
-              className={`categoryTab ${selectedCategory === "" ? "active" : ""}`}
-              onClick={() => setSelectedCategory("")}
+          <div className="learningFilterRow">
+            <label className="fieldLabel" htmlFor="term-category">분류</label>
+            <select
+              id="term-category"
+              className="categorySelect"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
             >
-              {COPY.allCategories}
-            </button>
-            {categories.map((category) => (
-              <button
-                type="button"
-                key={category}
-                className={`categoryTab ${selectedCategory === category ? "active" : ""}`}
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category}
-              </button>
-            ))}
+              <option value="">{COPY.allCategories}</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
           </div>
 
           <div className="learningGrid">
@@ -1663,7 +1690,14 @@ export default function App() {
               <div className="termDetail">
                 <div className="termCategory">{selectedTerm.category}</div>
                 <h3>{selectedTerm.term}</h3>
-                <p>{selectedTerm.plainDefinition}</p>
+                <div className="termLead">
+                  <strong>{COPY.coreSummary}</strong>
+                  <p>{buildTermCoreSummary(selectedTerm)}</p>
+                </div>
+                <div className="termInfo">
+                  <strong>뜻</strong>
+                  <span>{selectedTerm.plainDefinition}</span>
+                </div>
                 <div className="termInfo">
                   <strong>{COPY.whyItMatters}</strong>
                   <span>{selectedTerm.whyItMatters}</span>
@@ -1675,6 +1709,10 @@ export default function App() {
                 <div className="termInfo caution">
                   <strong>{COPY.caution}</strong>
                   <span>{selectedTerm.caution}</span>
+                </div>
+                <div className="termInfo scenario">
+                  <strong>{COPY.scenarioExample}</strong>
+                  <span>{buildTermScenario(selectedTerm)}</span>
                 </div>
                 <div className="relatedTerms">
                   <span>{COPY.relatedTerms}</span>
