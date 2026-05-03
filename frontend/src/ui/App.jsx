@@ -1504,6 +1504,7 @@ export default function App() {
                 key={`${stock.group}-${stock.code || stock.name}-${index}`}
                 className={`pulseRow ${currentStock?.code && stock.code === currentStock.code ? "active" : ""}`}
                 aria-pressed={Boolean(currentStock?.code && stock.code === currentStock.code)}
+                disabled={!stock.code}
                 onClick={() => stock.code ? selectStock(stock) : null}
               >
                 <span className="pulseName">{stock.name}</span>
