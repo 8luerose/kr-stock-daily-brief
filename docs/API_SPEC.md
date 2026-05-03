@@ -548,6 +548,46 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 ---
 
+## 16) 통합 검색
+
+### `GET /api/search?query=&limit=`
+
+첫 화면 검색창에서 기업명, 종목 코드, 산업, 테마, 시장 구분, 용어, 오늘 움직인 종목을 함께 검색한다.
+
+#### Query Parameters
+
+- `query` (required): 검색어. 예: `반도체`, `005930`, `삼성전자`, `PER`, `KOSDAQ`
+- `limit` (optional): 반환 개수. 기본 8, 최대 20
+
+#### 성공 응답 (200)
+
+```json
+[
+  {
+    "id": "theme-semiconductor",
+    "type": "theme",
+    "title": "반도체",
+    "code": "THEME",
+    "market": "테마",
+    "rate": "+2.4%",
+    "tags": ["AI 반도체", "장비", "소부장"],
+    "summary": "AI 수요, 설비투자, 환율 변화를 함께 보는 대표 성장 테마입니다.",
+    "source": "backend_seed_catalog",
+    "stockCode": null,
+    "stockName": null,
+    "termId": null
+  }
+]
+```
+
+#### 응답 정책
+
+- `source=latest_summary`: 최신 저장 브리프의 상승/하락/언급 TOP 종목
+- `source=learning_terms`: 내부 초보자 용어 사전
+- `source=backend_seed_catalog`: 산업/테마/시장 구분 seed catalog. 향후 별도 산업/테마 데이터 API로 교체 가능
+
+---
+
 ## DTO 스키마 (`SummaryDto`)
 
 - `date: LocalDate`

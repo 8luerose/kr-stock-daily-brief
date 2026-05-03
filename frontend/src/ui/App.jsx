@@ -43,7 +43,7 @@ const COPY = {
   universalSearch: "산업, 테마, 기업, 종목 검색",
   universalSearchPlaceholder: "예: 반도체, 007610, 선도전기, 거래량, DART",
   searchEmpty: "검색 결과가 없습니다. 종목명, 코드, 산업, 테마, 용어를 바꿔 입력해 보세요.",
-  searchMockNote: "산업/테마는 프론트 UX 검증용 로컬 mock이며, 추후 전용 API로 교체할 예정입니다.",
+  searchMockNote: "산업/테마는 백엔드 검색 어댑터의 seed catalog를 우선 사용하며, API 장애 시 로컬 fallback으로 유지됩니다.",
   aiMarketPanel: "AI 시장 해석",
   aiMarketOneLine: "AI가 오늘 움직인 종목, 차트 신호, 리스크를 한 흐름으로 설명합니다.",
   aiInsight: "AI 인사이트",
@@ -167,7 +167,7 @@ const COPY = {
   briefTermsTitle: "브리프 읽기 전 확인할 용어"
 };
 
-const SEARCH_THEME_MOCKS = [
+const SEARCH_THEME_FALLBACKS = [
   {
     id: "theme-semiconductor",
     type: "theme",
@@ -692,7 +692,25 @@ function buildSearchItems(summary, terms) {
     summary: buildTermCoreSummary(term),
     term
   }));
-  return [...stocks, ...SEARCH_THEME_MOCKS, ...glossary];
+  return [...stocks, ...SEARCH_THEME_FALLBACKS, ...glossary];
+}
+
+function normalizeSearchResult(item, localItems) {
+  if (!item) return null;
+  if (item.type === "stock") {
+    const stock = localItems.find((local) => local.type === "stock" && local.code === item.code)?.stock || {
+      code: item.stockCode || item.code || "",
+      name: item.stockName || item.title || "",
+      rate: item.rate,
+      group: item.market
+    };
+    return { ...item, stock };
+  }
+  if (item.type === "term") {
+    const term = localItems.find((local) => local.type === "term" && local.term?.id === item.termId)?.term;
+    return { ...item, term };
+  }
+  return item;
 }
 
 function searchMatchesItem(item, query) {
@@ -935,6 +953,8 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTermId, setSelectedTermId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [serverSearchResults, setServerSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [assistantQuestion, setAssistantQuestion] = useState("");
   const [assistantResponse, setAssistantResponse] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
@@ -981,8 +1001,11 @@ export default function App() {
   const stockPicks = useMemo(() => buildStockPicks(summary), [summary]);
   const searchItems = useMemo(() => buildSearchItems(summary, learningTerms), [learningTerms, summary]);
   const searchResults = useMemo(
-    () => searchItems.filter((item) => searchMatchesItem(item, searchQuery)).slice(0, 6),
-    [searchItems, searchQuery]
+    () => {
+      const serverItems = serverSearchResults.map((item) => normalizeSearchResult(item, searchItems)).filter(Boolean);
+      return (serverItems.length > 0 ? serverItems : searchItems.filter((item) => searchMatchesItem(item, searchQuery))).slice(0, 6);
+    },
+    [searchItems, searchQuery, serverSearchResults]
   );
   const topGainers = useMemo(() => sortTopGainers(summary?.topGainers).slice(0, 3), [summary]);
   const topLosers = useMemo(() => sortTopLosers(summary?.topLosers).slice(0, 3), [summary]);
@@ -1114,6 +1137,38 @@ export default function App() {
       setLearningError(COPY.learningLoadFailed);
     }
   }
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || (cfg.gateEnabled && !k)) {
+      setServerSearchResults([]);
+      setSearchLoading(false);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const data = await apiFetch(`/api/search?query=${encodeURIComponent(q)}&limit=8`, { signal: controller.signal });
+        setServerSearchResults(asArray(data));
+      } catch (e) {
+        if (!controller.signal.aborted) {
+          console.warn("Failed to load search results", e);
+          setServerSearchResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setSearchLoading(false);
+        }
+      }
+    }, 180);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [cfg.apiBaseUrl, k, searchQuery, cfg.gateEnabled]);
 
   function selectTerm(term) {
     setSelectedTermId(term.id);
@@ -1565,9 +1620,11 @@ export default function App() {
             </div>
             {searchQuery.trim() ? (
               <div className="searchResults" aria-live="polite">
-                {searchResults.length === 0 ? (
+                {searchLoading ? <div className="searchEmpty">{COPY.loading}</div> : null}
+                {!searchLoading && searchResults.length === 0 ? (
                   <div className="searchEmpty">{COPY.searchEmpty}</div>
-                ) : (
+                ) : null}
+                {!searchLoading && searchResults.length > 0 ? (
                   searchResults.map((item) => (
                     <button type="button" key={item.id} onClick={() => selectSearchResult(item)}>
                       <span className="searchType">{item.market}</span>
@@ -1577,7 +1634,7 @@ export default function App() {
                       <span className="searchTags">{asArray(item.tags).slice(0, 3).join(" · ")}</span>
                     </button>
                   ))
-                )}
+                ) : null}
                 <small>{COPY.searchMockNote}</small>
               </div>
             ) : null}

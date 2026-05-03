@@ -140,4 +140,11 @@ contains_field /tmp/krbrief_resp.json limitations || fail "ai chat missing limit
 contains_field /tmp/krbrief_resp.json oppositeSignals || fail "ai chat missing oppositeSignals"
 pass "POST /api/ai/chat"
 
+# 16) Unified search
+code=$(status_code GET "$BASE_URL/api/search?query=%EB%B0%98%EB%8F%84%EC%B2%B4&limit=5")
+[[ "$code" == "200" ]] || fail "search expected 200, got $code"
+contains_field /tmp/krbrief_resp.json source || fail "search missing source"
+contains_field /tmp/krbrief_resp.json title || fail "search missing title"
+pass "GET /api/search"
+
 echo "== API smoke test done: ALL PASS =="

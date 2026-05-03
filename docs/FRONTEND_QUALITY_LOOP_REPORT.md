@@ -107,10 +107,10 @@ Date: 2026-05-03
 
 ## 10. Failures / Remaining Risks
 
-- Industry/theme search entries are frontend UX mocks. The UI labels them as mock and leaves a clear future API connection point.
 - `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshots.
 - Follow-up hardening updated Vite, `@vitejs/plugin-react`, and Express transitive dependencies; `npm audit` now reports 0 vulnerabilities.
 - Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, the learning detail structure, interval switching, and bounded chart tooltip display.
+- Follow-up search work added `GET /api/search` so the first-view search now uses a backend adapter for latest-summary stocks, learning terms, and a seed industry/theme catalog; the frontend only keeps a local fallback for API failure.
 
 ## 11. Commit Hash
 
