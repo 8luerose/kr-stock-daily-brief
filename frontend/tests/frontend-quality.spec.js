@@ -168,6 +168,7 @@ test("chart tab supports interval switching and bounded tooltip display", async 
   await expect(page.locator(".eventList")).toContainText("네이버 뉴스 검색");
   await expect(page.locator(".eventList")).toContainText("DART 공시 검색");
   await expect(page.locator(".eventList")).toContainText("원인 점수");
+  await expect(page.locator(".eventList")).toContainText("요인");
 
   let chart = page.locator(".realChart").first();
   let box = await chart.boundingBox();

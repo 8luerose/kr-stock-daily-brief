@@ -20,6 +20,21 @@ function eventCausalScores(event) {
   return Array.isArray(event?.causalScores) ? event.causalScores : [];
 }
 
+function causalScoreMeta(score) {
+  if (!score) return "";
+  const factors = Array.isArray(score.causalFactors) ? score.causalFactors.slice(0, 2).join("/") : "";
+  const evidenceLabel = {
+    market_data: "시장자료",
+    body: "본문",
+    search: "검색",
+    none: ""
+  }[score.evidenceLevel] || "";
+  const parts = [];
+  if (factors) parts.push(`요인 ${factors}`);
+  if (evidenceLabel) parts.push(`근거 ${evidenceLabel}`);
+  return parts.join(" · ");
+}
+
 export function MarketHero({
   copy,
   summary,
@@ -490,6 +505,7 @@ export function StockResearchPanel({
                 const causalScores = eventCausalScores(event);
                 const topCausal = causalScores[0];
                 const textCausal = causalScores.find((score) => Number(score.signalCount || 0) > 0);
+                const causalMeta = causalScoreMeta(textCausal || topCausal);
                 return (
                   <a
                     key={`${event.date}-${event.type}`}
@@ -508,6 +524,7 @@ export function StockResearchPanel({
                         원인 점수 {topCausal.label} {topCausal.score}/100 · {topCausal.confidence}
                         {textCausal ? ` · 텍스트 근거 ${textCausal.signalCount}건` : ""}
                         {textCausal?.signalOrigins?.length ? ` · ${textCausal.signalOrigins.join("/")}` : ""}
+                        {causalMeta ? ` · ${causalMeta}` : ""}
                       </small>
                     ) : null}
                   </a>

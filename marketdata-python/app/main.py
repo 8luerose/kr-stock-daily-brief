@@ -521,6 +521,58 @@ def _clean_html_text(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+CAUSAL_FACTOR_RULES = (
+    {
+        "label": "수주/공급 계약",
+        "keywords": ("계약", "수주", "공급", "납품", "공급계약"),
+        "direction": "positive",
+        "weight": 8,
+    },
+    {
+        "label": "실적/이익 개선",
+        "keywords": ("실적", "영업이익", "매출", "흑자", "이익", "어닝"),
+        "direction": "positive",
+        "weight": 7,
+    },
+    {
+        "label": "주주환원",
+        "keywords": ("배당", "자사주", "소각", "주주환원"),
+        "direction": "positive",
+        "weight": 7,
+    },
+    {
+        "label": "투자/증설",
+        "keywords": ("투자", "증설", "설비", "CAPEX", "생산능력", "센터"),
+        "direction": "positive",
+        "weight": 6,
+    },
+    {
+        "label": "자본조달/지분 변동",
+        "keywords": ("증자", "유상증자", "전환사채", "CB", "BW", "출자"),
+        "direction": "mixed",
+        "weight": 6,
+    },
+    {
+        "label": "업종/테마 모멘텀",
+        "keywords": ("반도체", "2차전지", "바이오", "금융", "AI", "전선", "테마"),
+        "direction": "positive",
+        "weight": 5,
+    },
+    {
+        "label": "수급/거래량",
+        "keywords": ("거래량", "외국인", "기관", "순매수", "수급"),
+        "direction": "mixed",
+        "weight": 4,
+    },
+    {
+        "label": "리스크/감익",
+        "keywords": ("하락", "감산", "적자", "손실", "부진", "소송", "제재", "리콜"),
+        "direction": "negative",
+        "weight": 8,
+    },
+)
+
+
 def _signal_keywords(text: str) -> list[str]:
     keywords = [
         "공시",
@@ -542,6 +594,41 @@ def _signal_keywords(text: str) -> list[str]:
         "하락",
     ]
     return [keyword for keyword in keywords if keyword in text]
+
+
+def _signal_causal_profile(text: str) -> dict:
+    factors: list[str] = []
+    positive = 0
+    negative = 0
+    weight = 0
+    for rule in CAUSAL_FACTOR_RULES:
+        if not any(keyword in text for keyword in rule["keywords"]):
+            continue
+        factors.append(str(rule["label"]))
+        weight += int(rule["weight"])
+        rule_direction = str(rule["direction"])
+        if rule_direction == "positive":
+            positive += 1
+        elif rule_direction == "negative":
+            negative += 1
+        else:
+            positive += 1
+            negative += 1
+
+    if positive and negative:
+        direction = "mixed"
+    elif positive:
+        direction = "positive"
+    elif negative:
+        direction = "negative"
+    else:
+        direction = "neutral"
+
+    return {
+        "causalFactors": factors[:6],
+        "causalDirection": direction,
+        "causalWeight": min(weight, 24),
+    }
 
 
 def _dedupe_signals(signals: list[dict], limit: int) -> list[dict]:
@@ -578,12 +665,14 @@ def _news_article_body_signal(url: str, code: str, name: str) -> dict | None:
     keywords = _signal_keywords(body)
     if not keywords:
         return None
+    profile = _signal_causal_profile(body)
     return {
         "sourceType": "news",
         "label": "뉴스 본문 텍스트",
         "url": url,
         "text": _snippet_around_keywords(body, [name, code, *keywords], 260),
         "matchedKeywords": keywords[:8],
+        **profile,
         "signalOrigin": "article_body",
     }
 
@@ -608,6 +697,7 @@ def _naver_news_text_signals(code: str, name: str) -> tuple[dict, ...]:
         keywords = _signal_keywords(text)
         if not keywords:
             continue
+        profile = _signal_causal_profile(text)
         signals.append(
             {
                 "sourceType": "news",
@@ -615,6 +705,7 @@ def _naver_news_text_signals(code: str, name: str) -> tuple[dict, ...]:
                 "url": href,
                 "text": text[:220],
                 "matchedKeywords": keywords[:6],
+                **profile,
                 "signalOrigin": "search_result",
             }
         )
@@ -693,6 +784,7 @@ def _dart_disclosure_text_signals(name: str, from_ymd: str, to_ymd: str) -> tupl
             if detail_signal:
                 signals.append(detail_signal)
         if keywords:
+            profile = _signal_causal_profile(text)
             signals.append(
                 {
                     "sourceType": "disclosure",
@@ -700,6 +792,7 @@ def _dart_disclosure_text_signals(name: str, from_ymd: str, to_ymd: str) -> tupl
                     "url": detail_url,
                     "text": f"{title}: {text}"[:220],
                     "matchedKeywords": keywords[:6],
+                    **profile,
                     "signalOrigin": "dart_search_row",
                 }
             )
@@ -733,12 +826,14 @@ def _dart_filing_detail_signal(rcp_no: str, name: str, title: str) -> dict | Non
     keywords = _signal_keywords(body)
     if not keywords:
         return None
+    profile = _signal_causal_profile(body)
     return {
         "sourceType": "disclosure",
         "label": "DART 공시 본문",
         "url": main_url,
         "text": _snippet_around_keywords(body, [name, title, *keywords], 260),
         "matchedKeywords": keywords[:8],
+        **profile,
         "signalOrigin": "dart_filing_detail",
     }
 
@@ -773,6 +868,48 @@ def _clamp_score(value: float, low: int, high: int) -> int:
     return max(low, min(high, int(round(value))))
 
 
+def _unique_signal_values(signals: list[dict], key: str) -> list[str]:
+    out: list[str] = []
+    for signal in signals:
+        for value in signal.get(key, []) or []:
+            if value and value not in out:
+                out.append(value)
+    return out
+
+
+def _aggregate_signal_direction(signals: list[dict], price_rate: float, source_type: str) -> str:
+    if not signals:
+        if source_type == "price_history":
+            if price_rate > 0:
+                return "positive"
+            if price_rate < 0:
+                return "negative"
+        return "neutral"
+
+    directions = [signal.get("causalDirection", "neutral") for signal in signals]
+    if "mixed" in directions:
+        return "mixed"
+    has_positive = "positive" in directions
+    has_negative = "negative" in directions
+    if has_positive and has_negative:
+        return "mixed"
+    if has_positive:
+        return "positive"
+    if has_negative:
+        return "negative"
+    return "neutral"
+
+
+def _causal_evidence_level(source_type: str, signal_origins: list[str]) -> str:
+    if source_type == "price_history":
+        return "market_data"
+    if any(origin in {"article_body", "dart_filing_detail"} for origin in signal_origins):
+        return "body"
+    if any(origin in {"search_result", "dart_search_row"} for origin in signal_origins):
+        return "search"
+    return "none"
+
+
 def _event_causal_scores(
     sources: list[dict[str, str]],
     event_type: str,
@@ -791,13 +928,20 @@ def _event_causal_scores(
         signal_count = len(source_signals)
         signal_keywords = sorted({keyword for signal in source_signals for keyword in signal.get("matchedKeywords", [])})
         signal_origins = sorted({signal.get("signalOrigin", "unknown") for signal in source_signals})
+        causal_factors = _unique_signal_values(source_signals, "causalFactors")[:6]
+        causal_direction = _aggregate_signal_direction(source_signals, price_rate, source_type)
+        evidence_level = _causal_evidence_level(source_type, signal_origins)
         signal_urls = []
         for signal in source_signals:
             url = signal.get("url", "")
             if url and url not in signal_urls:
                 signal_urls.append(url)
-        signal_boost = min(signal_count * 5 + len(signal_keywords) * 2, 18)
+        origin_boost = 6 if evidence_level == "body" else 2 if evidence_level == "search" else 0
+        factor_weight = sum(int(signal.get("causalWeight", 0) or 0) for signal in source_signals)
+        factor_boost = min(len(causal_factors) * 3 + factor_weight / 4, 14)
+        signal_boost = min(signal_count * 4 + len(signal_keywords) * 1.5 + factor_boost + origin_boost, 26)
         signal_summary = source_signals[0]["text"] if source_signals else "텍스트 근거 미확인"
+        factor_phrase = f" 주요 요인: {', '.join(causal_factors[:3])}." if causal_factors else ""
         if source_type == "price_history":
             score = _clamp_score(
                 58 + min(abs_price * 2.2, 24) + min(max(volume_rate - 100, 0) / 12, 16) + (8 if event_type == "volume_spike" else 0),
@@ -811,14 +955,14 @@ def _event_causal_scores(
                 20,
                 82,
             )
-            interpretation = "검색된 뉴스 텍스트가 가격/거래량 이벤트의 원인 후보를 보강합니다." if signal_count else "같은 시점 뉴스가 원인 후보일 수 있으나 원문 확인 전에는 확정하지 않습니다."
+            interpretation = f"검색된 뉴스 텍스트가 가격/거래량 이벤트의 원인 후보를 보강합니다.{factor_phrase}" if signal_count else "같은 시점 뉴스가 원인 후보일 수 있으나 원문 확인 전에는 확정하지 않습니다."
         elif source_type == "disclosure":
             score = _clamp_score(
                 30 + min(abs_price * 1.1, 14) + min(max(volume_rate - 180, 0) / 28, 12) + signal_boost,
                 18,
                 78,
             )
-            interpretation = "DART 검색/공시 본문 텍스트가 이벤트 원인 후보를 보강합니다." if signal_count else "공식 공시는 강한 원인 후보지만 DART 원문 확인이 필요합니다."
+            interpretation = f"DART 검색/공시 본문 텍스트가 이벤트 원인 후보를 보강합니다.{factor_phrase}" if signal_count else "공식 공시는 강한 원인 후보지만 DART 원문 확인이 필요합니다."
         elif source_type == "discussion":
             score = _clamp_score(
                 24 + min(max(volume_rate - 120, 0) / 18, 18) + min(abs_price, 8),
@@ -843,6 +987,9 @@ def _event_causal_scores(
                 "interpretation": f"{direction} 이벤트 기준. {interpretation}",
                 "signalCount": signal_count,
                 "matchedSignals": signal_keywords[:6],
+                "causalFactors": causal_factors,
+                "causalDirection": causal_direction,
+                "evidenceLevel": evidence_level,
                 "signalSummary": signal_summary,
                 "signalOrigins": signal_origins[:4],
                 "signalUrls": signal_urls[:3],

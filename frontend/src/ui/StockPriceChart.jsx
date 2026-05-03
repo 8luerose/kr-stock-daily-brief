@@ -24,6 +24,18 @@ function confidenceFromSeverity(severity) {
   return "낮음";
 }
 
+function causalScoreMeta(score) {
+  if (!score) return "";
+  const factors = asArray(score.causalFactors).slice(0, 3).join(" · ");
+  const evidenceLabel = {
+    market_data: "시장자료",
+    body: "본문",
+    search: "검색",
+    none: ""
+  }[score.evidenceLevel] || "";
+  return [factors ? `요인 ${factors}` : "", evidenceLabel ? `근거 수준 ${evidenceLabel}` : ""].filter(Boolean).join(" · ");
+}
+
 function markerText(event) {
   if (event.type === "price_drop") return "급락";
   if (event.type === "volume_spike") return "거래";
@@ -215,6 +227,8 @@ export default function StockPriceChart({ chart, events, darkMode }) {
             if (textCausal?.signalSummary) {
               const origins = asArray(textCausal.signalOrigins).join("/");
               appendLine(lines, `텍스트 근거${origins ? `(${origins})` : ""}: ${textCausal.signalSummary}`, "tooltipEventText");
+              const meta = causalScoreMeta(textCausal);
+              if (meta) appendLine(lines, meta, "tooltipEventText");
             }
           }
         });

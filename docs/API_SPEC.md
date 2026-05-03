@@ -512,6 +512,9 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
           "interpretation": "상승 이벤트 기준. 가격/거래량 원자료에서 이벤트 자체가 확인됩니다.",
           "signalCount": 0,
           "matchedSignals": [],
+          "causalFactors": [],
+          "causalDirection": "positive",
+          "evidenceLevel": "market_data",
           "signalSummary": "텍스트 근거 미확인",
           "signalOrigins": [],
           "signalUrls": []
@@ -525,6 +528,9 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
           "interpretation": "상승 이벤트 기준. 검색된 뉴스 텍스트가 가격/거래량 이벤트의 원인 후보를 보강합니다.",
           "signalCount": 2,
           "matchedSignals": ["공시", "거래량"],
+          "causalFactors": ["수급/거래량", "수주/공급 계약"],
+          "causalDirection": "mixed",
+          "evidenceLevel": "body",
           "signalSummary": "삼성전자 공시와 거래량 변화가 함께 언급된 뉴스 본문 텍스트",
           "signalOrigins": ["article_body", "search_result"],
           "signalUrls": ["https://www.digitaltoday.co.kr/news/articleView.html?idxno=619374"]
@@ -539,6 +545,9 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 - `score`: 0~100 범위의 휴리스틱 점수다. 투자 지시가 아니라 이벤트 원인 후보를 정렬하기 위한 설명 보조값이다.
 - `confidence`: `high | medium | low`. 뉴스/공시/토론은 원문 미확인 상태에서는 최대 `medium`으로 제한한다.
 - `signalCount`, `matchedSignals`, `signalSummary`: 뉴스 검색 텍스트, 뉴스 본문 텍스트, DART 검색 텍스트, DART 공시 본문에서 추출한 후보 근거다. 수집 실패 시 `signalCount=0`, `signalSummary="텍스트 근거 미확인"`으로 내려가며 이벤트 API는 실패하지 않는다.
+- `causalFactors`: 텍스트에서 감지한 원인 요인이다. 예: `수주/공급 계약`, `실적/이익 개선`, `주주환원`, `투자/증설`, `자본조달/지분 변동`, `수급/거래량`, `리스크/감익`.
+- `causalDirection`: `positive | negative | mixed | neutral`. 텍스트 요인이 이벤트 방향과 일치하는지 판단하기 위한 보조 필드다.
+- `evidenceLevel`: `market_data | body | search | none`. 가격/거래량 원자료, 본문 확인, 검색 row, 미확인 중 어떤 수준의 근거인지 나타낸다.
 - `signalOrigins`: `search_result`, `article_body`, `dart_search_row`, `dart_filing_detail` 같은 텍스트 근거 수집 단계다.
 - `signalUrls`: 텍스트 근거 후보 URL 목록이다. 뉴스/공시 본문 접근 실패 시 빈 배열일 수 있다.
 

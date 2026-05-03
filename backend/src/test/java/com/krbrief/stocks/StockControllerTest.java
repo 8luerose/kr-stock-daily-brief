@@ -77,6 +77,9 @@ class StockControllerTest {
                                 "가격/거래량 원자료에서 이벤트 자체가 확인됩니다.",
                                 2,
                                 List.of("공시", "거래량"),
+                                List.of("수급/거래량"),
+                                "positive",
+                                "market_data",
                                 "삼성전자 공시와 거래량 관련 뉴스 텍스트",
                                 List.of("article_body"),
                                 List.of("https://www.digitaltoday.co.kr/news/articleView.html?idxno=619374")))))));
@@ -92,6 +95,9 @@ class StockControllerTest {
         .andExpect(jsonPath("$.events[0].causalScores[0].score").value(86))
         .andExpect(jsonPath("$.events[0].causalScores[0].signalCount").value(2))
         .andExpect(jsonPath("$.events[0].causalScores[0].matchedSignals[0]").value("공시"))
+        .andExpect(jsonPath("$.events[0].causalScores[0].causalFactors[0]").value("수급/거래량"))
+        .andExpect(jsonPath("$.events[0].causalScores[0].causalDirection").value("positive"))
+        .andExpect(jsonPath("$.events[0].causalScores[0].evidenceLevel").value("market_data"))
         .andExpect(jsonPath("$.events[0].causalScores[0].signalOrigins[0]").value("article_body"))
         .andExpect(jsonPath("$.events[0].causalScores[0].signalUrls[0]").value("https://www.digitaltoday.co.kr/news/articleView.html?idxno=619374"));
   }
