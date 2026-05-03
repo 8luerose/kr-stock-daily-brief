@@ -31,6 +31,7 @@ for (const viewport of viewports) {
     await expect(page.getByRole("button", { name: "운영" })).toHaveCount(0);
     await expect(page.locator(".heroSearch")).toBeVisible();
     await expect(page.getByText("AI 시장 해석")).toBeVisible();
+    await expect(page.getByLabel("AI에게 물어볼 질문")).toBeVisible();
     await expect(page.getByText(/개발자용|관리자 영역에서 생성/)).toHaveCount(0);
     await expect(page.locator(".realChart canvas").first()).toBeVisible();
     await expect(page.getByRole("img", { name: /캔들 차트/ }).first()).toBeVisible();

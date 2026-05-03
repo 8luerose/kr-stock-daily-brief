@@ -156,6 +156,7 @@ const COPY = {
   noTerms: "검색 결과가 없습니다.",
   assistantTitle: "AI 학습 도우미",
   assistantSubtitle: "오늘 브리프와 용어 사전을 묶어 초보자 관점으로 설명합니다.",
+  assistantQuestionLabel: "AI에게 물어볼 질문",
   assistantInputPlaceholder: "궁금한 점을 입력하세요. 예: 거래량이 왜 중요해?",
   assistantAsk: "질문",
   assistantAnswer: "답변",
@@ -1352,6 +1353,7 @@ export default function App() {
       </div>
       <div className="assistantInputRow">
         <input
+          aria-label={COPY.assistantQuestionLabel}
           value={assistantQuestion}
           onChange={(e) => setAssistantQuestion(e.target.value)}
           placeholder={COPY.assistantInputPlaceholder}
@@ -1615,8 +1617,8 @@ export default function App() {
               </div>
               {adminKey ? (
                 <div className="backfillBar compact">
-                  <input type="date" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
-                  <input type="date" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
+                  <input type="date" aria-label="일괄 생성 시작일" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
+                  <input type="date" aria-label="일괄 생성 종료일" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
                   <button className="btn ghost" onClick={runBackfill} disabled={loading}>
                     {COPY.backfillRun}
                   </button>
@@ -1669,6 +1671,7 @@ export default function App() {
                     isToday ? "today" : "",
                     hasSummary ? "hasSummary" : ""
                   ].join(" ")}
+                  aria-label={`${dStr}${hasSummary ? " 요약 있음" : ""}`}
                   onClick={() => setSelected(dStr)}
                 >
                   <div className="dayNum">{d.getDate()}</div>
