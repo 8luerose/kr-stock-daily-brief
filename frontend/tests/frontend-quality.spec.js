@@ -142,6 +142,25 @@ test("history page restores public calendar and detail access", async ({ page })
   await expectNoHorizontalOverflow(page);
 });
 
+test("summary detail preserves verification and collection notes disclosures", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${APP_URL}/#history`, { waitUntil: "networkidle" });
+
+  const detail = page.locator(".detail");
+  await expect(detail).toBeVisible();
+  await expect(detail).toContainText("검증");
+
+  await detail.getByText("검증 상세").click();
+  await expect(detail.locator(".devDetails")).toBeVisible();
+  await expect(detail.locator(".devDetails")).toContainText("KRX 검증 아티팩트");
+  await expect(detail.locator(".verifyTable")).toBeVisible();
+
+  await detail.getByText("수집 노트 보기").click();
+  await expect(detail.locator("pre.content")).toBeVisible();
+  await expect(detail.locator("pre.content")).not.toHaveText("-");
+  await expectNoHorizontalOverflow(page);
+});
+
 test("admin direct route explains key requirement without exposing admin actions", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${APP_URL}/#admin`, { waitUntil: "networkidle" });
@@ -258,5 +277,40 @@ test("chart API failure exposes an accessible error state", async ({ page }) => 
 
   await expect(page.locator(".stockResearch")).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: /차트 데이터를 불러오지 못했습니다/ })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test("portfolio sandbox preserves add, weight, persistence, and removal flow", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await page.evaluate(() => localStorage.removeItem("portfolioSandbox"));
+  await page.reload({ waitUntil: "networkidle" });
+
+  await page.fill("#universal-search", "삼성전자");
+  await expect(page.locator(".searchResults")).toContainText("005930");
+  await page.locator(".searchResults button").first().click();
+  await expect(page.locator("#stock-detail")).toBeVisible();
+
+  await page.evaluate(() => {
+    window.location.hash = "#portfolio";
+  });
+  await expect(page).toHaveTitle("포트폴리오 | 한국 주식 AI 리서치");
+  await expect(page.locator(".portfolioPanel")).toBeVisible();
+  await expect(page.locator(".portfolioPanel .empty")).toContainText("관심 종목을 추가");
+
+  await page.locator(".portfolioPanel .btn.primary").click();
+  await expect(page.locator(".portfolioItem")).toContainText("삼성전자");
+  await expect(page.locator(".portfolioItem")).toContainText("005930");
+
+  await page.locator(".portfolioItem input").first().fill("35");
+  await expect(page.locator(".portfolioRisk")).toContainText("총 가상 비중 35%");
+
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.locator(".portfolioPanel")).toBeVisible();
+  await expect(page.locator(".portfolioItem")).toContainText("삼성전자");
+  await expect(page.locator(".portfolioRisk")).toContainText("총 가상 비중 35%");
+
+  await page.locator(".portfolioItem button", { hasText: "제외" }).click();
+  await expect(page.locator(".portfolioPanel .empty")).toContainText("관심 종목을 추가");
   await expectNoHorizontalOverflow(page);
 });

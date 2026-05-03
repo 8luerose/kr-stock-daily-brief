@@ -64,7 +64,7 @@
 - [x] AI 답변에 한계를 포함한다.
 - [x] App.jsx를 페이지/컴포넌트/hooks/API client 중심으로 더 분해한다.
 - [x] styles.css 또는 스타일 모듈을 디자인 토큰/컴포넌트 책임 기준으로 정리한다.
-- [ ] 기존 기능 100% 무회귀를 확인한다.
+- [x] 기존 기능 100% 무회귀를 확인한다.
 - [x] Docker/health/API smoke를 유지한다.
 - [x] CI/CD 또는 운영 배포 안정성 체크를 강화한다.
 - [x] 투자자문 리스크 방지 문구와 검토를 유지한다.
@@ -80,18 +80,18 @@
 - [x] 요약 생성 기능 보존
 - [x] 과거 백필 기능 보존
 - [x] 보관/soft delete 기능 보존
-- [ ] 검증 상세 보존
-- [ ] 수집 노트 보존
-- [ ] 용어 학습 보존
+- [x] 검증 상세 보존
+- [x] 수집 노트 보존
+- [x] 용어 학습 보존
 - [x] AI 질문 보존
 - [x] 종목 검색 보존
 - [x] 차트 보존
-- [ ] 일봉 전환 보존
-- [ ] 주봉 전환 보존
-- [ ] 월봉 전환 보존
-- [ ] 이벤트 API 보존
-- [ ] 포트폴리오 기능 보존
-- [ ] Docker Compose 실행 보존
+- [x] 일봉 전환 보존
+- [x] 주봉 전환 보존
+- [x] 월봉 전환 보존
+- [x] 이벤트 API 보존
+- [x] 포트폴리오 기능 보존
+- [x] Docker Compose 실행 보존
 - [x] health check 보존
 - [x] API smoke 보존
 - [x] 관리자 기능은 삭제하지 않고 일반 사용자와 분리
@@ -768,6 +768,9 @@
 | Chart | 일봉 | 차트 표시 | 정상 | 90/100 | Playwright interval test와 viewport screenshot 통과 | 아니오 |
 | Chart | 주봉 | 차트 표시 | 정상 | 88/100 | Playwright interval test 통과 | 아니오 |
 | Chart | 월봉 | 차트 표시 | 정상 | 88/100 | Playwright interval test 통과 | 아니오 |
+| Detail | 검증 상세 | KRX 검증/검증 테이블 표시 | 정상 | 90/100 | Playwright disclosure test에서 검증 상세와 verifyTable 표시 확인 | 아니오 |
+| Detail | 수집 노트 | rawNotes disclosure 표시 | 정상 | 90/100 | Playwright disclosure test에서 수집 노트 pre.content 표시 및 빈 대시 아님 확인 | 아니오 |
+| Portfolio | 포트폴리오 샌드박스 | 추가/비중/보존/삭제 | 정상 | 88/100 | Playwright portfolio flow에서 삼성전자 추가, 35% 비중 저장, reload persistence, 제외 확인 | 아니오 |
 | Chart | 마커 hover | 툴팁 표시 | 정상 | 88/100 | 이유, 근거, 신뢰도, 기준일 tooltip 검증 통과. 뉴스/공시 원문 연결 고도화는 남음 | 예 |
 | Trade UX | 매수 검토 구간 | 조건/근거 표시 | 정상 | 82/100 | trade-zones API smoke 통과. 신호 산식은 아직 heuristic | 예 |
 | Trade UX | 매도 검토 구간 | 조건/근거 표시 | 정상 | 82/100 | trade-zones API smoke 통과. 신호 산식은 아직 heuristic | 예 |
@@ -935,6 +938,8 @@
 - [x] Search contract 루프 `./gradlew test --tests com.krbrief.search.SearchServiceTest`: `source=latest_summary`, `source=learning_terms` 확인 포함 통과
 - [x] Search contract 루프 targeted Playwright `term search result opens learning detail flow`: PER 검색 결과에서 배우기 상세 이동 확인, 통과
 - [x] Search contract 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `14 passed`
+- [x] Preservation E2E 루프 targeted Playwright `verification and collection notes|portfolio sandbox`: 검증 상세, 수집 노트, 포트폴리오 추가/비중/reload 보존/삭제 확인, `2 passed`
+- [x] Preservation E2E 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `16 passed`
 
 ### 9.3 최신 viewport 계측
 
@@ -977,9 +982,9 @@
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
 | 사용자 | 494/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
-| 프론트 개발자 | 493/500 | 홈 차트 구조 개선, HomePage 분리, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, assistant/learning hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI 강화 | 최종 visual polish, 화면별 더 작은 컴포넌트 경계, live LLM/RAG UX 검증 미완 |
+| 프론트 개발자 | 494/500 | 홈 차트 구조 개선, HomePage 분리, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, assistant/learning hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI, 기존 기능 보존 E2E 강화 | 최종 visual polish, 화면별 더 작은 컴포넌트 경계, live LLM/RAG UX 검증 미완 |
 | 백엔드 개발자 | 495/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, source-grounded `grounding` 리포트, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | live LLM 생성 품질 검증 부족, causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
-| DevOps 개발자 | 493/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
+| DevOps 개발자 | 494/500 | make quality, Docker health, API smoke, E2E, preservation E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
 | VC/투자자 | 474/500 | AI/RAG 구조, source-grounded RAG evidence log, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획

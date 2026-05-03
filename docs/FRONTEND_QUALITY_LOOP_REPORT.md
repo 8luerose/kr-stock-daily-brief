@@ -32,9 +32,9 @@ stock AI web platform:
 | Perspective | Score | Current judgment |
 |---|---:|---|
 | User | 494/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, and event causal scores now pass, but still not Toss-perfect |
-| Frontend developer | 493/500 | Home chart flow, HomePage split, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, and expanded learning-term UI improved; final visual polish and smaller remaining component boundaries remain |
+| Frontend developer | 494/500 | Home chart flow, HomePage split, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, expanded learning-term UI, and existing-feature preservation E2E improved; final visual polish and smaller remaining component boundaries remain |
 | Backend developer | 495/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, source-grounded grounding report, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved; live LLM generation remains unverified |
-| DevOps developer | 493/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E coverage, investment-language scan, and tracked secret scan |
+| DevOps developer | 494/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E and preservation coverage, investment-language scan, and tracked secret scan |
 | VC / shareholder | 474/500 | AI and chart-first/search-first platform direction plus source-grounded RAG evidence log, all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but live LLM moat is not fully proven |
 
 ## Work Completed In The Recovery Loop
@@ -152,7 +152,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Frontend build/audit | `npm ci --include=dev && npm run build && npm audit` via `make quality` | Done |
 | Docker health | `make health` via `make quality` | Done |
 | API smoke | `./scripts/test_all_apis.sh` via `make quality` | Done |
-| E2E | Playwright `14 passed` via `make quality` after adding the learning-term search flow | Done |
+| E2E | Playwright `16 passed` via `make quality` after adding learning-term search and existing-feature preservation flows | Done |
 | First-view button reduction | Desktop first viewport `2`, mobile first viewport `2` from Playwright DOM measurement | Done |
 | Chart-first responsive audit | Chart enters first viewport on 390 mobile, 768 tablet, 1280 laptop, and 1440 desktop after the home chart extraction | Done |
 | Loop state checklist | `docs/FRONTEND_LOOP_STATE.md` extracts requirements from the four required docs and records current evidence | Done |
@@ -164,6 +164,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Search response contract | `scripts/test_all_apis.sh` checks the full `SearchResultDto` field set, `source=learning_terms`, and `termId` for learning-term results | Done |
 | Search service source contract | `SearchServiceTest` checks `source=latest_summary` for stock results and `source=learning_terms` for learning-term results | Done |
 | Term search learning navigation | Playwright `term search result opens learning detail flow` verifies home search `PER` opens the learning detail state | Done |
+| Existing feature preservation E2E | Playwright verifies verification detail disclosure, collection notes disclosure, and portfolio add/weight/persistence/removal flow | Done |
 | Full KRX stock universe | pykrx-backed KOSPI/KOSDAQ stock universe API/cache exists and is smoke-tested | Done |
 | KRX industry taxonomy | pykrx-backed KOSPI/KOSDAQ sector classification API/cache exists and is smoke-tested | Done |
 | Full external theme taxonomy | Naver Finance-backed theme taxonomy API/cache exists and is smoke-tested | Done |
@@ -205,7 +206,7 @@ The command covered:
 - API smoke tests
 - Playwright E2E across responsive viewports
 
-Result: full pass. The command completed ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright E2E with `14 passed`.
+Result: full pass. The command completed ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright E2E with `16 passed`.
 
 The latest search/taxonomy and chart-first loop was verified with:
 
@@ -308,6 +309,8 @@ Additional live Docker API checks:
 - Search contract loop `./gradlew test --tests com.krbrief.search.SearchServiceTest`: passed with `source=latest_summary` and `source=learning_terms` assertions
 - Search contract loop targeted Playwright `term search result opens learning detail flow`: passed after selecting the exact `PER` learning-term result and verifying the learning detail state
 - Search contract loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke including `source`/`termId` search checks, and Playwright `14 passed`
+- Preservation E2E loop targeted Playwright `verification and collection notes|portfolio sandbox`: `2 passed` after verifying the summary verification detail disclosure, collection notes disclosure, and portfolio add/weight/reload persistence/removal flow
+- Preservation E2E loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `16 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
