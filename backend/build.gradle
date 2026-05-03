@@ -43,3 +43,14 @@ tasks.named('test') {
   doNotTrackState("Avoid flaky file snapshotting in constrained environments")
 }
 
+tasks.register('ciTest', Test) {
+  description = 'Runs backend tests that do not require Testcontainers. Full DB/API coverage runs in the Docker Compose smoke job.'
+  group = 'verification'
+  useJUnitPlatform()
+  testClassesDirs = sourceSets.test.output.classesDirs
+  classpath = sourceSets.test.runtimeClasspath
+  exclude '**/SummaryApiTest.class'
+  exclude '**/SummaryApiGateTest.class'
+  shouldRunAfter test
+  doNotTrackState("Avoid flaky file snapshotting in constrained environments")
+}
