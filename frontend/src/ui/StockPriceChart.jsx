@@ -12,6 +12,31 @@ function formatNumber(value) {
   return n.toLocaleString("ko-KR");
 }
 
+function formatRate(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "-";
+  return `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
+}
+
+function confidenceFromSeverity(severity) {
+  if (severity === "high") return "높음";
+  if (severity === "medium") return "보통";
+  return "낮음";
+}
+
+function markerText(event) {
+  if (event.type === "price_drop") return "급락";
+  if (event.type === "volume_spike") return "거래";
+  return "급등";
+}
+
+function appendLine(parent, text, className = "") {
+  const line = document.createElement("span");
+  if (className) line.className = className;
+  line.textContent = text;
+  parent.push(line);
+}
+
 function calculateMa(data, period) {
   return asArray(data)
     .map((item, index, arr) => {
@@ -52,6 +77,13 @@ export default function StockPriceChart({ chart, events, darkMode }) {
       volume: Number(row.volume || 0)
     }));
     const candleByTime = new Map(candleData.map((row) => [row.time, row]));
+    const eventsByTime = new Map();
+    asArray(events?.events).forEach((event) => {
+      if (!event?.date) return;
+      const list = eventsByTime.get(event.date) || [];
+      list.push(event);
+      eventsByTime.set(event.date, list);
+    });
 
     const candles = instance.addSeries(CandlestickSeries, {
       upColor: "#ef4444",
@@ -129,7 +161,7 @@ export default function StockPriceChart({ chart, events, darkMode }) {
         position: event.type === "price_drop" ? "belowBar" : "aboveBar",
         color: event.severity === "high" ? "#ef4444" : event.severity === "medium" ? "#f59e0b" : "#3182f6",
         shape: event.type === "price_drop" ? "arrowDown" : "arrowUp",
-        text: ""
+        text: markerText(event)
       }))
     );
 
@@ -148,15 +180,30 @@ export default function StockPriceChart({ chart, events, darkMode }) {
 
       const chartWidth = containerRef.current.clientWidth;
       const chartHeight = containerRef.current.clientHeight;
+      const lines = [];
       const date = document.createElement("strong");
-      date.textContent = row.time;
-      const openHigh = document.createElement("span");
-      openHigh.textContent = `시가 ${formatNumber(row.open)} · 고가 ${formatNumber(row.high)}`;
-      const lowClose = document.createElement("span");
-      lowClose.textContent = `저가 ${formatNumber(row.low)} · 종가 ${formatNumber(row.close)}`;
-      const volumeLine = document.createElement("span");
-      volumeLine.textContent = `거래량 ${formatNumber(row.volume)}`;
-      tooltip.replaceChildren(date, openHigh, lowClose, volumeLine);
+      date.textContent = `기준일 ${row.time}`;
+      lines.push(date);
+      appendLine(lines, `시가 ${formatNumber(row.open)} · 고가 ${formatNumber(row.high)}`);
+      appendLine(lines, `저가 ${formatNumber(row.low)} · 종가 ${formatNumber(row.close)}`);
+      appendLine(lines, `거래량 ${formatNumber(row.volume)}`);
+
+      const dayEvents = asArray(eventsByTime.get(row.time));
+      if (dayEvents.length > 0) {
+        appendLine(lines, `마커 근거 ${dayEvents.length}건`, "tooltipEventHead");
+        dayEvents.slice(0, 2).forEach((event) => {
+          const links = asArray(event.evidenceLinks);
+          appendLine(lines, `${event.title || "차트 이벤트"} · 신뢰도 ${confidenceFromSeverity(event.severity)}`, "tooltipEventTitle");
+          appendLine(lines, `이유: ${event.explanation || "가격/거래량 변화가 감지됐습니다."}`, "tooltipEventText");
+          appendLine(
+            lines,
+            `근거: 등락률 ${formatRate(event.priceChangeRate)} · 거래량 ${formatRate(event.volumeChangeRate)} · 출처 ${links.length || 0}개`,
+            "tooltipEventText"
+          );
+        });
+      }
+
+      tooltip.replaceChildren(...lines);
       tooltip.classList.add("visible");
 
       const box = tooltip.getBoundingClientRect();

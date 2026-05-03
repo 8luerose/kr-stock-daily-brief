@@ -148,10 +148,43 @@ test("empty market pulse fallback rows are not clickable when no latest summary 
 
 test("chart tab supports interval switching and bounded tooltip display", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto(`${APP_URL}/#research`, { waitUntil: "networkidle" });
+  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await page.fill("#universal-search", "삼성전자");
+  await expect(page.locator(".searchResults button").first()).toBeVisible();
+  const chartResponse = page.waitForResponse((response) => response.url().includes("/api/stocks/005930/chart") && response.ok());
+  const eventsResponse = page.waitForResponse((response) => response.url().includes("/api/stocks/005930/events") && response.ok());
+  await page.locator(".searchResults button").first().click();
+  const chartPayload = await (await chartResponse).json();
+  const eventsPayload = await (await eventsResponse).json();
 
+  await expect(page.locator("#stock-detail")).toBeVisible();
   await expect(page.locator(".stockResearch")).toBeVisible();
   await expect(page.locator(".realChart canvas").first()).toBeVisible();
+
+  let chart = page.locator(".realChart").first();
+  let box = await chart.boundingBox();
+  expect(box).not.toBeNull();
+
+  const eventDates = eventsPayload.events.map((event) => event.date);
+  const eventDate = chartPayload.data.find((row) => eventDates.includes(row.date))?.date;
+  const eventIndex = chartPayload.data.findIndex((row) => row.date === eventDate);
+  expect(eventIndex).toBeGreaterThanOrEqual(0);
+
+  let eventTooltipText = "";
+  const eventX = box.x + (box.width * eventIndex) / Math.max(1, chartPayload.data.length - 1);
+  for (const offset of [-72, -54, -36, -18, 0, 18, 36, 54, 72]) {
+    await page.mouse.move(eventX + offset, box.y + box.height * 0.36);
+    const text = await page.locator(".chartTooltip.visible").textContent().catch(() => "");
+    if (text.includes("마커 근거")) {
+      eventTooltipText = text;
+      break;
+    }
+  }
+
+  expect(eventTooltipText).toContain("기준일");
+  expect(eventTooltipText).toContain("이유:");
+  expect(eventTooltipText).toContain("근거:");
+  expect(eventTooltipText).toContain("신뢰도");
 
   await page.getByRole("button", { name: "주봉" }).click();
   await expect(page.locator(".intervalTabs button.active", { hasText: "주봉" })).toHaveCount(1);
@@ -161,8 +194,8 @@ test("chart tab supports interval switching and bounded tooltip display", async 
   await expect(page.locator(".intervalTabs button.active", { hasText: "월봉" })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "월봉" })).toHaveAttribute("aria-pressed", "true");
 
-  const chart = page.locator(".realChart").first();
-  const box = await chart.boundingBox();
+  chart = page.locator(".realChart").first();
+  box = await chart.boundingBox();
   expect(box).not.toBeNull();
 
   for (const ratio of [0.25, 0.4, 0.55, 0.7]) {

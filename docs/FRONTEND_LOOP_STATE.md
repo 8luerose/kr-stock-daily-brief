@@ -45,10 +45,10 @@
 - [ ] 주봉 차트를 제공한다.
 - [ ] 월봉 차트를 제공한다.
 - [x] 차트가 빈 화면처럼 보이지 않게 한다.
-- [ ] 마커 hover에 이유를 표시한다.
-- [ ] 마커 hover에 근거를 표시한다.
-- [ ] 마커 hover에 신뢰도를 표시한다.
-- [ ] 마커 hover에 기준일을 표시한다.
+- [x] 마커 hover에 이유를 표시한다.
+- [x] 마커 hover에 근거를 표시한다.
+- [x] 마커 hover에 신뢰도를 표시한다.
+- [x] 마커 hover에 기준일을 표시한다.
 - [ ] 매수 검토 구간을 표시한다.
 - [ ] 분할매수 검토 구간을 표시한다.
 - [ ] 관망 구간을 표시한다.
@@ -377,12 +377,12 @@
 - [ ] trade zone 데이터에 confidence 포함
 - [ ] trade zone 데이터에 basisDate 포함
 - [ ] trade zone 데이터에 beginnerExplanation 포함
-- [ ] 차트 마커 hover에 이벤트 제목 표시
-- [ ] 차트 마커 hover에 왜 올랐는지/내렸는지 표시
-- [ ] 차트 마커 hover에 거래량 변화 표시
-- [ ] 차트 마커 hover에 관련 뉴스/공시/토론방 근거 표시
+- [x] 차트 마커 hover에 이벤트 제목 표시
+- [x] 차트 마커 hover에 왜 올랐는지/내렸는지 표시
+- [x] 차트 마커 hover에 거래량 변화 표시
+- [x] 차트 마커 hover에 관련 뉴스/공시/토론방 근거 표시
 - [ ] 차트 마커 hover에 AI 해석 표시
-- [ ] 차트 마커 hover에 신뢰도 표시
+- [x] 차트 마커 hover에 신뢰도 표시
 - [ ] 모바일 차트 height 최적화
 - [ ] 모바일 gesture 최적화
 - [ ] 모바일 tooltip 위치 최적화
@@ -672,7 +672,7 @@
 - [x] 거래량 구현
 - [x] 이벤트 마커 구현
 - [x] 공격형/중립형/보수형 시나리오별 조건형 매수/분할매수/관망/매도/손절 UX 구현
-- [ ] 차트 마커 호버 상세 툴팁 고도화
+- [x] 차트 마커 호버 상세 툴팁 고도화
 - [ ] 이벤트별 공시/뉴스/언급량 근거 링크 저장 고도화
 
 ### 6.4 Phase 3. AI/RAG 기능
@@ -764,7 +764,7 @@
 | Chart | 일봉 | 차트 표시 | 정상 | 90/100 | Playwright interval test와 viewport screenshot 통과 | 아니오 |
 | Chart | 주봉 | 차트 표시 | 정상 | 88/100 | Playwright interval test 통과 | 아니오 |
 | Chart | 월봉 | 차트 표시 | 정상 | 88/100 | Playwright interval test 통과 | 아니오 |
-| Chart | 마커 hover | 툴팁 표시 | 정상 | 82/100 | bounded tooltip test 통과. AI 설명/뉴스/공시 근거는 부족 | 예 |
+| Chart | 마커 hover | 툴팁 표시 | 정상 | 88/100 | 이유, 근거, 신뢰도, 기준일 tooltip 검증 통과. 뉴스/공시 원문 연결 고도화는 남음 | 예 |
 | Trade UX | 매수 검토 구간 | 조건/근거 표시 | 정상 | 82/100 | trade-zones API smoke 통과. 신호 산식은 아직 heuristic | 예 |
 | Trade UX | 매도 검토 구간 | 조건/근거 표시 | 정상 | 82/100 | trade-zones API smoke 통과. 신호 산식은 아직 heuristic | 예 |
 | Buttons | 주요 버튼 수 | 전면 버튼 1~3개 유지 | 정상 | 92/100 | 390/768/1280/1440 첫 viewport 버튼 2개 | 아니오 |
@@ -838,6 +838,10 @@
 - [x] Frontend decomposition 루프 `App.jsx`: 989줄 -> 845줄, API client/hooks 4개 파일로 분리
 - [x] Frontend decomposition 루프 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 - [x] Frontend decomposition 루프 390/768/1280/1440 viewport screenshot 재캡처
+- [x] Chart marker tooltip 루프 `npm run build`: 통과
+- [x] Chart marker tooltip 루프 `npm run test:e2e -- --reporter=line -g "chart tab supports interval switching"`: 통과
+- [x] Chart marker tooltip 루프 최종 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] Chart marker tooltip 루프 스크린샷: `/tmp/krbrief-screens/chart-marker-tooltip-evidence-1440.png`
 
 ### 9.3 최신 viewport 계측
 
@@ -873,16 +877,16 @@
 
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
-| 사용자 | 491/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거 강화 검증 | Toss급 최종 polish, live AI 체감 부족 |
-| 프론트 개발자 | 478/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, E2E 존재 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
+| 사용자 | 492/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거 강화, 마커 tooltip 근거 검증 | Toss급 최종 polish, live AI 체감 부족 |
+| 프론트 개발자 | 481/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, 마커 tooltip E2E 강화 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
 | 백엔드 개발자 | 489/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback contract, trade-zone 지지/저항/거래량 근거 연결 | live RAG 검증 부족 |
 | DevOps 개발자 | 490/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
-| VC/투자자 | 450/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거가 더 명확 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 453/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip 설명 강화 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
 1. 이번 frontend decomposition 루프 변경분을 의미 있는 단위로 commit/push한다.
 2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 assistant/history/summary 상태 훅 분리를 진행한다.
-3. chart marker hover에 이벤트 이유/근거/신뢰도/기준일을 더 직접 표시한다.
+3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.
 5. App state/API 호출을 hooks와 API client로 더 분리한다.

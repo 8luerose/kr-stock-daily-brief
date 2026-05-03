@@ -157,6 +157,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Trade-zone backend API | `GET /api/stocks/{code}/trade-zones` added, documented, smoke-tested, and used by the chart decision panel | Done |
 | Frontend API client split | `frontend/src/ui/apiClient.js` owns authenticated API request/error formatting behavior | Done |
 | Frontend hooks split | `useSearchResults`, `useStockResearch`, and `usePortfolio` move search debounce, stock research loading, and portfolio persistence out of `App.jsx` | Done |
+| Chart marker hover evidence | `StockPriceChart` tooltip now shows marker reason, evidence, confidence, and 기준일 when the hovered date has chart events | Done |
 
 ## Latest Verification Commands
 
@@ -207,6 +208,9 @@ Additional live Docker API checks:
 - `GET /api/stocks/005930/trade-zones`: evidence includes recent support, recent resistance, 20-day average close, 20-day average volume, volume strength, and support-resistance range position
 - Frontend decomposition loop `npm run build`: passed after reducing `App.jsx` from 989 lines to 845 lines and adding API client/hooks boundaries
 - Frontend decomposition loop `make quality`: backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- Chart marker tooltip loop `npm run build`: passed
+- Chart marker tooltip loop targeted Playwright: `chart tab supports interval switching and bounded tooltip display` passed after frontend container rebuild
+- Chart marker tooltip loop final `make quality`: backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -226,6 +230,7 @@ Additional screenshots were captured from the Docker-served frontend:
 - `/tmp/krbrief-screens/frontend-decomposition-tablet-768.png`
 - `/tmp/krbrief-screens/frontend-decomposition-laptop-1280.png`
 - `/tmp/krbrief-screens/frontend-decomposition-desktop-1440.png`
+- `/tmp/krbrief-screens/chart-marker-tooltip-evidence-1440.png`
 
 Latest viewport metrics:
 
@@ -259,4 +264,5 @@ Continue with these in order:
 2. If live credentials are not available, split assistant, history, and summary state flows into smaller domain hooks/API clients.
 3. Enrich chart marker hover with reason, evidence, confidence, date, and source labels.
 4. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
+5. Upgrade chart event evidence from generic Naver links to richer news/disclosure/source-specific references.
 5. Run another mobile and desktop visual audit before any completion claim.
