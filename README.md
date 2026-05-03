@@ -202,8 +202,12 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 - `make up`: build + start services
 - `make down`: stop services
 - `make logs`: tail logs
+- `make quality`: backend tests + frontend build/audit + investment-language safety check + API smoke + Playwright E2E
+- `make qa`: API smoke + public-key gate QA + investment-language safety check
 - `make generate-today`: generate today summary (Asia/Seoul date)
 - `make latest`: get latest saved summary
+
+CI also runs the same quality gate on push/PR through `.github/workflows/quality.yml`.
 
 ---
 
@@ -212,6 +216,8 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 - PRD: `./PRD.md`
 - AI 개발 방향: `./docs/AI_DEVELOPMENT_DIRECTION_AND_PROMPT.md`
 - 운영/배포 가이드: `./docs/OPERATIONS.md`
+- 프론트 품질 루프 보고서: `./docs/FRONTEND_QUALITY_LOOP_REPORT.md`
+- 프론트 완료 감사: `./docs/FRONTEND_COMPLETION_AUDIT.md`
 - 다음 AI 인수인계 프롬프트: `./docs/AI_HANDOFF_PROMPT.md`
 - AI 자가 점검/품질 개선 프롬프트: `./docs/AI_SELF_REVIEW_QUALITY_PROMPT.md`
 - (추가 문서가 생기면) `docs/` 폴더에 정리
