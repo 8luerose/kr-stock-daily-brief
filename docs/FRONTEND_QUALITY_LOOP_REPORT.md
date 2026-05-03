@@ -155,6 +155,8 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Full external theme taxonomy | Naver Finance-backed theme taxonomy API/cache exists and is smoke-tested | Done |
 | Richer trade-zone evidence | `GET /api/stocks/{code}/trade-zones` now includes support, resistance, moving-average, volume-strength, and range-position evidence | Done |
 | Trade-zone backend API | `GET /api/stocks/{code}/trade-zones` added, documented, smoke-tested, and used by the chart decision panel | Done |
+| Frontend API client split | `frontend/src/ui/apiClient.js` owns authenticated API request/error formatting behavior | Done |
+| Frontend hooks split | `useSearchResults`, `useStockResearch`, and `usePortfolio` move search debounce, stock research loading, and portfolio persistence out of `App.jsx` | Done |
 
 ## Latest Verification Commands
 
@@ -203,6 +205,8 @@ Additional live Docker API checks:
 - `GET /api/ai/status`: `configured=false`, `apiKeySet=false`, `modelConfigured=false`, secret values not returned
 - `POST /api/ai/chat`: current environment returns `mode=rag_fallback_rule_based`, `retrieval.sourceCount=2`, `retrieval.llm.used=false`
 - `GET /api/stocks/005930/trade-zones`: evidence includes recent support, recent resistance, 20-day average close, 20-day average volume, volume strength, and support-resistance range position
+- Frontend decomposition loop `npm run build`: passed after reducing `App.jsx` from 989 lines to 845 lines and adding API client/hooks boundaries
+- Frontend decomposition loop `make quality`: backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -218,6 +222,10 @@ Additional screenshots were captured from the Docker-served frontend:
 - `/tmp/krbrief-screens/loop-state-tablet-768.png`
 - `/tmp/krbrief-screens/loop-state-laptop-1280.png`
 - `/tmp/krbrief-screens/loop-state-desktop-1440.png`
+- `/tmp/krbrief-screens/frontend-decomposition-mobile-390.png`
+- `/tmp/krbrief-screens/frontend-decomposition-tablet-768.png`
+- `/tmp/krbrief-screens/frontend-decomposition-laptop-1280.png`
+- `/tmp/krbrief-screens/frontend-decomposition-desktop-1440.png`
 
 Latest viewport metrics:
 
@@ -235,11 +243,11 @@ Latest viewport metrics:
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
 4. Search now has a KRX stock universe, KRX industry taxonomy, and external Naver theme taxonomy; `/api/ai/status` makes live LLM readiness visible, but current live RAG remains blocked by missing non-committed credentials.
 5. Trade zones now use support/resistance, moving average, and volume-strength evidence, but still need deeper event/news integration.
-6. More frontend decomposition is still warranted, especially smaller domain hooks and a clearer visual system boundary.
+6. More frontend decomposition is still warranted, especially assistant/history/summary state hooks and final visual-system polish.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, and this trade-zone evidence commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, and this frontend decomposition commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
@@ -248,7 +256,7 @@ Latest viewport metrics:
 Continue with these in order:
 
 1. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
-2. If live credentials are not available, enrich trade-zones with support/resistance, event, and volume-derived market signals.
-3. Enrich the new `trade-zones` API with support/resistance, event, and volume-derived market signals.
-4. Split remaining stock research, assistant, and history state flows into smaller domain hooks/API clients.
+2. If live credentials are not available, split assistant, history, and summary state flows into smaller domain hooks/API clients.
+3. Enrich chart marker hover with reason, evidence, confidence, date, and source labels.
+4. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
 5. Run another mobile and desktop visual audit before any completion claim.

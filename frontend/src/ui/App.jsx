@@ -3,6 +3,10 @@ import { AiInsightPanel, AdminOperationsPanel, BriefHistoryCalendar } from "./Ap
 import { COPY, PAGE_LABELS } from "./AppConstants.js";
 import { HistoryOverview, LearningPanel, MarketHero, PortfolioPanel, StockResearchPanel } from "./AppSections.jsx";
 import { SummaryDetailPanel } from "./SummaryDetailPanel.jsx";
+import { createApiClient, formatApiError } from "./apiClient.js";
+import { usePortfolio } from "./hooks/usePortfolio.js";
+import { useSearchResults } from "./hooks/useSearchResults.js";
+import { useStockResearch } from "./hooks/useStockResearch.js";
 import {
   addMonths,
   asArray,
@@ -20,20 +24,15 @@ import {
   formatEffectiveDate,
   formatNumber,
   formatRate,
-  fromForEvents,
   getConfig,
   getConfidenceLabel,
   getDataAsOf,
   getLeaderExplanation,
   getMarketHeadline,
   isoDate,
-  normalizeSearchResult,
   pageFromHash,
   pickBriefTerms,
-  portfolioRisk,
-  rangeForInterval,
   resolveApiLink,
-  searchMatchesItem,
   startOfMonth,
   sortTopGainers,
   sortTopLosers,
@@ -48,6 +47,10 @@ export default function App() {
   const urlParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const k = urlParams.get("k") || "";
   const adminKey = urlParams.get("adminKey") || urlParams.get("ak") || "";
+  const apiClient = useMemo(
+    () => createApiClient({ apiBaseUrl: cfg.apiBaseUrl, accessKey: k, adminKey }),
+    [adminKey, cfg.apiBaseUrl, k]
+  );
   const [activePage, setActivePage] = useState(() => pageFromHash(window.location.hash));
 
   const [darkMode, setDarkMode] = useState(() => {
@@ -93,8 +96,6 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTermId, setSelectedTermId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [serverSearchResults, setServerSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [assistantQuestion, setAssistantQuestion] = useState("");
   const [assistantResponse, setAssistantResponse] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
@@ -102,20 +103,9 @@ export default function App() {
   const [selectedStock, setSelectedStock] = useState(null);
   const [stockInterval, setStockInterval] = useState("daily");
   const [riskMode, setRiskMode] = useState("neutral");
-  const [stockChart, setStockChart] = useState(null);
-  const [stockEvents, setStockEvents] = useState(null);
-  const [tradeZones, setTradeZones] = useState(null);
-  const [stockChartLoading, setStockChartLoading] = useState(false);
-  const [stockChartError, setStockChartError] = useState("");
   const [aiResearchLoading, setAiResearchLoading] = useState(false);
   const [aiResearchResponse, setAiResearchResponse] = useState(null);
-  const [portfolio, setPortfolio] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("portfolioSandbox") || "[]");
-    } catch {
-      return [];
-    }
-  });
+  const { portfolio, portfolioSummary, addStockToPortfolio, updatePortfolioWeight, removePortfolioItem } = usePortfolio();
 
   const days = useMemo(() => buildCalendarDays(month), [month]);
   const monthLabel = useMemo(
@@ -141,39 +131,29 @@ export default function App() {
   const briefTerms = useMemo(() => pickBriefTerms(learningTerms), [learningTerms]);
   const stockPicks = useMemo(() => buildStockPicks(summary), [summary]);
   const searchItems = useMemo(() => buildSearchItems(summary, learningTerms), [learningTerms, summary]);
-  const searchResults = useMemo(
-    () => {
-      const serverItems = serverSearchResults.map((item) => normalizeSearchResult(item, searchItems)).filter(Boolean);
-      return (serverItems.length > 0 ? serverItems : searchItems.filter((item) => searchMatchesItem(item, searchQuery))).slice(0, 6);
-    },
-    [searchItems, searchQuery, serverSearchResults]
-  );
+  const { searchResults, searchLoading } = useSearchResults({
+    apiClient,
+    enabled: !(cfg.gateEnabled && !k),
+    query: searchQuery,
+    baseItems: searchItems
+  });
   const topGainers = useMemo(() => sortTopGainers(summary?.topGainers).slice(0, 3), [summary]);
   const topLosers = useMemo(() => sortTopLosers(summary?.topLosers).slice(0, 3), [summary]);
   const topMentioned = useMemo(() => filterMostMentioned(summary?.mostMentionedTop).slice(0, 3), [summary]);
   const currentStock = selectedStock || stockPicks[0] || null;
+  const { stockChart, stockEvents, tradeZones, stockChartLoading, stockChartError } = useStockResearch({
+    apiClient,
+    stock: currentStock,
+    interval: stockInterval,
+    riskMode,
+    chartFailedMessage: COPY.chartFailed
+  });
   const dataAsOf = useMemo(() => getDataAsOf(summary, selected), [summary, selected]);
   const confidenceLabel = useMemo(() => getConfidenceLabel(summary), [summary]);
   const decisionPanel = useMemo(
     () => buildDecisionPanel(stockChart, stockEvents, riskMode, tradeZones),
     [riskMode, stockChart, stockEvents, tradeZones]
   );
-  const portfolioSummary = useMemo(() => portfolioRisk(portfolio), [portfolio]);
-
-  async function apiFetch(path, opts = {}) {
-    const url = new URL(cfg.apiBaseUrl + path);
-    if (k) url.searchParams.set("k", k);
-
-    const headers = new Headers(opts.headers || {});
-    if (adminKey) headers.set("X-Admin-Key", adminKey);
-
-    const res = await fetch(url.toString(), { ...opts, headers });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(text || `HTTP ${res.status}`);
-    }
-    return res.json();
-  }
 
   async function load(dateStr) {
     setLoading(true);
@@ -181,12 +161,12 @@ export default function App() {
     setKrxArtifact(null);
     setKrxArtifactError("");
     try {
-      const s = await apiFetch(`/api/summaries/${dateStr}`);
+      const s = await apiClient.request(`/api/summaries/${dateStr}`);
       setSummary(s);
       setLoading(false);
 
       try {
-        const artifact = await apiFetch(`/api/summaries/${dateStr}/verification/krx`);
+        const artifact = await apiClient.request(`/api/summaries/${dateStr}/verification/krx`);
         setKrxArtifact(artifact);
       } catch (artifactErr) {
         setKrxArtifact(null);
@@ -197,7 +177,7 @@ export default function App() {
       if (String(e.message).includes("404")) {
         if (dateStr === isoDate(new Date())) {
           try {
-            const latest = await apiFetch("/api/summaries/latest");
+            const latest = await apiClient.request("/api/summaries/latest");
             setSummary(latest);
             if (latest?.date && latest.date !== dateStr) {
               setSelected(latest.date);
@@ -225,7 +205,7 @@ export default function App() {
     }
 
     try {
-      const s = await apiFetch("/api/summaries/stats");
+      const s = await apiClient.request("/api/summaries/stats");
       setStats(s);
     } catch (e) {
       console.warn("Failed to load stats", e);
@@ -243,7 +223,7 @@ export default function App() {
     const to = isoDate(endOfMonth(monthDate));
 
     try {
-      const data = await apiFetch(`/api/summaries/insights?from=${from}&to=${to}`);
+      const data = await apiClient.request(`/api/summaries/insights?from=${from}&to=${to}`);
       setInsights(data);
     } catch (e) {
       console.warn("Failed to load insights", e);
@@ -262,7 +242,7 @@ export default function App() {
     const to = isoDate(endOfMonth(monthDate));
 
     try {
-      const list = await apiFetch(`/api/summaries?from=${from}&to=${to}`);
+      const list = await apiClient.request(`/api/summaries?from=${from}&to=${to}`);
       const set = new Set(list.map((x) => x.date));
       setMonthHasSummary(set);
     } catch (e) {
@@ -280,7 +260,7 @@ export default function App() {
 
     setLearningError("");
     try {
-      const data = await apiFetch("/api/learning/terms?limit=80");
+      const data = await apiClient.request("/api/learning/terms?limit=80");
       setLearningTerms(data);
       if (!selectedTermId && data.length > 0) {
         setSelectedTermId(data[0].id);
@@ -292,39 +272,6 @@ export default function App() {
       setLearningError(COPY.learningLoadFailed);
     }
   }
-
-  useEffect(() => {
-    const q = searchQuery.trim();
-    if (!q || (cfg.gateEnabled && !k)) {
-      setServerSearchResults([]);
-      setSearchLoading(false);
-      return undefined;
-    }
-
-    setServerSearchResults([]);
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setSearchLoading(true);
-      try {
-        const data = await apiFetch(`/api/search?query=${encodeURIComponent(q)}&limit=8`, { signal: controller.signal });
-        setServerSearchResults(asArray(data));
-      } catch (e) {
-        if (!controller.signal.aborted) {
-          console.warn("Failed to load search results", e);
-          setServerSearchResults([]);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setSearchLoading(false);
-        }
-      }
-    }, 180);
-
-    return () => {
-      controller.abort();
-      window.clearTimeout(timer);
-    };
-  }, [cfg.apiBaseUrl, k, searchQuery, cfg.gateEnabled]);
 
   function selectTerm(term) {
     setSelectedTermId(term.id);
@@ -352,7 +299,7 @@ export default function App() {
     setAssistantResponse(null);
     setError("");
     try {
-      const data = await apiFetch("/api/ai/chat", {
+      const data = await apiClient.request("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -433,7 +380,7 @@ export default function App() {
     setAssistantLoading(true);
     setError("");
     try {
-      const data = await apiFetch("/api/learning/assistant", {
+      const data = await apiClient.request("/api/learning/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -451,54 +398,12 @@ export default function App() {
     }
   }
 
-  async function loadStockResearch(stock, interval) {
-    if (!stock?.code) {
-      setStockChart(null);
-      setStockEvents(null);
-      setTradeZones(null);
-      setStockChartError("");
-      return;
-    }
-
-    setStockChartLoading(true);
-    setStockChartError("");
-    try {
-      const range = rangeForInterval(interval);
-      const chart = await apiFetch(`/api/stocks/${stock.code}/chart?range=${range}&interval=${interval}`);
-      setStockChart(chart);
-      try {
-        const zones = await apiFetch(`/api/stocks/${stock.code}/trade-zones?range=${range}&interval=${interval}&riskMode=${riskMode}`);
-        setTradeZones(zones);
-      } catch (zoneErr) {
-        console.warn("Failed to load stock trade zones", zoneErr);
-        setTradeZones(null);
-      }
-
-      const from = fromForEvents(chart);
-      const to = chart.asOf || asArray(chart.data).at(-1)?.date || "";
-      if (from && to) {
-        const events = await apiFetch(`/api/stocks/${stock.code}/events?from=${from}&to=${to}`);
-        setStockEvents(events);
-      } else {
-        setStockEvents(null);
-      }
-    } catch (e) {
-      console.warn("Failed to load stock research", e);
-      setStockChart(null);
-      setStockEvents(null);
-      setTradeZones(null);
-      setStockChartError(COPY.chartFailed);
-    } finally {
-      setStockChartLoading(false);
-    }
-  }
-
   async function askChartAi() {
     if (!currentStock?.code) return;
     setAiResearchLoading(true);
     setAiResearchResponse(null);
     try {
-      const data = await apiFetch("/api/ai/chat", {
+      const data = await apiClient.request("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -541,62 +446,15 @@ export default function App() {
     }
   }
 
-  function savePortfolio(next) {
-    setPortfolio(next);
-    try {
-      localStorage.setItem("portfolioSandbox", JSON.stringify(next));
-    } catch {
-      // ignore
-    }
-  }
-
   function addCurrentStockToPortfolio() {
-    if (!currentStock?.code) return;
-    const exists = portfolio.some((item) => item.code === currentStock.code);
-    const next = exists
-      ? portfolio
-      : [
-          ...portfolio,
-          {
-            code: currentStock.code,
-            name: currentStock.name,
-            group: currentStock.group,
-            rate: currentStock.rate,
-            count: currentStock.count,
-            weight: 10
-          }
-        ];
-    savePortfolio(next);
-  }
-
-  function updatePortfolioWeight(code, weight) {
-    const value = Math.max(0, Math.min(100, Number(weight || 0)));
-    savePortfolio(portfolio.map((item) => (item.code === code ? { ...item, weight: value } : item)));
-  }
-
-  function removePortfolioItem(code) {
-    savePortfolio(portfolio.filter((item) => item.code !== code));
-  }
-
-  function formatApiError(err) {
-    const msg = err.message || String(err);
-    if (msg.includes("409") || msg.includes("summary_already_exists")) {
-      return "이미 생성된 요약이 있습니다. 재생성은 관리자만 가능합니다.";
-    }
-    if (msg.includes("403") || msg.includes("forbidden") || msg.includes("admin_only")) {
-      return "관리자 권한이 필요합니다. URL에 ?ak=관리자키 를 추가하세요.";
-    }
-    if (msg.includes("HTTP 401")) return "인증이 필요합니다.";
-    if (msg.includes("HTTP 404")) return "데이터를 찾을 수 없습니다.";
-    if (msg.includes("HTTP 500")) return "서버 오류가 발생했습니다. 잠시 후 다시 시도하세요.";
-    return msg;
+    addStockToPortfolio(currentStock);
   }
 
   async function generate(dateStr) {
     setLoading(true);
     setError("");
     try {
-      const s = await apiFetch(`/api/summaries/${dateStr}/generate`, { method: "POST" });
+      const s = await apiClient.request(`/api/summaries/${dateStr}/generate`, { method: "POST" });
       setSummary(s);
 
       // Refresh month overview so the dot appears immediately.
@@ -614,7 +472,7 @@ export default function App() {
     setLoading(true);
     setError("");
     try {
-      await apiFetch(`/api/summaries/${selected}/archive`, { method: "PUT" });
+      await apiClient.request(`/api/summaries/${selected}/archive`, { method: "PUT" });
       setSummary(null);
       await loadMonthOverview(month);
       await loadStats();
@@ -630,7 +488,7 @@ export default function App() {
     setLoading(true);
     setError("");
     try {
-      const r = await apiFetch(`/api/summaries/backfill?from=${backfillFrom}&to=${backfillTo}`, {
+      const r = await apiClient.request(`/api/summaries/backfill?from=${backfillFrom}&to=${backfillTo}`, {
         method: "POST"
       });
       setBackfillResult(r);
@@ -648,7 +506,7 @@ export default function App() {
     setLoading(true);
     setError("");
     try {
-      const s = await apiFetch("/api/summaries/latest");
+      const s = await apiClient.request("/api/summaries/latest");
       setSummary(s);
       await loadStats();
       setSelected(s.date);
@@ -704,8 +562,6 @@ export default function App() {
 
   useEffect(() => {
     setAiResearchResponse(null);
-    loadStockResearch(currentStock, stockInterval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStock?.code, stockInterval, riskMode]);
 
   const todayStr = useMemo(() => isoDate(new Date()), []);

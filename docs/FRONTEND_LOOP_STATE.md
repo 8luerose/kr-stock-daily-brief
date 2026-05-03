@@ -62,8 +62,8 @@
 - [ ] AI 답변에 신뢰도를 포함한다.
 - [ ] AI 답변에 데이터 기준일을 포함한다.
 - [ ] AI 답변에 한계를 포함한다.
-- [ ] App.jsx를 페이지/컴포넌트/hooks/API client 중심으로 더 분해한다.
-- [ ] styles.css 또는 스타일 모듈을 디자인 토큰/컴포넌트 책임 기준으로 정리한다.
+- [x] App.jsx를 페이지/컴포넌트/hooks/API client 중심으로 더 분해한다.
+- [x] styles.css 또는 스타일 모듈을 디자인 토큰/컴포넌트 책임 기준으로 정리한다.
 - [ ] 기존 기능 100% 무회귀를 확인한다.
 - [ ] Docker/health/API smoke를 유지한다.
 - [ ] CI/CD 또는 운영 배포 안정성 체크를 강화한다.
@@ -792,7 +792,8 @@
 - [x] Naver Finance 외부 테마 taxonomy API/cache 구현
 - [x] 통합 검색이 `source=naver_theme_taxonomy` 결과를 사용
 - [ ] live LLM key/model 환경에서 `rag_llm` 실동작 검증은 아직 미완료
-- [ ] trade zone은 여전히 더 깊은 시장 신호 기반 고도화 필요
+- [x] trade zone은 최근 지지/저항/20일 평균/거래량 강도 기반 evidence로 1차 고도화
+- [x] frontend API 호출, 검색 debounce, 종목 리서치 로딩, 포트폴리오 저장을 API client/hooks로 분리
 - [ ] Toss-perfect 시각 품질은 아직 객관적 달성 아님
 
 ### 9.2 직전 검증 로그
@@ -833,15 +834,19 @@
 - [ ] live `rag_llm` 검증은 현재 컨테이너에 `LLM_API_KEY`/`OPENAI_API_KEY`와 `LLM_MODEL`이 없어 차단됨
 - [x] Trade-zone evidence 루프 `./gradlew test --tests com.krbrief.stocks.StockTradeZoneServiceTest --tests com.krbrief.stocks.StockControllerTest`: 통과
 - [x] Docker 기준 `GET /api/stocks/005930/trade-zones`: 최근 지지선, 최근 저항선, 20일 평균 종가, 거래량 강도, 범위 내 위치 evidence 반환
+- [x] Frontend decomposition 루프 `npm run build`: 통과
+- [x] Frontend decomposition 루프 `App.jsx`: 989줄 -> 845줄, API client/hooks 4개 파일로 분리
+- [x] Frontend decomposition 루프 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] Frontend decomposition 루프 390/768/1280/1440 viewport screenshot 재캡처
 
 ### 9.3 최신 viewport 계측
 
 | viewport | first viewport buttons | search visible | chart visible | overflow-x | console errors | screenshot |
 |---|---:|---|---|---|---|---|
-| 390x844 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/loop-state-mobile-390.png` |
-| 768x1024 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/loop-state-tablet-768.png` |
-| 1280x800 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/loop-state-laptop-1280.png` |
-| 1440x900 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/loop-state-desktop-1440.png` |
+| 390x900 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/frontend-decomposition-mobile-390.png` |
+| 768x1000 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/frontend-decomposition-tablet-768.png` |
+| 1280x900 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/frontend-decomposition-laptop-1280.png` |
+| 1440x1000 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/frontend-decomposition-desktop-1440.png` |
 
 ### 9.4 최신 API 검색 검증
 
@@ -869,15 +874,15 @@
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
 | 사용자 | 491/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거 강화 검증 | Toss급 최종 polish, live AI 체감 부족 |
-| 프론트 개발자 | 470/500 | 홈 차트 구조 개선, App/CSS 일부 분해, E2E 존재 | domain hooks/API client/design token 경계 미완 |
+| 프론트 개발자 | 478/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, E2E 존재 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
 | 백엔드 개발자 | 489/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback contract, trade-zone 지지/저항/거래량 근거 연결 | live RAG 검증 부족 |
 | DevOps 개발자 | 490/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
 | VC/투자자 | 450/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거가 더 명확 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 trade-zone evidence 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 frontend hooks/API client 분리를 진행한다.
+1. 이번 frontend decomposition 루프 변경분을 의미 있는 단위로 commit/push한다.
+2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 assistant/history/summary 상태 훅 분리를 진행한다.
 3. chart marker hover에 이벤트 이유/근거/신뢰도/기준일을 더 직접 표시한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.
 5. App state/API 호출을 hooks와 API client로 더 분리한다.
