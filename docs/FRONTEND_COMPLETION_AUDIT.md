@@ -40,7 +40,7 @@ The objective is to execute `docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` for `/Us
 - `make health`: passed backend, frontend, marketdata, and ai-service HTTP health checks.
 - `./scripts/test_all_apis.sh`: passed, including `GET /api/search`.
 - `./scripts/verify_investment_language.sh`: passed.
-- `npm run test:e2e -- --reporter=line`: 6 passed.
+- `npm run test:e2e -- --reporter=line`: 7 passed.
 - `make quality`: passed end-to-end.
 - `curl http://localhost:8080/api/search?query=반도체&limit=3`: returns `theme-semiconductor` from `backend_seed_catalog`.
 - `docker compose ps`: frontend, marketdata, ai-service healthy; backend running; mysql healthy; qdrant running.
