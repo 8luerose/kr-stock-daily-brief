@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check llm-benchmark
+.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check llm-benchmark deploy-smoke ci-test-report
 
 DOCKER_SOCK ?= /var/run/docker.sock
 
@@ -27,7 +27,7 @@ mysql-logs:
 	docker compose logs -f --tail=200 mysql
 
 health:
-	@for i in $$(seq 1 60); do \
+	@for i in $$(seq 1 $${HEALTH_RETRIES:-120}); do \
 		if curl -fsS "http://localhost:$${BACKEND_PORT:-8080}/actuator/health" >/dev/null 2>&1 && \
 		   curl -fsS "http://localhost:$${FRONTEND_PORT:-5173}/health" >/dev/null 2>&1 && \
 		   curl -fsS "http://localhost:$${MARKETDATA_PORT:-8000}/health" >/dev/null 2>&1 && \
@@ -67,6 +67,18 @@ ops-check:
 
 llm-benchmark:
 	./scripts/benchmark_llm_quality.py
+
+deploy-smoke:
+	./scripts/deployment_smoke.sh
+
+ci-test-report:
+	@if [ -d backend/build/test-results/test ]; then \
+		echo "== Backend test XML failures/errors =="; \
+		find backend/build/test-results/test -name '*.xml' -print0 | \
+			xargs -0 awk '/<(failure|error) /,/<\/(failure|error)>/ {print}'; \
+	else \
+		echo "No backend test results directory found."; \
+	fi
 
 frontend-quality:
 	cd frontend && npm ci --include=dev && npm run build && npm audit && npm run test:e2e -- --reporter=line

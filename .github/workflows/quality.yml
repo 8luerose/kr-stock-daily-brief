@@ -9,6 +9,10 @@ jobs:
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
+    env:
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+      TESTCONTAINERS_CHECKS_DISABLE: "true"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false"
     defaults:
       run:
         working-directory: backend
@@ -19,7 +23,20 @@ jobs:
           distribution: temurin
           java-version: "17"
       - name: Run backend tests
-        run: ./gradlew test
+        run: ./gradlew test --no-daemon --stacktrace
+      - name: Print backend test failures
+        if: failure()
+        working-directory: .
+        run: make ci-test-report
+      - name: Upload backend test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: |
+            backend/build/reports/tests/test
+            backend/build/test-results/test
+          if-no-files-found: ignore
 
   frontend:
     name: Frontend build and E2E
@@ -53,6 +70,7 @@ jobs:
         run: docker compose up -d --build
       - name: Wait for stack health
         run: |
+          docker compose ps
           make health || {
             docker compose ps
             docker compose logs --tail=120 frontend backend marketdata ai-service
@@ -65,6 +83,17 @@ jobs:
       - name: Browser E2E tests
         working-directory: frontend
         run: npm run test:e2e -- --reporter=line
+      - name: Optional deployment smoke tests
+        env:
+          DEPLOY_FRONTEND_URL: ${{ secrets.DEPLOY_FRONTEND_URL }}
+          DEPLOY_BACKEND_URL: ${{ secrets.DEPLOY_BACKEND_URL }}
+          DEPLOY_PUBLIC_KEY: ${{ secrets.DEPLOY_PUBLIC_KEY }}
+        run: |
+          if [ -z "$DEPLOY_FRONTEND_URL" ] && [ -z "$DEPLOY_BACKEND_URL" ]; then
+            echo "Skipping deployment smoke tests because no DEPLOY_* URL secrets are configured."
+            exit 0
+          fi
+          make deploy-smoke
       - name: Upload Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4

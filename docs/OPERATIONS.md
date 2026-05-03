@@ -35,6 +35,44 @@ docker compose up -d --build
 - `POST /api/ai/chat` 응답에 `sources`, `limitations`, `oppositeSignals` 존재
 - 브라우저에서 첫 화면, 종목 차트, AI 차트 해석 버튼, 포트폴리오 샌드박스가 보임
 
+## Live LLM 품질 점검
+
+live LLM credential이 있는 환경에서는 다음 벤치마크를 추가로 실행한다.
+
+```bash
+make llm-benchmark
+```
+
+정상 기준:
+- `/api/ai/status`가 `configured=true`를 반환한다.
+- 3개 고정 케이스가 모두 `mode=rag_llm`으로 응답한다.
+- 각 응답이 retrieval 문서 id를 2개 이상 인용한다.
+- 직접 매수/매도 지시나 수익 보장 표현이 없다.
+
+자세한 기준은 `docs/LLM_QUALITY_BENCHMARK.md`에 기록한다.
+
+## 원격 배포 smoke
+
+배포된 backend/frontend URL이 있으면 다음 명령으로 운영 URL을 직접 확인한다.
+
+```bash
+DEPLOY_BACKEND_URL=https://api.example.com \
+DEPLOY_FRONTEND_URL=https://app.example.com \
+make deploy-smoke
+```
+
+frontend에 public key gate가 있으면 `DEPLOY_PUBLIC_KEY`를 함께 전달한다.
+
+정상 기준:
+- backend `/actuator/health`가 `UP`이다.
+- backend `/api/ai/status`가 provider/configuration 상태를 반환한다.
+- backend `/api/search?query=삼성전자`가 `005930`을 반환한다.
+- frontend `/health`가 `UP`이다.
+- frontend HTML이 `한국 주식 AI 리서치` title을 포함한다.
+
+GitHub Actions는 `DEPLOY_FRONTEND_URL` 또는 `DEPLOY_BACKEND_URL` secret이 설정된 경우
+`make deploy-smoke`를 자동 실행한다. 두 URL secret이 모두 없으면 해당 단계는 skip한다.
+
 ## 운영 주의
 
 - `.env`, API key, DB password, webhook URL은 commit하지 않는다.

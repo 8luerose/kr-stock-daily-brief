@@ -5,8 +5,8 @@
 - 데이터 계산: `marketdata` 서비스(`/leaders`)가 “상승/하락/언급 TOP”을 산출
 - 저장/제공: `backend`가 요약을 생성/저장하고 REST API로 제공
 - 표시/학습: `frontend`에서 오늘의 시장 브리프, TOP3 종목 리서치 패널, 캔들차트, 월 달력, 초보자 용어 사전, 학습 도우미를 제공
-- AI 확장점: `/api/learning/assistant`는 현재 내부 용어 사전 기반 응답을 제공하며, 이후 `/api/ai/chat` RAG 서비스로 교체/확장한다.
-- AI 서비스: `ai-service`가 `/chat`을 제공하고 backend가 `/api/ai/chat`으로 프록시한다. 현재는 규칙형 RAG 준비 응답이며 Qdrant 연결 지점을 포함한다.
+- AI 확장점: `/api/learning/assistant`는 내부 용어 사전 기반 응답을 제공하고, `/api/ai/chat`은 검색/브리프/차트/이벤트/용어 근거를 묶은 RAG 응답을 제공한다.
+- AI 서비스: `ai-service`가 `/chat`을 제공하고 backend가 `/api/ai/chat`으로 프록시한다. OpenAI-compatible 또는 Anthropic-compatible LLM 설정이 있으면 live `rag_llm`으로 응답하고, 설정이 없거나 실패하면 규칙형 RAG fallback으로 응답한다.
 
 > 추가 목표: Discord **웹훅(Webhook)**으로 지정 **스레드**에 자동 포스팅
 
@@ -206,10 +206,14 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 - `make quality`: ops-check + backend tests + frontend build/audit + investment-language safety check + API smoke + Playwright E2E
 - `make frontend-quality`: install frontend dev dependencies, build, audit, and run Playwright E2E
 - `make qa`: ops-check + API smoke + public-key gate QA + investment-language safety check
+- `make llm-benchmark`: run the repeatable live LLM quality benchmark when live LLM credentials are configured
+- `make deploy-smoke`: verify deployed backend/frontend health and core API/search contracts with `DEPLOY_*` URLs
 - `make generate-today`: generate today summary (Asia/Seoul date)
 - `make latest`: get latest saved summary
 
 CI also runs the same quality gate on push/PR through `.github/workflows/quality.yml`.
+If `DEPLOY_FRONTEND_URL` or `DEPLOY_BACKEND_URL` repository secrets are configured,
+CI runs the optional deployment smoke gate after browser E2E.
 
 ---
 
