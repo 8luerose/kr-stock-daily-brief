@@ -1654,6 +1654,7 @@ export default function App() {
                 type="button"
                 key={`${stock.group}-${stock.code || stock.name}-${index}`}
                 className={`pulseRow ${currentStock?.code && stock.code === currentStock.code ? "active" : ""}`}
+                aria-pressed={Boolean(currentStock?.code && stock.code === currentStock.code)}
                 onClick={() => stock.code ? selectStock(stock) : null}
               >
                 <span className="pulseName">{stock.name}</span>
@@ -1871,6 +1872,7 @@ export default function App() {
                     type="button"
                     key={term.id}
                     className={`termButton ${selectedTerm?.id === term.id ? "active" : ""}`}
+                    aria-pressed={selectedTerm?.id === term.id}
                     onClick={() => selectTerm(term)}
                   >
                     <span>{term.term}</span>
@@ -2028,6 +2030,7 @@ export default function App() {
                         key={term.id}
                         onClick={() => selectTerm(term)}
                         className={selectedTerm?.id === term.id ? "active" : ""}
+                        aria-pressed={selectedTerm?.id === term.id}
                       >
                         {term.term}
                       </button>
@@ -2111,6 +2114,7 @@ export default function App() {
                           type="button"
                           key={value}
                           className={stockInterval === value ? "active" : ""}
+                          aria-pressed={stockInterval === value}
                           onClick={() => setStockInterval(value)}
                         >
                           {label}
@@ -2141,6 +2145,7 @@ export default function App() {
                             type="button"
                             key={value}
                             className={riskMode === value ? "active" : ""}
+                            aria-pressed={riskMode === value}
                             onClick={() => setRiskMode(value)}
                           >
                             {label}

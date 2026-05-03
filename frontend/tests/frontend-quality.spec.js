@@ -80,9 +80,11 @@ test("chart tab supports interval switching and bounded tooltip display", async 
 
   await page.getByRole("button", { name: "주봉" }).click();
   await expect(page.locator(".intervalTabs button.active", { hasText: "주봉" })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "주봉" })).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "월봉" }).click();
   await expect(page.locator(".intervalTabs button.active", { hasText: "월봉" })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "월봉" })).toHaveAttribute("aria-pressed", "true");
 
   const chart = page.locator(".realChart").first();
   const box = await chart.boundingBox();

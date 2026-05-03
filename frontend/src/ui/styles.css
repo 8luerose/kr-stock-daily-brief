@@ -77,6 +77,11 @@ textarea {
   font-family: inherit;
 }
 
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 72%, white);
+  outline-offset: 3px;
+}
+
 .page {
   max-width: 1360px;
   margin: 0 auto;
