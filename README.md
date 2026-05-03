@@ -202,9 +202,10 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 - `make up`: build + start services
 - `make down`: stop services
 - `make logs`: tail logs
-- `make quality`: backend tests + frontend build/audit + investment-language safety check + API smoke + Playwright E2E
+- `make ops-check`: validate Docker Compose config and scan tracked files for env/secret leaks
+- `make quality`: ops-check + backend tests + frontend build/audit + investment-language safety check + API smoke + Playwright E2E
 - `make frontend-quality`: install frontend dev dependencies, build, audit, and run Playwright E2E
-- `make qa`: API smoke + public-key gate QA + investment-language safety check
+- `make qa`: ops-check + API smoke + public-key gate QA + investment-language safety check
 - `make generate-today`: generate today summary (Asia/Seoul date)
 - `make latest`: get latest saved summary
 

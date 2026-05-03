@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-quality quality backend-e2e health generate-today check-month latest qa
+.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check
 
 DOCKER_SOCK ?= /var/run/docker.sock
 
@@ -56,14 +56,20 @@ latest:
 	curl -sS "http://localhost:$${BACKEND_PORT:-8080}/api/summaries/latest"
 
 qa:
+	$(MAKE) ops-check
 	./scripts/test_all_apis.sh
 	./scripts/qa_public_key.sh
 	./scripts/verify_investment_language.sh
+
+ops-check:
+	docker compose config -q
+	./scripts/verify_no_secrets.sh
 
 frontend-quality:
 	cd frontend && npm ci --include=dev && npm run build && npm audit && npm run test:e2e -- --reporter=line
 
 quality:
+	$(MAKE) ops-check
 	cd backend && ./gradlew test
 	cd frontend && npm ci --include=dev && npm run build && npm audit
 	$(MAKE) up

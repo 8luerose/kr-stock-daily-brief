@@ -160,6 +160,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Chart marker hover evidence | `StockPriceChart` tooltip now shows marker reason, evidence, confidence, and 기준일 when the hovered date has chart events | Done |
 | AI structured answer | `/api/ai/chat` and the AI panel now expose conclusion, evidence, opposing signals, risks, sources, confidence, basis date, and limitations as first-class fields | Done |
 | Event evidence sources | `GET /api/stocks/{code}/events` now returns structured price, finance, news, DART disclosure, and discussion evidence sources while preserving legacy links | Done |
+| Ops guard | `make ops-check` validates Docker Compose config and fails on tracked env files or obvious secret tokens; CI runs it before stack startup | Done |
 
 ## Latest Verification Commands
 
@@ -226,6 +227,10 @@ Additional live Docker API checks:
 - Event evidence source loop `./scripts/test_all_apis.sh`: passed with news/disclosure evidence source checks
 - Event evidence source loop targeted Playwright: `chart tab supports interval switching and bounded tooltip display` passed with event source UI checks
 - Event evidence source loop final `make quality`: backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- Ops guard loop `make ops-check`: passed Docker Compose config validation and tracked env/secret scan
+- Ops guard loop `.github/workflows/quality.yml`: now runs `make ops-check` before starting the Docker stack
+- Ops guard loop `make quality`: now starts with `ops-check`
+- Ops guard loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -269,7 +274,7 @@ Latest viewport metrics:
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, and this event evidence source commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, and this ops guard commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 

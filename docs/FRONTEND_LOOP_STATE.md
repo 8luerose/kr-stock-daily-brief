@@ -65,8 +65,8 @@
 - [x] App.jsx를 페이지/컴포넌트/hooks/API client 중심으로 더 분해한다.
 - [x] styles.css 또는 스타일 모듈을 디자인 토큰/컴포넌트 책임 기준으로 정리한다.
 - [ ] 기존 기능 100% 무회귀를 확인한다.
-- [ ] Docker/health/API smoke를 유지한다.
-- [ ] CI/CD 또는 운영 배포 안정성 체크를 강화한다.
+- [x] Docker/health/API smoke를 유지한다.
+- [x] CI/CD 또는 운영 배포 안정성 체크를 강화한다.
 - [ ] 투자자문 리스크 방지 문구와 검토를 유지한다.
 - [ ] 실사용자 만족도 수준 UX를 목표로 검증한다.
 - [ ] 유지보수성, 재사용성, 가독성을 계속 개선한다.
@@ -92,10 +92,10 @@
 - [ ] 이벤트 API 보존
 - [ ] 포트폴리오 기능 보존
 - [ ] Docker Compose 실행 보존
-- [ ] health check 보존
-- [ ] API smoke 보존
+- [x] health check 보존
+- [x] API smoke 보존
 - [ ] 관리자 기능은 삭제하지 않고 일반 사용자와 분리
-- [ ] `.env`, `.env.*`, secret, key, password, webhook은 commit 금지
+- [x] `.env`, `.env.*`, secret, key, password, webhook은 commit 금지
 - [ ] 기존 사용자 변경은 되돌리지 않음
 
 ## 3. `GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` 요구사항
@@ -858,6 +858,10 @@
 - [x] Event evidence source 루프 `npm run test:e2e -- --reporter=line -g "chart tab supports interval switching"`: 통과
 - [x] Event evidence source 루프 최종 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 - [x] Event evidence source 루프 스크린샷: `/tmp/krbrief-screens/chart-event-evidence-sources-1440.png`
+- [x] Ops guard 루프 `make ops-check`: Docker Compose config 검증과 tracked env/secret scan 통과
+- [x] Ops guard 루프 `.github/workflows/quality.yml`: push/PR에서 `make ops-check` 실행하도록 강화
+- [x] Ops guard 루프 `make quality`: `ops-check`를 첫 단계로 포함
+- [x] Ops guard 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 
 ### 9.3 최신 viewport 계측
 
@@ -896,12 +900,12 @@
 | 사용자 | 493/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
 | 프론트 개발자 | 484/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, 마커 tooltip/AI structured/event source E2E 강화 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
 | 백엔드 개발자 | 492/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, 이벤트 source contract 연결 | live RAG 검증 부족 |
-| DevOps 개발자 | 490/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
+| DevOps 개발자 | 493/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
 | VC/투자자 | 462/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source, AI 답변 구조화 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 event evidence source 루프 변경분을 의미 있는 단위로 commit/push한다.
+1. 이번 ops guard 루프 변경분을 의미 있는 단위로 commit/push한다.
 2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 assistant/history/summary 상태 훅 분리를 진행한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.

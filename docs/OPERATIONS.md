@@ -18,6 +18,7 @@ make health
 ## 출시 전 점검
 
 ```bash
+make ops-check
 ./gradlew test
 (cd frontend && npm run build)
 python3 -m py_compile marketdata-python/app/main.py
@@ -27,6 +28,7 @@ docker compose up -d --build
 ```
 
 정상 기준:
+- `docker compose config -q`가 통과하고 tracked `.env`/명백한 secret token이 없다.
 - `docker compose ps`에서 mysql/backend/frontend/marketdata/ai-service/qdrant가 모두 `Up`
 - `GET /actuator/health`가 `{"status":"UP"}`
 - `GET /api/stocks/005930/chart` 응답에 `data[]` 존재

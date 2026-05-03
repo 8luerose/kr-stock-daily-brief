@@ -47,6 +47,8 @@ jobs:
         run: |
           cp .env.example .env
           echo "APP_ADMIN_TRUSTED_CIDRS=127.0.0.1/32,::1/128,172.16.0.0/12" >> .env
+      - name: Operational config and secret guard
+        run: make ops-check
       - name: Start full stack
         run: docker compose up -d --build
       - name: Wait for stack health
