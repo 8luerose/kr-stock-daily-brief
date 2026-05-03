@@ -607,8 +607,6 @@ export default function App() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showNotes, setShowNotes] = useState(false);
-  const [showDevDetails, setShowDevDetails] = useState(false);
   const [backfillFrom, setBackfillFrom] = useState("2026-02-01");
   const [backfillTo, setBackfillTo] = useState("2026-02-05");
   const [backfillResult, setBackfillResult] = useState(null);
@@ -1177,7 +1175,6 @@ export default function App() {
   }
 
   useEffect(() => {
-    setShowNotes(false);
     load(selected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
@@ -1628,11 +1625,8 @@ export default function App() {
                   )}
                 </div>
 
-                <button className="btn ghost small" onClick={() => setShowDevDetails((v) => !v)}>
-                  {showDevDetails ? COPY.closeDetails : COPY.developerDetails}
-                </button>
-                
-                {showDevDetails && (
+                <details className="disclosureBlock">
+                  <summary>{COPY.developerDetails}</summary>
                   <div className="devDetails">
                     <div className="verifyMeta">
                       <div>KRX 검증 아티팩트: <LinkOrDash href={resolveApiLink(summary.verification?.primaryKrxArtifact, cfg.apiBaseUrl, k)} label="열기" /></div>
@@ -1678,15 +1672,13 @@ export default function App() {
                       </table>
                     </div>
                   </div>
-                )}
+                </details>
               </div>
 
-              <div className="notesWrap">
-                <button className="btn ghost small" onClick={() => setShowNotes((v) => !v)}>
-                  {showNotes ? COPY.hideRawNotes : COPY.showRawNotes}
-                </button>
-                {showNotes ? <pre className="content">{valueOrDash(summary.rawNotes)}</pre> : null}
-              </div>
+              <details className="notesWrap disclosureBlock">
+                <summary>{COPY.showRawNotes}</summary>
+                <pre className="content">{valueOrDash(summary.rawNotes)}</pre>
+              </details>
             </div>
           ) : null}
         </section>
