@@ -95,6 +95,7 @@ Date: 2026-05-03
 - `./gradlew test`
 - `npm ci && npm run build`
 - `npm audit`
+- `npm run test:e2e -- --reporter=line`
 - `make up`
 - `make health`
 - `./scripts/test_all_apis.sh`
@@ -107,9 +108,9 @@ Date: 2026-05-03
 ## 10. Failures / Remaining Risks
 
 - Industry/theme search entries are frontend UX mocks. The UI labels them as mock and leaves a clear future API connection point.
-- Automated chart marker hover regression test is still not part of the repository.
 - `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshots.
 - Follow-up hardening updated Vite, `@vitejs/plugin-react`, and Express transitive dependencies; `npm audit` now reports 0 vulnerabilities.
+- Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, the learning detail structure, interval switching, and bounded chart tooltip display.
 
 ## 11. Commit Hash
 
