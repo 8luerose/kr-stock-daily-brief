@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AiInsightPanel, AdminOperationsPanel, BriefHistoryCalendar } from "./AppPanels.jsx";
 import { COPY, PAGE_LABELS } from "./AppConstants.js";
-import { HistoryOverview, LearningPanel, MarketHero, PortfolioPanel, StockResearchPanel } from "./AppSections.jsx";
+import { HistoryOverview, LearningPanel, PortfolioPanel } from "./AppSections.jsx";
+import { HomePage } from "./HomePage.jsx";
 import { SummaryDetailPanel } from "./SummaryDetailPanel.jsx";
 import { createApiClient } from "./apiClient.js";
 import { useBriefData } from "./hooks/useBriefData.js";
@@ -322,7 +323,7 @@ export default function App() {
       </header>
 
       {activePage === "home" ? (
-        <MarketHero
+        <HomePage
           copy={COPY}
           summary={summary}
           selected={selected}
@@ -337,17 +338,6 @@ export default function App() {
           stockPicks={stockPicks}
           currentStock={currentStock}
           selectStock={selectStock}
-          asArray={asArray}
-          formatNumber={formatNumber}
-          formatRate={formatRate}
-        />
-      ) : null}
-
-      {activePage === "home" && summary && currentStock ? (
-        <StockResearchPanel
-          copy={COPY}
-          homeCompact
-          currentStock={currentStock}
           stockInterval={stockInterval}
           setStockInterval={setStockInterval}
           stockChart={stockChart}
@@ -355,7 +345,6 @@ export default function App() {
           stockChartLoading={stockChartLoading}
           stockChartError={stockChartError}
           darkMode={darkMode}
-          dataAsOf={dataAsOf}
           riskMode={riskMode}
           setRiskMode={setRiskMode}
           decisionPanel={decisionPanel}
@@ -363,7 +352,6 @@ export default function App() {
           askChartAi={askChartAi}
           aiResearchLoading={aiResearchLoading}
           aiResearchResponse={aiResearchResponse}
-          summary={summary}
           asArray={asArray}
           formatNumber={formatNumber}
           formatRate={formatRate}

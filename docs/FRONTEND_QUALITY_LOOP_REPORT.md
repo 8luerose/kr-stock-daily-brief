@@ -32,7 +32,7 @@ stock AI web platform:
 | Perspective | Score | Current judgment |
 |---|---:|---|
 | User | 494/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, and event causal scores now pass, but still not Toss-perfect |
-| Frontend developer | 492/500 | Home chart flow, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, and expanded learning-term UI improved; final visual polish and smaller remaining component boundaries remain |
+| Frontend developer | 493/500 | Home chart flow, HomePage split, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, and expanded learning-term UI improved; final visual polish and smaller remaining component boundaries remain |
 | Backend developer | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved; live RAG depth remains incomplete |
 | DevOps developer | 493/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E coverage, investment-language scan, and tracked secret scan |
 | VC / shareholder | 473/500 | AI and chart-first/search-first platform direction plus all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but live LLM/RAG moat is not fully proven |
@@ -69,6 +69,8 @@ stock AI web platform:
 - Added `frontend/src/ui/hooks/useLearningTerms.js` for learning term loading, filtering, selection, and brief-term derivation.
 - Added `frontend/src/ui/hooks/useAssistantFlows.js` for market assistant, learning assistant, and chart AI request/response state.
 - Reduced `App.jsx` again from 657 lines to 511 lines by moving learning and AI flow state out of the page shell.
+- Added `frontend/src/ui/HomePage.jsx` for home-only hero and compact chart research rendering.
+- Reduced `App.jsx` again from 511 lines to 501 lines while keeping home chart-first behavior unchanged.
 - Split the old single 2861-line `styles.css` into imported modules:
   - `styles/foundation.css`
   - `styles/panels.css`
@@ -164,6 +166,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Frontend hooks split | `useSearchResults`, `useStockResearch`, and `usePortfolio` move search debounce, stock research loading, and portfolio persistence out of `App.jsx` | Done |
 | Brief data hook split | `useBriefData` moves selected date, month overview, stats, insights, KRX artifact loading, latest, generate, archive, and backfill flows out of `App.jsx` | Done |
 | Assistant/learning hook split | `useLearningTerms` and `useAssistantFlows` move learning term state plus market/learning/chart AI request state out of `App.jsx`; `App.jsx` is now 511 lines | Done |
+| HomePage split | `frontend/src/ui/HomePage.jsx` owns the home hero and compact stock research render path; `App.jsx` is now 501 lines | Done |
 | Chart marker hover evidence | `StockPriceChart` tooltip now shows marker reason, evidence, confidence, and 기준일 when the hovered date has chart events | Done |
 | AI structured answer | `/api/ai/chat` and the AI panel now expose conclusion, evidence, opposing signals, risks, sources, confidence, basis date, and limitations as first-class fields | Done |
 | Event evidence sources | `GET /api/stocks/{code}/events` now returns structured price, finance, news, DART disclosure, and discussion evidence sources while preserving legacy links | Done |
@@ -287,6 +290,8 @@ Additional live Docker API checks:
 - LearningTerm `relatedQuestions` alias loop `./gradlew test --tests com.krbrief.learning.LearningTermCatalogTest --tests com.krbrief.learning.LearningAssistantServiceTest --tests com.krbrief.search.SearchServiceTest`: passed
 - LearningTerm `relatedQuestions` alias loop `frontend npm run build`: passed
 - LearningTerm `relatedQuestions` alias loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- HomePage split loop `frontend npm ci --include=dev --prefer-online && npm run build`: passed after adding `HomePage.jsx` and reducing `App.jsx` from 511 lines to 501 lines
+- HomePage split loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -335,7 +340,7 @@ Latest viewport metrics:
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, and `Split assistant learning hooks`. The `relatedQuestions` alias loop is ready for the next commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, and `Add learning related questions alias`. The HomePage split is ready for the next commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
