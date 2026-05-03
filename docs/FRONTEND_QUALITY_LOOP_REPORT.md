@@ -78,7 +78,7 @@ Date: 2026-05-03
 | Search | Industry search | Related industry/theme appears | Normal | 100/100 | `반도체` returns a backend `theme` result from `GET /api/search` with tags and summary | No |
 | Search | Company/stock search | Stock result appears | Normal | 99/100 | Existing TOP stock data is indexed by name/code and routes to chart | No |
 | AI | AI analysis panel | AI value clearly visible | Normal | 99/100 | `AI 시장 해석` is visible in Home flow; chart AI remains contextual | No |
-| Navigation | Tab switching | Smooth transition | Normal | 99/100 | Today/Chart/Learn/Portfolio/Admin navigation works in browser | No |
+| Navigation | Tab switching | Smooth transition | Normal | 99/100 | Today/Chart/Learn/Portfolio navigation works in browser; Admin remains key-gated | No |
 | Learn | Term detail | Summary, 3+ explanations, scenario | Normal | 100/100 | Core summary, definition, importance, checklist, caution, scenario, questions | No |
 | Chart | Daily | Chart displays | Normal | 99/100 | Candles, MA, volume, event markers render after data load | No |
 | Chart | Weekly | Chart displays | Normal | 99/100 | Control and API path verified | No |
@@ -86,16 +86,17 @@ Date: 2026-05-03
 | Chart | Marker hover | Tooltip displays | Normal | 99/100 | Crosshair tooltip is implemented and E2E now checks bounded tooltip display | No |
 | Trade UX | Buy review zone | Conditions/evidence visible | Normal | 100/100 | Buy and split-buy conditions use conditional language | No |
 | Trade UX | Sell review zone | Conditions/evidence visible | Normal | 100/100 | Sell, risk, opposing signal, confidence, data date shown | No |
-| Buttons | Main button count | Primary actions kept small | Normal | 98/100 | User-facing flow emphasizes search and contextual actions; nav still has 5 tabs | No |
+| Buttons | Main button count | Primary actions kept small | Normal | 99/100 | Public flow emphasizes search and contextual actions; admin navigation is hidden unless an admin key is present | No |
 | Mobile | 390px | No overlap | Normal | 99/100 | Full-page 390px screenshot checked after responsive fix | No |
 | Motion | Animation | Premium, restrained motion | Normal | 99/100 | Focus, hover, panel, chart loading skeleton use restrained 150-320ms style | No |
 
 ## 9. Verification Commands
 
 - `./gradlew test`
-- `npm ci && npm run build`
+- `npm ci --include=dev && npm run build`
 - `npm audit`
 - `npm run test:e2e -- --reporter=line`
+- `make frontend-quality`
 - `make quality`
 - `make up`
 - `make health`
@@ -111,11 +112,11 @@ Date: 2026-05-03
 
 - `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshots.
 - Follow-up hardening updated Vite, `@vitejs/plugin-react`, and Express transitive dependencies; `npm audit` now reports 0 vulnerabilities.
-- Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, stock search navigation into chart research, the learning detail structure, interval switching, and bounded chart tooltip display.
+- Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, stock search navigation into chart research, admin surface hiding without an admin key, the learning detail structure, interval switching, active ARIA state, and bounded chart tooltip display.
 - Follow-up search work added `GET /api/search` so the first-view search now uses a backend adapter for latest-summary stocks, learning terms, and a seed industry/theme catalog; the frontend only keeps a local fallback for API failure.
 - Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack smoke tests, and Playwright E2E on push/PR.
 - Follow-up safety work added `scripts/verify_investment_language.sh` to fail on direct buy/sell instruction or guarantee wording in source code.
-- Follow-up local workflow work added `make quality` so developers can run backend tests, frontend build/audit, source safety check, API smoke, and E2E with one command.
+- Follow-up local workflow work added `make quality` and hardened `make frontend-quality` so developers can run backend tests, frontend build/audit, source safety check, API smoke, and E2E with explicit dev dependency installation.
 
 ## 11. Commit Hash
 
