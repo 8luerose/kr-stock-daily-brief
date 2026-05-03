@@ -33,7 +33,7 @@ stock AI web platform:
 |---|---:|---|
 | User | 455/500 | Usable and clearer, but still not premium enough to call perfect |
 | Frontend developer | 430/500 | App structure and CSS are improved, but more decomposition and visual system cleanup remain |
-| Backend developer | 430/500 | Search and AI adapter improved, but full taxonomy/RAG depth is incomplete |
+| Backend developer | 445/500 | Search, AI adapter, and trade-zone contract improved, but full taxonomy/RAG depth is incomplete |
 | DevOps developer | 475/500 | Strong local quality gate, Docker health, API smoke, and E2E coverage |
 | VC / shareholder | 410/500 | AI is visible and adapter-ready, but live LLM/RAG moat is not fully proven |
 
@@ -68,6 +68,7 @@ stock AI web platform:
   - `styles/stock-research.css`
   - `styles/product-refresh.css`
 - Collapsed repeated evidence links and developer/raw detail controls behind native disclosures.
+- Added a dedicated stock `trade-zones` API and connected the chart decision panel to it with client-side fallback.
 
 ## Prompt-To-Artifact Checklist
 
@@ -91,7 +92,7 @@ stock AI web platform:
 | Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
 | Real live LLM quality | Adapter exists, but no configured live key/model verification | Not done |
 | Full KRX taxonomy | Representative fallback exists, not full stock/sector taxonomy | Not done |
-| Trade-zone backend API | Chart zones exist in UI logic, but no dedicated `trade-zones` API | Not done |
+| Trade-zone backend API | `GET /api/stocks/{code}/trade-zones` added, documented, smoke-tested, and used by the chart decision panel | Done |
 
 ## Latest Verification Commands
 
@@ -126,12 +127,12 @@ Additional screenshots were captured from the Docker-served frontend:
 2. The first-view UX is clearer, but not yet a complete Toss-quality redesign.
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
 4. Search still needs a real full KRX stock, industry, and theme taxonomy.
-5. Chart trade zones need a backend-supported data model rather than only client-side heuristics.
+5. Trade zones now have an API contract, but the first version is still heuristic and should be upgraded with richer market signals.
 6. More frontend decomposition is still warranted, especially the remaining summary detail flow.
 
 ## Current Head
 
-- Latest pushed commit: `9f234bd Collapse repeated evidence links`
+- Latest pushed commit: check `git log -1 --oneline` after the latest recovery-loop push.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
@@ -140,7 +141,7 @@ Additional screenshots were captured from the Docker-served frontend:
 Continue with these in order:
 
 1. Extract the remaining summary detail flow out of `App.jsx`.
-2. Replace chart-zone heuristics with a dedicated backend `trade-zones` contract.
+2. Enrich the new `trade-zones` API with support/resistance, event, and volume-derived market signals.
 3. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
 4. Expand search from representative fallback to complete KRX stock/sector/theme taxonomy.
 5. Run another mobile and desktop visual audit before any completion claim.

@@ -21,11 +21,14 @@ public class StockController {
   private static final Pattern CODE = Pattern.compile("^\\d{6}$");
   private static final Set<String> RANGES = Set.of("1M", "3M", "6M", "1Y", "3Y");
   private static final Set<String> INTERVALS = Set.of("daily", "weekly", "monthly");
+  private static final Set<String> RISK_MODES = Set.of("aggressive", "neutral", "conservative");
 
   private final StockResearchClient client;
+  private final StockTradeZoneService tradeZoneService;
 
-  public StockController(StockResearchClient client) {
+  public StockController(StockResearchClient client, StockTradeZoneService tradeZoneService) {
     this.client = client;
+    this.tradeZoneService = tradeZoneService;
   }
 
   @GetMapping("/{code}/chart")
@@ -43,6 +46,28 @@ public class StockController {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_interval");
     }
     return client.chart(safeCode, safeRange, safeInterval);
+  }
+
+  @GetMapping("/{code}/trade-zones")
+  public StockTradeZonesDto tradeZones(
+      @PathVariable String code,
+      @RequestParam(name = "range", defaultValue = "6M") String range,
+      @RequestParam(name = "interval", defaultValue = "daily") String interval,
+      @RequestParam(name = "riskMode", defaultValue = "neutral") String riskMode) {
+    String safeCode = validateCode(code);
+    String safeRange = range.toUpperCase();
+    String safeInterval = interval.toLowerCase();
+    String safeRiskMode = riskMode.toLowerCase();
+    if (!RANGES.contains(safeRange)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_range");
+    }
+    if (!INTERVALS.contains(safeInterval)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_interval");
+    }
+    if (!RISK_MODES.contains(safeRiskMode)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid_risk_mode");
+    }
+    return tradeZoneService.tradeZones(safeCode, safeRange, safeInterval, safeRiskMode);
   }
 
   @GetMapping("/{code}/events")

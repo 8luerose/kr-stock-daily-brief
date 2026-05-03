@@ -20,6 +20,8 @@ class StockControllerTest {
 
   @MockBean StockResearchClient client;
 
+  @MockBean StockTradeZoneService tradeZoneService;
+
   @Test
   void chart_returnsGatewayResponse() throws Exception {
     when(client.chart(eq("005930"), eq("6M"), eq("daily")))
@@ -67,9 +69,43 @@ class StockControllerTest {
   }
 
   @Test
+  void tradeZones_returnsComputedDecisionContract() throws Exception {
+    when(tradeZoneService.tradeZones(eq("005930"), eq("6M"), eq("daily"), eq("neutral")))
+        .thenReturn(
+            new StockTradeZonesDto(
+                "005930",
+                "삼성전자",
+                "daily",
+                "6M",
+                "2026-05-01",
+                "neutral",
+                "medium-high",
+                List.of(
+                    new StockTradeZonesDto.TradeZoneDto(
+                        "buy_review",
+                        "매수 검토 구간",
+                        100L,
+                        110L,
+                        "20일선 회복과 거래량 증가가 함께 보일 때 검토",
+                        "20일 평균 거래량",
+                        "거래량 없는 상승",
+                        "medium-high",
+                        "2026-05-01",
+                        "가격과 거래량을 함께 확인합니다.")),
+                List.of("기준일: 2026-05-01")));
+
+    mvc.perform(get("/api/stocks/005930/trade-zones?range=6M&interval=daily&riskMode=neutral"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.zones[0].type").value("buy_review"))
+        .andExpect(jsonPath("$.zones[0].condition").isNotEmpty())
+        .andExpect(jsonPath("$.evidence").isArray());
+  }
+
+  @Test
   void invalidInputs_return400() throws Exception {
     mvc.perform(get("/api/stocks/abc/chart")).andExpect(status().isBadRequest());
     mvc.perform(get("/api/stocks/005930/chart?range=2Y")).andExpect(status().isBadRequest());
+    mvc.perform(get("/api/stocks/005930/trade-zones?riskMode=reckless")).andExpect(status().isBadRequest());
     mvc.perform(get("/api/stocks/005930/events?from=2026-05-01&to=2026-04-01"))
         .andExpect(status().isBadRequest());
   }

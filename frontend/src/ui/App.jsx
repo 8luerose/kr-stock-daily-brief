@@ -171,32 +171,44 @@ function summarizeChart(chart, events) {
   return { trend, changeRate, rangeRate, latest, volumeRate, eventCount };
 }
 
-function buildDecisionPanel(chart, events, riskMode) {
+function buildDecisionPanel(chart, events, riskMode, tradeZones) {
   const s = summarizeChart(chart, events);
   const eventCount = s.eventCount || 0;
   const modeText = riskMode === "aggressive" ? "공격형" : riskMode === "conservative" ? "보수형" : "중립형";
+  const zones = asArray(tradeZones?.zones);
+  const zoneByType = (type) => zones.find((zone) => zone.type === type);
+  const zoneText = (type, fallback) => {
+    const zone = zoneByType(type);
+    if (!zone) return fallback;
+    const priceRange = zone.fromPrice && zone.toPrice
+      ? ` (${formatNumber(zone.fromPrice)}~${formatNumber(zone.toPrice)}원)`
+      : "";
+    const beginner = zone.beginnerExplanation ? ` ${zone.beginnerExplanation}` : "";
+    return `${zone.condition}${priceRange}.${beginner}`;
+  };
   const buy =
     riskMode === "aggressive"
       ? "20일선 근처에서 반등하고 거래량이 평균 이상으로 붙으면 소액 분할 진입을 검토할 수 있음"
       : riskMode === "conservative"
         ? "20일선과 직전 고점을 모두 회복하고 거래량이 2거래일 이상 유지될 때까지 기다리는 편이 적합"
         : "20일선 회복, 전일 대비 거래량 증가, 직전 저점 방어가 동시에 보이면 매수 검토 구간으로 볼 수 있음";
+  const fallbackEvidence = [
+    `기준일: ${s.latest?.date || chart?.asOf || "-"}`,
+    `최근 등락률: ${s.changeRate === null ? "-" : formatRate(s.changeRate)}`,
+    `20일 평균 대비 거래량: ${s.volumeRate ? `${s.volumeRate.toFixed(0)}%` : "-"}`,
+    `감지 이벤트: ${eventCount}건`,
+    `시나리오: ${modeText}`
+  ];
   return {
-    summary: s.trend,
-    buy,
-    splitBuy: "한 번에 진입하지 않고 지지선 확인, 거래량 유지, 눌림 반등을 나누어 확인할 때 분할매수 검토 구간으로 볼 수 있음",
-    watch: "가격 방향과 거래량 방향이 엇갈리거나 주요 이벤트 근거가 부족하면 새 신호가 확인될 때까지 관망이 우선",
-    sell: "급등 후 거래량 감소, 긴 윗꼬리 반복, 직전 고점 돌파 실패가 겹치면 일부 차익 실현을 검토할 수 있음",
-    stop: "전저점 이탈 또는 하락일 거래량 급증이 나오면 비중 축소, 손절 기준, 재진입 조건을 다시 세워야 함",
-    opposite: "가격은 오르지만 거래량이 줄거나, 거래량은 늘지만 종가가 저가 근처에서 끝나면 상승 해석을 낮춰야 함",
-    evidence: [
-      `기준일: ${s.latest?.date || chart?.asOf || "-"}`,
-      `최근 등락률: ${s.changeRate === null ? "-" : formatRate(s.changeRate)}`,
-      `20일 평균 대비 거래량: ${s.volumeRate ? `${s.volumeRate.toFixed(0)}%` : "-"}`,
-      `감지 이벤트: ${eventCount}건`,
-      `시나리오: ${modeText}`
-    ],
-    confidence: asArray(chart?.data).length >= 60 ? "중간-높음" : "중간"
+    summary: tradeZones ? `${s.trend} 전용 trade-zones API 기준 구간을 함께 반영했습니다.` : s.trend,
+    buy: zoneText("buy_review", buy),
+    splitBuy: zoneText("split_buy", "한 번에 진입하지 않고 지지선 확인, 거래량 유지, 눌림 반등을 나누어 확인할 때 분할매수 검토 구간으로 볼 수 있음"),
+    watch: zoneText("watch", "가격 방향과 거래량 방향이 엇갈리거나 주요 이벤트 근거가 부족하면 새 신호가 확인될 때까지 관망이 우선"),
+    sell: zoneText("sell_review", "급등 후 거래량 감소, 긴 윗꼬리 반복, 직전 고점 돌파 실패가 겹치면 일부 차익 실현을 검토할 수 있음"),
+    stop: zoneText("risk_management", "전저점 이탈 또는 하락일 거래량 급증이 나오면 비중 축소, 손절 기준, 재진입 조건을 다시 세워야 함"),
+    opposite: zoneByType("risk_management")?.oppositeSignal || "가격은 오르지만 거래량이 줄거나, 거래량은 늘지만 종가가 저가 근처에서 끝나면 상승 해석을 낮춰야 함",
+    evidence: asArray(tradeZones?.evidence).length > 0 ? tradeZones.evidence : fallbackEvidence,
+    confidence: tradeZones?.confidence || (asArray(chart?.data).length >= 60 ? "중간-높음" : "중간")
   };
 }
 
@@ -631,6 +643,7 @@ export default function App() {
   const [riskMode, setRiskMode] = useState("neutral");
   const [stockChart, setStockChart] = useState(null);
   const [stockEvents, setStockEvents] = useState(null);
+  const [tradeZones, setTradeZones] = useState(null);
   const [stockChartLoading, setStockChartLoading] = useState(false);
   const [stockChartError, setStockChartError] = useState("");
   const [aiResearchLoading, setAiResearchLoading] = useState(false);
@@ -681,8 +694,8 @@ export default function App() {
   const dataAsOf = useMemo(() => getDataAsOf(summary, selected), [summary, selected]);
   const confidenceLabel = useMemo(() => getConfidenceLabel(summary), [summary]);
   const decisionPanel = useMemo(
-    () => buildDecisionPanel(stockChart, stockEvents, riskMode),
-    [riskMode, stockChart, stockEvents]
+    () => buildDecisionPanel(stockChart, stockEvents, riskMode, tradeZones),
+    [riskMode, stockChart, stockEvents, tradeZones]
   );
   const portfolioSummary = useMemo(() => portfolioRisk(portfolio), [portfolio]);
 
@@ -981,6 +994,7 @@ export default function App() {
     if (!stock?.code) {
       setStockChart(null);
       setStockEvents(null);
+      setTradeZones(null);
       setStockChartError("");
       return;
     }
@@ -991,6 +1005,13 @@ export default function App() {
       const range = rangeForInterval(interval);
       const chart = await apiFetch(`/api/stocks/${stock.code}/chart?range=${range}&interval=${interval}`);
       setStockChart(chart);
+      try {
+        const zones = await apiFetch(`/api/stocks/${stock.code}/trade-zones?range=${range}&interval=${interval}&riskMode=${riskMode}`);
+        setTradeZones(zones);
+      } catch (zoneErr) {
+        console.warn("Failed to load stock trade zones", zoneErr);
+        setTradeZones(null);
+      }
 
       const from = fromForEvents(chart);
       const to = chart.asOf || asArray(chart.data).at(-1)?.date || "";
@@ -1004,6 +1025,7 @@ export default function App() {
       console.warn("Failed to load stock research", e);
       setStockChart(null);
       setStockEvents(null);
+      setTradeZones(null);
       setStockChartError(COPY.chartFailed);
     } finally {
       setStockChartLoading(false);
@@ -1037,7 +1059,8 @@ export default function App() {
                 interval: stockChart.interval,
                 range: stockChart.range,
                 asOf: stockChart.asOf,
-                latest: asArray(stockChart.data).at(-1)
+                latest: asArray(stockChart.data).at(-1),
+                tradeZones
               }
             : null,
           events: asArray(stockEvents?.events).slice(0, 8),
@@ -1222,7 +1245,7 @@ export default function App() {
     setAiResearchResponse(null);
     loadStockResearch(currentStock, stockInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStock?.code, stockInterval]);
+  }, [currentStock?.code, stockInterval, riskMode]);
 
   const todayStr = useMemo(() => isoDate(new Date()), []);
   const primaryNavItems = [

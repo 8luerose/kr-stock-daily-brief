@@ -493,7 +493,59 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 ---
 
-## 15) AI/RAG 준비형 채팅
+## 15) 종목 거래 구간 조회
+
+### `GET /api/stocks/{code}/trade-zones?range=1M|3M|6M|1Y|3Y&interval=daily|weekly|monthly&riskMode=aggressive|neutral|conservative`
+
+차트 기반 매수 검토, 분할매수 검토, 관망, 매도 검토, 리스크 관리 구간을 조건/근거/반대 신호/초보자 설명과 함께 반환한다. 직접적인 투자 지시가 아니라 교육용 검토 구간이다.
+
+#### Path Parameters
+
+- `code` (required): 6자리 한국 종목 코드. 예: `005930`
+
+#### Query Parameters
+
+- `range` (optional): `1M | 3M | 6M | 1Y | 3Y`, 기본 `6M`
+- `interval` (optional): `daily | weekly | monthly`, 기본 `daily`
+- `riskMode` (optional): `aggressive | neutral | conservative`, 기본 `neutral`
+
+#### 성공 응답 (200)
+
+```json
+{
+  "code": "005930",
+  "name": "삼성전자",
+  "interval": "daily",
+  "range": "6M",
+  "basisDate": "2026-05-03",
+  "riskMode": "neutral",
+  "confidence": "medium-high",
+  "zones": [
+    {
+      "type": "buy_review",
+      "label": "매수 검토 구간",
+      "fromPrice": 69000,
+      "toPrice": 71000,
+      "condition": "20일선 회복, 전일 대비 거래량 증가, 직전 저점 방어가 동시에 보일 때 매수 검토",
+      "evidence": "현재가, 20일 거래량 평균, 최근 종가 흐름을 함께 사용",
+      "oppositeSignal": "가격은 회복하지만 거래량이 평균 이하이면 신뢰도를 낮춤",
+      "confidence": "medium-high",
+      "basisDate": "2026-05-03",
+      "beginnerExplanation": "가격만 보지 말고 거래량이 같이 늘어나는지 확인합니다."
+    }
+  ],
+  "evidence": ["기준일: 2026-05-03", "최근 종가: 70000"]
+}
+```
+
+#### 실패 응답
+
+- 400 Bad Request: 종목 코드/range/interval/riskMode가 잘못됨
+- 502 Bad Gateway: marketdata 조회 실패 또는 차트 데이터 없음
+
+---
+
+## 16) AI/RAG 준비형 채팅
 
 ### `POST /api/ai/chat`
 
