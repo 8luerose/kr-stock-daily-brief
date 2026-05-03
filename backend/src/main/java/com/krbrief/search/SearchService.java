@@ -46,15 +46,14 @@ public class SearchService {
 
   private void addLatestSummaryStocks(Map<String, SearchResultDto> results) {
     summaries.latest().map(SummaryDto::from).ifPresent(summary -> {
-      addLeaderEntries(results, "top-gainer", "오늘 움직인 종목", "상승 TOP3", summary.topGainers());
-      addLeaderEntries(results, "top-loser", "오늘 움직인 종목", "하락 TOP3", summary.topLosers());
+      addLeaderEntries(results, "오늘 움직인 종목", "상승 TOP3", summary.topGainers());
+      addLeaderEntries(results, "오늘 움직인 종목", "하락 TOP3", summary.topLosers());
       addMentionedEntries(results, summary.mostMentionedTop());
     });
   }
 
   private void addLeaderEntries(
       Map<String, SearchResultDto> results,
-      String prefix,
       String market,
       String group,
       List<SummaryDto.LeaderEntryDto> entries) {
