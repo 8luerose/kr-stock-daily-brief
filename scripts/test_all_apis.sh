@@ -147,4 +147,9 @@ contains_field /tmp/krbrief_resp.json source || fail "search missing source"
 contains_field /tmp/krbrief_resp.json title || fail "search missing title"
 pass "GET /api/search"
 
+code=$(status_code GET "$BASE_URL/api/search?query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90&limit=5")
+[[ "$code" == "200" ]] || fail "search samsung expected 200, got $code"
+grep -q '"stockCode":"005930"' /tmp/krbrief_resp.json || fail "search samsung missing 005930"
+pass "GET /api/search finds 삼성전자"
+
 echo "== API smoke test done: ALL PASS =="

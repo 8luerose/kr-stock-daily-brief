@@ -39,4 +39,30 @@ class SearchServiceTest {
     assertFalse(results.isEmpty());
     assertTrue(results.stream().anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("005930")));
   }
+
+  @Test
+  void search_includesRepresentativeStocksWithoutLatestSummary() {
+    DailySummaryService summaries = mock(DailySummaryService.class);
+    when(summaries.latest()).thenReturn(Optional.empty());
+    SearchService service = new SearchService(summaries, new LearningTermCatalog());
+
+    var byName = service.search("삼성전자", 10);
+    var byCode = service.search("005930", 10);
+
+    assertTrue(byName.stream().anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("005930")));
+    assertTrue(byCode.stream().anyMatch(item -> item.type().equals("stock") && item.title().equals("삼성전자")));
+  }
+
+  @Test
+  void search_includesThemeRelatedRepresentativeStocks() {
+    DailySummaryService summaries = mock(DailySummaryService.class);
+    when(summaries.latest()).thenReturn(Optional.empty());
+    SearchService service = new SearchService(summaries, new LearningTermCatalog());
+
+    var results = service.search("반도체", 10);
+
+    assertTrue(results.stream().anyMatch(item -> item.type().equals("theme") && item.title().equals("반도체")));
+    assertTrue(results.stream().anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("005930")));
+    assertTrue(results.stream().anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("000660")));
+  }
 }

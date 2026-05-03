@@ -34,6 +34,7 @@ public class SearchService {
     int safeLimit = normalizeLimit(limit);
     Map<String, SearchResultDto> results = new LinkedHashMap<>();
     addLatestSummaryStocks(results);
+    addBaselineStockUniverse(results);
     addSeedCatalog(results);
     addLearningTerms(results, query);
 
@@ -99,6 +100,12 @@ public class SearchService {
               entry.code(),
               entry.name(),
               null));
+    }
+  }
+
+  private void addBaselineStockUniverse(Map<String, SearchResultDto> results) {
+    for (SearchResultDto item : StockUniverseCatalog.baseline()) {
+      results.putIfAbsent(item.id(), item);
     }
   }
 

@@ -15,6 +15,9 @@ class ChatRequest(BaseModel):
     contextDate: str | None = None
     stockCode: str | None = None
     stockName: str | None = None
+    topicType: str | None = None
+    topicTitle: str | None = None
+    searchResult: dict[str, Any] | None = None
     focus: str | None = None
     summary: dict[str, Any] | None = None
     chart: dict[str, Any] | None = None
@@ -47,6 +50,26 @@ def _term_lines(terms: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def _search_context_lines(search_result: dict[str, Any] | None) -> list[str]:
+    if not search_result:
+        return []
+    tags = search_result.get("tags") or []
+    if isinstance(tags, list):
+        tag_text = ", ".join(str(tag) for tag in tags[:5] if str(tag).strip())
+    else:
+        tag_text = str(tags)
+    lines = [
+        f"- 분류: {_clean(search_result.get('market') or search_result.get('type'))}",
+        f"- 요약: {_clean(search_result.get('summary'))}",
+    ]
+    if tag_text:
+        lines.append(f"- 연결 키워드: {tag_text}")
+    source = _clean(search_result.get("source"), "")
+    if source:
+        lines.append(f"- 검색 출처: {source}")
+    return lines
+
+
 @app.get("/health")
 def health():
     return {"status": "UP"}
@@ -54,27 +77,35 @@ def health():
 
 @app.post("/chat")
 def chat(req: ChatRequest):
-    subject = _clean(req.stockName, "선택한 종목")
+    subject = _clean(req.stockName or req.topicTitle, "선택한 주제")
     code = _clean(req.stockCode, "")
+    topic_type = _clean(req.topicType, "market")
     basis_date = _clean(req.contextDate, date.today().isoformat())
     events = req.events or []
     terms = req.terms or []
 
     event_lines = _event_lines(events)
     term_lines = _term_lines(terms)
+    search_context_lines = _search_context_lines(req.searchResult)
     answer_parts = [
         f"기준일: {basis_date}",
         f"대상: {subject}{f'({code})' if code else ''}",
+        f"분석 범위: {topic_type}",
         "",
         "핵심 해석",
         f"- 질문은 '{_clean(req.question, '차트와 이벤트 해석')}'입니다.",
         "- 이 응답은 현재 저장된 브리프, 차트 이벤트, 용어 사전 연결을 바탕으로 한 교육용 분석입니다.",
     ]
 
-    if event_lines:
+    if search_context_lines:
+        answer_parts += ["", "검색 맥락", *search_context_lines]
+
+    if code and event_lines:
         answer_parts += ["", "차트 이벤트 근거", *event_lines]
-    else:
+    elif code:
         answer_parts += ["", "차트 이벤트 근거", "- 확인된 급등/급락/거래량 급증 이벤트가 없거나 아직 전달되지 않았습니다."]
+    else:
+        answer_parts += ["", "시장/테마 근거", "- 개별 종목 차트가 아닌 검색 맥락과 저장된 브리프를 우선 근거로 사용했습니다."]
 
     if term_lines:
         answer_parts += ["", "초보자 용어 연결", *term_lines]
@@ -95,10 +126,12 @@ def chat(req: ChatRequest):
 
     sources = [
         {"title": "앱 저장 일간 브리프", "type": "daily_summary", "url": "/api/summaries/latest"},
-        {"title": "종목 차트 API", "type": "ohlcv", "url": f"/api/stocks/{code}/chart" if code else "/api/stocks/{code}/chart"},
-        {"title": "종목 이벤트 API", "type": "events", "url": f"/api/stocks/{code}/events" if code else "/api/stocks/{code}/events"},
+        {"title": "통합 검색 API", "type": "search", "url": "/api/search"},
         {"title": "초보자 용어 사전", "type": "internal_glossary", "url": "/api/learning/terms"},
     ]
+    if code:
+        sources.insert(1, {"title": "종목 차트 API", "type": "ohlcv", "url": f"/api/stocks/{code}/chart"})
+        sources.insert(2, {"title": "종목 이벤트 API", "type": "events", "url": f"/api/stocks/{code}/events"})
 
     return {
         "mode": "rag_ready_rule_based",

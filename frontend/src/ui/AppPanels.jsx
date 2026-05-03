@@ -1,0 +1,233 @@
+import React from "react";
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+export function AiInsightPanel({
+  activePage,
+  copy,
+  selected,
+  assistantQuestion,
+  setAssistantQuestion,
+  assistantLoading,
+  assistantResponse,
+  askAssistant,
+  selectTerm
+}) {
+  return (
+    <div className="assistantBox heroAssistant">
+      <div className="assistantHead">
+        <div>
+          <div className="assistantTitle">{activePage === "home" ? copy.aiMarketPanel : copy.assistantTitle}</div>
+          <div className="assistantSubtitle">{activePage === "home" ? copy.aiMarketOneLine : copy.assistantSubtitle}</div>
+        </div>
+        <span className="assistantDate">{selected}</span>
+      </div>
+      <div className="assistantInputRow">
+        <input
+          aria-label={copy.assistantQuestionLabel}
+          value={assistantQuestion}
+          onChange={(event) => setAssistantQuestion(event.target.value)}
+          placeholder={copy.assistantInputPlaceholder}
+          disabled={assistantLoading}
+        />
+        <button className="btn primary small" type="button" onClick={askAssistant} disabled={assistantLoading}>
+          {assistantLoading ? copy.loading : copy.assistantAsk}
+        </button>
+      </div>
+      {assistantResponse ? (
+        <div className="assistantAnswer">
+          <div className="assistantAnswerHead">
+            <strong>{copy.assistantAnswer}</strong>
+            <span>{copy.confidence}: {assistantResponse.confidence}</span>
+          </div>
+          <pre>{assistantResponse.answer}</pre>
+          {asArray(assistantResponse.matchedTerms).length > 0 ? (
+            <div className="assistantMeta">
+              <strong>{copy.matchedTerms}</strong>
+              <div>
+                {asArray(assistantResponse.matchedTerms).map((term) => (
+                  <button type="button" key={term.id} onClick={() => selectTerm(term)}>
+                    {term.term}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {asArray(assistantResponse.sources).length > 0 ? (
+            <div className="assistantMeta">
+              <strong>{copy.sources}</strong>
+              <div>
+                {asArray(assistantResponse.sources).map((source) => (
+                  <span key={`${source.type}-${source.title}`}>{source.title}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {asArray(assistantResponse.limitations).length > 0 ? (
+            <div className="assistantMeta limitations">
+              <strong>{copy.limitations}</strong>
+              <ul>
+                {asArray(assistantResponse.limitations).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function AdminOperationsPanel({
+  copy,
+  showAdminPanel,
+  setShowAdminPanel,
+  forceOpen = false,
+  adminKey,
+  selected,
+  setSelected,
+  loading,
+  todayStr,
+  generate,
+  archiveSelected,
+  backfillFrom,
+  setBackfillFrom,
+  backfillTo,
+  setBackfillTo,
+  runBackfill,
+  backfillResult
+}) {
+  return (
+    <section className="card adminPanel">
+      <button
+        type="button"
+        className="adminToggle"
+        onClick={() => setShowAdminPanel((value) => !value)}
+        aria-expanded={showAdminPanel}
+      >
+        <span>
+          <strong>{copy.adminTitle}</strong>
+          <small>{copy.adminSubtitle}</small>
+        </span>
+        <span>{showAdminPanel || forceOpen ? copy.closeAdmin : copy.openAdmin}</span>
+      </button>
+      {showAdminPanel || forceOpen ? (
+        <div className="adminBody">
+          {!adminKey ? (
+            <div className="hint compact adminKeyHint">{copy.adminKeyRequired}</div>
+          ) : (
+            <>
+              <div className="adminDateRow">
+                <label className="fieldLabel" htmlFor="selected-date">{copy.selectedDate}</label>
+                <input
+                  id="selected-date"
+                  type="date"
+                  value={selected}
+                  onChange={(event) => setSelected(event.target.value)}
+                  className="dateInput"
+                  disabled={loading}
+                />
+              </div>
+              <div className="adminActions">
+                <button className="btn primary" onClick={() => generate(todayStr)} disabled={loading}>
+                  {copy.generateToday}
+                </button>
+                <button className="btn" onClick={() => generate(selected)} disabled={loading}>
+                  {copy.generateSelected}
+                </button>
+                <button className="btn ghost" onClick={archiveSelected} disabled={loading}>
+                  {copy.archiveSelected}
+                </button>
+              </div>
+              <div className="backfillBar compact">
+                <input type="date" aria-label="일괄 생성 시작일" value={backfillFrom} onChange={(event) => setBackfillFrom(event.target.value)} />
+                <input type="date" aria-label="일괄 생성 종료일" value={backfillTo} onChange={(event) => setBackfillTo(event.target.value)} />
+                <button className="btn ghost" onClick={runBackfill} disabled={loading}>
+                  {copy.backfillRun}
+                </button>
+              </div>
+            </>
+          )}
+          {backfillResult ? (
+            <div className="hint compact">
+              완료: 성공 {backfillResult.successCount}, 저신뢰 {backfillResult.lowConfidenceCount}, 실패 {backfillResult.failCount}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function BriefHistoryCalendar({
+  activePage,
+  copy,
+  selected,
+  monthLabel,
+  setMonth,
+  addMonths,
+  days,
+  isoDate,
+  month,
+  todayStr,
+  monthHasSummary,
+  setSelected
+}) {
+  return (
+    <section className="card calendar">
+      <div className="panelHead compact">
+        <div>
+          <div className="panelTitle">{activePage === "admin" ? copy.adminTitle : copy.historyTitle}</div>
+          <div className="panelSubtitle">{copy.selectedDate}: {selected}</div>
+        </div>
+      </div>
+      <div className="calendarHead">
+        <button className="btn ghost" onClick={() => setMonth(addMonths(month, -1))}>
+          {copy.prevMonth}
+        </button>
+        <div className="monthLabel">{monthLabel}</div>
+        <button className="btn ghost" onClick={() => setMonth(addMonths(month, 1))}>
+          {copy.nextMonth}
+        </button>
+      </div>
+
+      <div className="dow">
+        {copy.days.map((day) => (
+          <div key={day} className="dowCell">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid">
+        {days.map((day) => {
+          const dayString = isoDate(day);
+          const inMonth = day.getMonth() === month.getMonth();
+          const isSelected = dayString === selected;
+          const isToday = dayString === todayStr;
+          const hasSummary = monthHasSummary.has(dayString);
+          return (
+            <button
+              key={dayString}
+              className={[
+                "day",
+                inMonth ? "inMonth" : "outMonth",
+                isSelected ? "selected" : "",
+                isToday ? "today" : "",
+                hasSummary ? "hasSummary" : ""
+              ].join(" ")}
+              aria-label={`${dayString}${hasSummary ? " 요약 있음" : ""}`}
+              onClick={() => setSelected(dayString)}
+            >
+              <div className="dayNum">{day.getDate()}</div>
+              {hasSummary ? <div className="dot" title={copy.summaryExists} /> : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

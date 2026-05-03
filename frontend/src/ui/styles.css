@@ -465,6 +465,79 @@ textarea {
   color: white;
 }
 
+.navMenu {
+  position: relative;
+  z-index: 30;
+}
+
+.navMenu summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  list-style: none;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.navMenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.navMenu.active summary,
+.navMenu[open] summary,
+.navMenu summary:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.navMenu[open] summary {
+  transform: translateY(-1px);
+}
+
+.navMenuPanel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  display: grid;
+  min-width: 190px;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--card) 98%, transparent);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(16px);
+}
+
+.navMenuPanel button {
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.navMenuPanel button.active,
+.navMenuPanel button:hover {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
 .themeToggle {
   width: 44px;
   height: 44px;
@@ -2543,9 +2616,11 @@ body {
 
 .stockResearchGrid {
   grid-template-columns: minmax(0, 1.32fr) minmax(320px, 0.68fr);
+  align-items: start;
 }
 
 .chartPreview {
+  align-self: start;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--bg) 72%, var(--card)), var(--bg));
 }
@@ -2665,16 +2740,26 @@ body {
 
   .actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .appNav {
-    grid-column: 1 / -1;
-    overflow-x: auto;
+    width: 100%;
+    min-width: 0;
   }
 
   .appNav button {
-    min-width: max-content;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .navMenu {
+    justify-self: end;
+  }
+
+  .navMenuPanel {
+    right: 0;
+    min-width: min(240px, calc(100vw - 28px));
   }
 
   .marketHero,

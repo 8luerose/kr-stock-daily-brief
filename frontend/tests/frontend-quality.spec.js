@@ -40,6 +40,7 @@ for (const viewport of viewports) {
     await page.fill("#universal-search", "반도체");
     await expect(page.locator(".searchResults")).toBeVisible();
     await expect(page.locator(".searchResults button").first()).toBeVisible();
+    await expect(page.locator(".searchResults")).toContainText("삼성전자");
     await expect(page.getByText(/seed catalog|fallback|어댑터/)).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
 
@@ -76,11 +77,9 @@ test("stock search result opens chart research flow", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
 
-  const stockName = (await page.locator(".pulseName").first().textContent())?.trim();
-  expect(stockName).toBeTruthy();
-
-  await page.fill("#universal-search", stockName);
+  await page.fill("#universal-search", "삼성전자");
   await expect(page.locator(".searchResults button").first()).toBeVisible();
+  await expect(page.locator(".searchResults")).toContainText("005930");
   await page.locator(".searchResults button").first().click();
 
   await expect(page.locator("#stock-detail")).toBeVisible();
@@ -88,19 +87,51 @@ test("stock search result opens chart research flow", async ({ page }) => {
   await expect(page.locator(".realChart canvas").first()).toBeVisible();
 });
 
-test("admin surface stays hidden without admin key", async ({ page }) => {
+test("theme search result opens visible AI market interpretation", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+
+  await page.fill("#universal-search", "반도체");
+  await expect(page.locator(".searchResults button").first()).toBeVisible();
+  await page.locator(".searchResults button").first().click();
+
+  await expect(page.locator(".heroAssistant")).toBeVisible();
+  await expect(page.locator(".assistantAnswer")).toBeVisible();
+  await expect(page.locator(".assistantAnswer")).toContainText("반도체");
+  await expect(page.locator(".assistantAnswer")).toContainText("출처");
+  await expectNoHorizontalOverflow(page);
+});
+
+test("history page restores public calendar and detail access", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${APP_URL}/#history`, { waitUntil: "networkidle" });
+
+  await expect(page).toHaveTitle("기록 | 한국 주식 AI 리서치");
+  await expect(page.locator(".calendar")).toBeVisible();
+  await expect(page.locator(".detail")).toBeVisible();
+  await expect(page.locator(".adminPanel")).toHaveCount(0);
+  await expect(page.locator(".adminActions button")).toHaveCount(0);
+  await expect(page.locator(".backfillBar button")).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+});
+
+test("admin direct route explains key requirement without exposing admin actions", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${APP_URL}/#admin`, { waitUntil: "networkidle" });
 
-  await expect(page.locator(".marketHero")).toBeVisible();
-  await expect(page.locator(".adminPanel")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "운영" })).toHaveCount(0);
-  await expect(page.locator(".appNav button[aria-current='page']")).toHaveText("오늘");
+  await expect(page).toHaveTitle("운영 | 한국 주식 AI 리서치");
+  await expect(page.locator(".adminPanel")).toBeVisible();
+  await expect(page.locator(".adminPanel")).toContainText("관리자 키가 필요합니다");
+  await expect(page.locator(".calendar")).toBeVisible();
+  await expect(page.locator(".appNav button", { hasText: "운영" })).toHaveCount(0);
+  await expect(page.locator(".adminActions button")).toHaveCount(0);
+  await expect(page.locator(".backfillBar button")).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
 });
 
-test("empty market pulse fallback rows are not clickable", async ({ page }) => {
+test("empty market pulse fallback rows are not clickable when no latest summary exists", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.route("**/api/summaries/2026-05-03", (route) => {
+  await page.route(/\/api\/summaries\/(latest|\d{4}-\d{2}-\d{2})$/, (route) => {
     route.fulfill({
       status: 404,
       contentType: "application/json",

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { AiInsightPanel, AdminOperationsPanel, BriefHistoryCalendar } from "./AppPanels.jsx";
 import StockPriceChart from "./StockPriceChart.jsx";
 
 function naverMainFromDayUrl(dayUrl) {
@@ -164,12 +165,15 @@ const COPY = {
   sources: "출처",
   limitations: "한계",
   matchedTerms: "연결된 용어",
-  briefTermsTitle: "브리프 읽기 전 확인할 용어"
+  briefTermsTitle: "브리프 읽기 전 확인할 용어",
+  historyTitle: "히스토리",
+  adminKeyRequired: "운영 기능은 관리자 키가 필요합니다. URL에 ?ak=관리자키 를 추가하면 생성, 보관, 일괄 생성을 사용할 수 있습니다."
 };
 
 const PAGE_LABELS = {
   home: "오늘",
   research: "차트",
+  history: "기록",
   learning: "배우기",
   portfolio: "포트폴리오",
   admin: "운영"
@@ -234,6 +238,7 @@ function stockRouteHash(stock) {
 function pageFromHash(hash) {
   const value = (hash || "").replace(/^#/, "");
   if (value.startsWith("research")) return "research";
+  if (value === "history") return "history";
   if (value === "learning") return "learning";
   if (value === "portfolio") return "portfolio";
   if (value === "admin") return "admin";
@@ -891,6 +896,20 @@ export default function App() {
     } catch (e) {
       // 404 = no summary yet
       if (String(e.message).includes("404")) {
+        if (dateStr === isoDate(new Date())) {
+          try {
+            const latest = await apiFetch("/api/summaries/latest");
+            setSummary(latest);
+            if (latest?.date && latest.date !== dateStr) {
+              setSelected(latest.date);
+              const [y, m, d] = latest.date.split("-").map(Number);
+              setMonth(new Date(y, m - 1, d));
+            }
+            return;
+          } catch {
+            // fall through to the empty state when there is no stored summary.
+          }
+        }
         setSummary(null);
       }
       else setError(e.message || String(e));
@@ -1026,7 +1045,71 @@ export default function App() {
     }, 0);
   }
 
-  function selectSearchResult(item) {
+  async function askMarketAssistant(questionOverride, itemOverride) {
+    const question = (questionOverride || assistantQuestion || "오늘 시장을 초보자 관점으로 설명해줘").trim();
+    if (!question) return;
+
+    setAssistantLoading(true);
+    setAssistantResponse(null);
+    setError("");
+    try {
+      const data = await apiFetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          contextDate: selected,
+          topicType: itemOverride?.type || "market",
+          topicTitle: itemOverride?.title || "오늘 시장",
+          searchResult: itemOverride
+            ? {
+                type: itemOverride.type,
+                title: itemOverride.title,
+                code: itemOverride.code,
+                market: itemOverride.market,
+                tags: asArray(itemOverride.tags),
+                summary: itemOverride.summary,
+                source: itemOverride.source
+              }
+            : null,
+          summary: summary
+            ? {
+                date: summary.date,
+                topGainer: summary.topGainer,
+                topLoser: summary.topLoser,
+                mostMentioned: summary.mostMentioned
+              }
+            : null,
+          terms: briefTerms
+        })
+      });
+      setAssistantQuestion(question);
+      setAssistantResponse(data);
+    } catch (e) {
+      setAssistantQuestion(question);
+      setAssistantResponse({
+        answer: formatApiError(e),
+        confidence: "low",
+        sources: [],
+        limitations: ["AI 서비스 응답을 받지 못했습니다."]
+      });
+    } finally {
+      setAssistantLoading(false);
+      window.setTimeout(() => {
+        document.querySelector(".heroAssistant")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+    }
+  }
+
+  function askAssistant() {
+    if (activePage === "home") {
+      askMarketAssistant();
+      return;
+    }
+    askLearningAssistant();
+  }
+
+  async function selectSearchResult(item) {
     if (!item) return;
     if (item.type === "stock" && item.stock) {
       setSearchQuery(item.title);
@@ -1040,7 +1123,8 @@ export default function App() {
       return;
     }
     setSearchQuery(item.title);
-    setAssistantQuestion(`${item.title} 테마가 오늘 시장에서 왜 중요한지 초보자 관점으로 설명해줘`);
+    navigatePage("home");
+    await askMarketAssistant(`${item.title}이(가) 오늘 시장에서 왜 중요한지 초보자 관점으로 설명해줘`, item);
   }
 
   async function askLearningAssistant(questionOverride, termIdOverride) {
@@ -1311,25 +1395,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (activePage === "admin" && !adminKey) {
-      navigatePage("home");
-    }
-  }, [activePage, adminKey]);
-
-  useEffect(() => {
     setAiResearchResponse(null);
     loadStockResearch(currentStock, stockInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStock?.code, stockInterval]);
 
   const todayStr = useMemo(() => isoDate(new Date()), []);
-  const navItems = [
+  const primaryNavItems = [
     ["home", PAGE_LABELS.home],
-    ["research", PAGE_LABELS.research],
+    ["research", PAGE_LABELS.research]
+  ];
+  const menuNavItems = [
+    ["history", PAGE_LABELS.history],
     ["learning", PAGE_LABELS.learning],
     ["portfolio", PAGE_LABELS.portfolio]
   ];
-  const visibleNavItems = adminKey ? [...navItems, ["admin", PAGE_LABELS.admin]] : navItems;
+  const visibleMenuItems = adminKey ? [...menuNavItems, ["admin", PAGE_LABELS.admin]] : menuNavItems;
+  const isMenuActive = visibleMenuItems.some(([page]) => page === activePage);
+  const showsCalendar = activePage === "history" || activePage === "admin";
+  const showsDetail = activePage === "research" || activePage === "home" || activePage === "history" || activePage === "admin";
+  const usesResearchLayout = activePage === "research" || activePage === "home" || showsCalendar;
 
   useEffect(() => {
     const pageLabel = PAGE_LABELS[activePage] || PAGE_LABELS.home;
@@ -1343,73 +1428,17 @@ export default function App() {
   }
 
   const assistantPanel = (
-    <div className="assistantBox heroAssistant">
-      <div className="assistantHead">
-        <div>
-          <div className="assistantTitle">{activePage === "home" ? COPY.aiMarketPanel : COPY.assistantTitle}</div>
-          <div className="assistantSubtitle">{activePage === "home" ? COPY.aiMarketOneLine : COPY.assistantSubtitle}</div>
-        </div>
-        <span className="assistantDate">{selected}</span>
-      </div>
-      <div className="assistantInputRow">
-        <input
-          aria-label={COPY.assistantQuestionLabel}
-          value={assistantQuestion}
-          onChange={(e) => setAssistantQuestion(e.target.value)}
-          placeholder={COPY.assistantInputPlaceholder}
-          disabled={assistantLoading}
-        />
-        <button
-          className="btn primary small"
-          type="button"
-          onClick={() => askLearningAssistant()}
-          disabled={assistantLoading}
-        >
-          {assistantLoading ? COPY.loading : COPY.assistantAsk}
-        </button>
-      </div>
-      {assistantResponse ? (
-        <div className="assistantAnswer">
-          <div className="assistantAnswerHead">
-            <strong>{COPY.assistantAnswer}</strong>
-            <span>{COPY.confidence}: {assistantResponse.confidence}</span>
-          </div>
-          <pre>{assistantResponse.answer}</pre>
-          {asArray(assistantResponse.matchedTerms).length > 0 ? (
-            <div className="assistantMeta">
-              <strong>{COPY.matchedTerms}</strong>
-              <div>
-                {asArray(assistantResponse.matchedTerms).map((term) => (
-                  <button type="button" key={term.id} onClick={() => selectTerm(term)}>
-                    {term.term}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {asArray(assistantResponse.sources).length > 0 ? (
-            <div className="assistantMeta">
-              <strong>{COPY.sources}</strong>
-              <div>
-                {asArray(assistantResponse.sources).map((source) => (
-                  <span key={`${source.type}-${source.title}`}>{source.title}</span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-          {asArray(assistantResponse.limitations).length > 0 ? (
-            <div className="assistantMeta limitations">
-              <strong>{COPY.limitations}</strong>
-              <ul>
-                {asArray(assistantResponse.limitations).map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+    <AiInsightPanel
+      activePage={activePage}
+      copy={COPY}
+      selected={selected}
+      assistantQuestion={assistantQuestion}
+      setAssistantQuestion={setAssistantQuestion}
+      assistantLoading={assistantLoading}
+      assistantResponse={assistantResponse}
+      askAssistant={askAssistant}
+      selectTerm={selectTerm}
+    />
   );
 
   return (
@@ -1422,7 +1451,7 @@ export default function App() {
         </div>
         <div className="actions">
           <nav className="appNav" aria-label="주요 화면">
-            {visibleNavItems.map(([page, label]) => (
+            {primaryNavItems.map(([page, label]) => (
               <button
                 key={page}
                 type="button"
@@ -1434,16 +1463,31 @@ export default function App() {
               </button>
             ))}
           </nav>
-          <button className="btn ghost" onClick={jumpToLatest} disabled={loading}>
-            {COPY.moveToLatest}
-          </button>
-          <button
-            className="btn ghost"
-            onClick={() => setDarkMode((v) => !v)}
-            type="button"
-          >
-            {darkMode ? COPY.toggleDarkOff : COPY.toggleDarkOn}
-          </button>
+          <details className={`navMenu ${isMenuActive ? "active" : ""}`}>
+            <summary>메뉴</summary>
+            <div className="navMenuPanel">
+              {visibleMenuItems.map(([page, label]) => (
+                <button
+                  key={page}
+                  type="button"
+                  className={activePage === page ? "active" : ""}
+                  aria-current={activePage === page ? "page" : undefined}
+                  onClick={(e) => {
+                    navigatePage(page);
+                    e.currentTarget.closest("details")?.removeAttribute("open");
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+              <button type="button" onClick={jumpToLatest} disabled={loading}>
+                {COPY.moveToLatest}
+              </button>
+              <button type="button" onClick={() => setDarkMode((v) => !v)}>
+                {darkMode ? COPY.toggleDarkOff : COPY.toggleDarkOn}
+              </button>
+            </div>
+          </details>
         </div>
       </header>
 
@@ -1526,7 +1570,7 @@ export default function App() {
 
       {(activePage === "home" || activePage === "learning") ? assistantPanel : null}
 
-      {activePage === "home" ? (
+      {activePage === "history" ? (
       <section className="card overview">
         <div className="overviewItem">
           <span className="label">{COPY.cumulativeSummaries}</span>
@@ -1543,7 +1587,7 @@ export default function App() {
       </section>
       ) : null}
 
-      {activePage === "home" ? (
+      {activePage === "history" ? (
       <section className="card overview insights">
         <div className="overviewItem">
           <span className="label">{COPY.monthlyTotalDays}</span>
@@ -1571,116 +1615,47 @@ export default function App() {
       <main
         id="main-content"
         tabIndex="-1"
-        className={`main ${activePage === "research" || activePage === "home" ? "researchLayout" : "singleLayout"}`}
+        className={`main ${usesResearchLayout ? "researchLayout" : "singleLayout"}`}
       >
         {activePage !== "home" ? (
         <div className="sideStack">
         {activePage === "admin" ? (
-        <section className="card adminPanel">
-          <button
-            type="button"
-            className="adminToggle"
-            onClick={() => setShowAdminPanel((v) => !v)}
-            aria-expanded={showAdminPanel}
-          >
-            <span>
-              <strong>{COPY.adminTitle}</strong>
-              <small>{COPY.adminSubtitle}</small>
-            </span>
-            <span>{showAdminPanel ? COPY.closeAdmin : COPY.openAdmin}</span>
-          </button>
-          {(showAdminPanel || activePage === "admin") ? (
-            <div className="adminBody">
-              <div className="adminDateRow">
-                <label className="fieldLabel" htmlFor="selected-date">{COPY.selectedDate}</label>
-                <input
-                  id="selected-date"
-                  type="date"
-                  value={selected}
-                  onChange={(e) => setSelected(e.target.value)}
-                  className="dateInput"
-                  disabled={loading}
-                />
-              </div>
-              <div className="adminActions">
-                <button className="btn primary" onClick={() => generate(todayStr)} disabled={loading}>
-                  {COPY.generateToday}
-                </button>
-                <button className="btn" onClick={() => generate(selected)} disabled={loading}>
-                  {COPY.generateSelected}
-                </button>
-                {adminKey ? (
-                  <button className="btn ghost" onClick={archiveSelected} disabled={loading}>
-                    {COPY.archiveSelected}
-                  </button>
-                ) : null}
-              </div>
-              {adminKey ? (
-                <div className="backfillBar compact">
-                  <input type="date" aria-label="일괄 생성 시작일" value={backfillFrom} onChange={(e) => setBackfillFrom(e.target.value)} />
-                  <input type="date" aria-label="일괄 생성 종료일" value={backfillTo} onChange={(e) => setBackfillTo(e.target.value)} />
-                  <button className="btn ghost" onClick={runBackfill} disabled={loading}>
-                    {COPY.backfillRun}
-                  </button>
-                </div>
-              ) : null}
-              {backfillResult ? (
-                <div className="hint compact">
-                  완료: 성공 {backfillResult.successCount}, 저신뢰 {backfillResult.lowConfidenceCount}, 실패 {backfillResult.failCount}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
+        <AdminOperationsPanel
+          copy={COPY}
+          showAdminPanel={showAdminPanel}
+          setShowAdminPanel={setShowAdminPanel}
+          forceOpen={activePage === "admin"}
+          adminKey={adminKey}
+          selected={selected}
+          setSelected={setSelected}
+          loading={loading}
+          todayStr={todayStr}
+          generate={generate}
+          archiveSelected={archiveSelected}
+          backfillFrom={backfillFrom}
+          setBackfillFrom={setBackfillFrom}
+          backfillTo={backfillTo}
+          setBackfillTo={setBackfillTo}
+          runBackfill={runBackfill}
+          backfillResult={backfillResult}
+        />
         ) : null}
 
-        {activePage === "admin" ? (
-        <section className="card calendar">
-          <div className="calendarHead">
-            <button className="btn ghost" onClick={() => setMonth(addMonths(month, -1))}>
-              {COPY.prevMonth}
-            </button>
-            <div className="monthLabel">{monthLabel}</div>
-            <button className="btn ghost" onClick={() => setMonth(addMonths(month, 1))}>
-              {COPY.nextMonth}
-            </button>
-          </div>
-
-          <div className="dow">
-            {COPY.days.map((x) => (
-              <div key={x} className="dowCell">
-                {x}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid">
-            {days.map((d) => {
-              const dStr = isoDate(d);
-              const inMonth = d.getMonth() === month.getMonth();
-              const isSelected = dStr === selected;
-              const isToday = dStr === todayStr;
-              const hasSummary = monthHasSummary.has(dStr);
-              return (
-                <button
-                  key={dStr}
-                  className={[
-                    "day",
-                    inMonth ? "inMonth" : "outMonth",
-                    isSelected ? "selected" : "",
-                    isToday ? "today" : "",
-                    hasSummary ? "hasSummary" : ""
-                  ].join(" ")}
-                  aria-label={`${dStr}${hasSummary ? " 요약 있음" : ""}`}
-                  onClick={() => setSelected(dStr)}
-                >
-                  <div className="dayNum">{d.getDate()}</div>
-                  {hasSummary ? <div className="dot" title={COPY.summaryExists} /> : null}
-                </button>
-              );
-            })}
-          </div>
-        </section>
+        {showsCalendar ? (
+        <BriefHistoryCalendar
+          activePage={activePage}
+          copy={COPY}
+          selected={selected}
+          monthLabel={monthLabel}
+          setMonth={setMonth}
+          addMonths={addMonths}
+          days={days}
+          isoDate={isoDate}
+          month={month}
+          todayStr={todayStr}
+          monthHasSummary={monthHasSummary}
+          setSelected={setSelected}
+        />
         ) : null}
 
         {activePage === "learning" ? (
@@ -1847,7 +1822,7 @@ export default function App() {
         </div>
         ) : null}
 
-        {(activePage === "research" || activePage === "home") ? (
+        {showsDetail ? (
         <section className="card detail">
           <div className="detailHead">
             <div>
