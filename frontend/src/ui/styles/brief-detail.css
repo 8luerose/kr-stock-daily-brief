@@ -61,8 +61,23 @@
   justify-content: flex-end;
 }
 
-.briefTermButtons button.active,
-.briefTermButtons button:hover,
+.briefTermButtons a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.briefTermButtons a.active,
+.briefTermButtons a:hover,
 .assistantMeta button:hover {
   background: var(--accent);
   color: white;

@@ -31,11 +31,11 @@ stock AI web platform:
 
 | Perspective | Score | Current judgment |
 |---|---:|---|
-| User | 455/500 | Usable and clearer, but still not premium enough to call perfect |
-| Frontend developer | 455/500 | App structure, CSS, summary detail, and pure utilities are decomposed; domain hooks and visual system cleanup remain |
+| User | 465/500 | First-view value, button count, and chart access are clearer, but still not Toss-perfect |
+| Frontend developer | 462/500 | App structure, CSS, summary detail, and pure utilities are decomposed; domain hooks and design system cleanup remain |
 | Backend developer | 450/500 | Search, AI adapter, trade-zone contract, and marketdata timeout behavior improved, but full taxonomy/RAG depth is incomplete |
 | DevOps developer | 480/500 | Strong local quality gate, Docker health, API smoke, E2E coverage, and reduced smoke-test hang risk |
-| VC / shareholder | 410/500 | AI is visible and adapter-ready, but live LLM/RAG moat is not fully proven |
+| VC / shareholder | 418/500 | AI is more visible and adapter-ready, but live LLM/RAG moat is not fully proven |
 
 ## Work Completed In The Recovery Loop
 
@@ -73,6 +73,28 @@ stock AI web platform:
 - Collapsed repeated evidence links and developer/raw detail controls behind native disclosures.
 - Added a dedicated stock `trade-zones` API and connected the chart decision panel to it with client-side fallback.
 
+### First-view UX refresh
+
+- Replaced the dynamic stock-mover headline with a clearer product value headline:
+  - `AI가 오늘 한국 주식 흐름을 차트와 근거로 정리합니다`
+- Reduced first-viewport visible button count from:
+  - Desktop: 19 -> 2
+  - Mobile: 10 -> 2
+- Converted home-market pulse rows from primary buttons into compact signal cards.
+- Hid closed overflow-menu buttons from layout measurement and visual focus.
+- Moved the chart-first research panel above the home AI assistant and compacted mobile hero spacing.
+- Reordered the home summary so the stock chart and decision zones appear before secondary brief terms and raw detail sections.
+
+### Reference research notes
+
+The prompt requires a reference pass when the score is below 495/500. The current loop used these reference signals:
+
+- Toss Design System: mobile-first component discipline, bottom CTA patterns, and restrained action hierarchy (`https://developers-apps-in-toss.toss.im/design/components.html`)
+- Robinhood design policy: simple, intuitive investing UX and mobile familiarity as an accessibility strategy (`https://robinhood.com/us/en/policy/design/`)
+- Revolut stocks page: stock discovery, charts, market news, curated collections, and risk disclosure as one invest flow (`https://www.revolut.com/en-US/stocks/`)
+- Linear homepage/design refresh: low-noise product surfaces, AI workflows, and speed/focus positioning (`https://linear.app/homepage`, `https://linear.app/now/behind-the-latest-design-refresh`)
+- Stripe design/dashboard docs: dashboard home surfaces should route users to core workflows and show a relevant business overview (`https://docs.stripe.com/stripe-apps/design`, `https://docs.stripe.com/dashboard/basics`)
+
 ## Prompt-To-Artifact Checklist
 
 | Requirement | Evidence | Status |
@@ -91,6 +113,9 @@ stock AI web platform:
 | Docker health | `make health` via `make quality` | Done |
 | API smoke | `./scripts/test_all_apis.sh` via `make quality` | Done |
 | E2E | Playwright `13 passed` via `make quality` | Done |
+| First-view button reduction | Desktop first viewport `2`, mobile first viewport `2` from Playwright DOM measurement | Done |
+| Chart-first responsive audit | Chart enters first viewport on 1440 desktop, 768 tablet, and 390 mobile after the home refresh | Done |
+| Reference research | Toss, Robinhood, Revolut, Linear, Stripe reviewed for next-loop UI direction | Done |
 | 495/500 all perspectives | Current scores remain below 495 | Not done |
 | Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
 | Real live LLM quality | Adapter exists, but no configured live key/model verification | Not done |
@@ -117,7 +142,7 @@ The command covered:
 - API smoke tests
 - Playwright E2E across responsive viewports
 
-Result: all passed, including Playwright `13 passed`.
+Result: all passed through API smoke, and the Playwright E2E suite was rerun immediately after with `13 passed`.
 
 The current utility extraction was additionally verified before the next commit with:
 
@@ -134,11 +159,14 @@ Additional screenshots were captured from the Docker-served frontend:
 - `/tmp/krbrief-screens/audit-mobile-css-split.png`
 - `/tmp/krbrief-screens/audit-desktop-summary-panel.png`
 - `/tmp/krbrief-screens/audit-mobile-summary-panel.png`
+- `/tmp/krbrief-screens/current-desktop-home-loop2g.png`
+- `/tmp/krbrief-screens/current-tablet-home-loop2g.png`
+- `/tmp/krbrief-screens/current-mobile-home-loop2g.png`
 
 ## Remaining Gaps
 
 1. The product is better, but still below the prompt's 495/500 bar.
-2. The first-view UX is clearer, but not yet a complete Toss-quality redesign.
+2. The first-view UX is clearer and less button-heavy, but still not a complete Toss-quality redesign.
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
 4. Search still needs a real full KRX stock, industry, and theme taxonomy.
 5. Trade zones now have an API contract, but the first version is still heuristic and should be upgraded with richer market signals.

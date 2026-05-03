@@ -124,12 +124,12 @@ export function SummaryDetailPanel({
 }) {
   return (
     <section className="card detail">
-      <div className="detailHead">
+      {activePage === "home" ? null : <div className="detailHead">
         <div>
-          <div className="detailTitle">{activePage === "home" ? "차트 중심 브리프" : COPY.marketBrief}</div>
+          <div className="detailTitle">{COPY.marketBrief}</div>
           <div className="detailSub">{selected} 기준</div>
         </div>
-      </div>
+      </div>}
 
       {cfg.gateEnabled && !k ? (
         <div className="hint">{COPY.gatedHint}</div>
@@ -156,15 +156,14 @@ export function SummaryDetailPanel({
               <div className="briefTermsTitle">{COPY.briefTermsTitle}</div>
               <div className="briefTermButtons">
                 {briefTerms.map((term) => (
-                  <button
-                    type="button"
+                  <a
+                    href="#learning"
                     key={term.id}
                     onClick={() => selectTerm(term)}
                     className={selectedTerm?.id === term.id ? "active" : ""}
-                    aria-pressed={selectedTerm?.id === term.id}
                   >
                     {term.term}
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>
@@ -235,6 +234,7 @@ export function SummaryDetailPanel({
 
           <StockResearchPanel
             copy={COPY}
+            homeCompact={activePage === "home"}
             currentStock={currentStock}
             stockInterval={stockInterval}
             setStockInterval={setStockInterval}

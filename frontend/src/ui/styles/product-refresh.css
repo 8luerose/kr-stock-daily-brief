@@ -133,12 +133,12 @@ body {
   order: 0;
 }
 
-.summary > .briefTerms,
-.summary > .marketClosedBanner {
+.summary > .stockResearch {
   order: 1;
 }
 
-.summary > .stockResearch {
+.summary > .briefTerms,
+.summary > .marketClosedBanner {
   order: 2;
 }
 
@@ -361,27 +361,78 @@ body {
   }
 
   .marketHero h1 {
-    font-size: 31px;
-    line-height: 1.16;
+    font-size: 28px;
+    line-height: 1.14;
     word-break: keep-all;
     overflow-wrap: normal;
   }
 
   .marketHero p {
     max-width: none;
+    font-size: 14px;
     word-break: keep-all;
+  }
+
+  .heroMarketLine {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+
+  .heroMeta {
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .heroMeta span {
+    min-height: 30px;
+    padding: 4px 9px;
+    font-size: 11px;
+  }
+
+  .heroMeta span:last-child {
+    display: none;
   }
 
   .heroSearch {
     max-width: none;
+    margin-top: 14px;
   }
 
   .heroSearchBox {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 52px;
   }
 
   .heroSearchBox span {
     width: auto;
+    min-height: 38px;
+    padding: 0 10px;
+  }
+
+  .marketPulse {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .pulseRow {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 66px;
+    padding: 10px;
+  }
+
+  .pulseName {
+    font-size: 13px;
+  }
+
+  .pulseGroup,
+  .pulseTrack {
+    display: none;
+  }
+
+  .pulseRow strong {
+    grid-column: 1;
+    grid-row: auto;
+    font-size: 12px;
   }
 
   .searchResults {

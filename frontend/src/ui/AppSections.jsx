@@ -20,7 +20,7 @@ export function MarketHero({
   formatNumber,
   formatRate
 }) {
-  const pulseItems = stockPicks.length > 0 ? stockPicks.slice(0, 5) : [
+  const pulseItems = stockPicks.length > 0 ? stockPicks.slice(0, 3) : [
     { name: copy.topGainer, group: "상승", rate: 0 },
     { name: copy.topLoser, group: "하락", rate: 0 },
     { name: copy.mostMentioned, group: "관심", count: 0 }
@@ -30,8 +30,9 @@ export function MarketHero({
     <section className="marketHero">
       <div className="marketHeroMain">
         <div className="eyebrow">{copy.todayBrief}</div>
-        <h1>{headline}</h1>
-        <p>{summary ? copy.marketOneLine : copy.noMarketOneLine}</p>
+        <h1>{copy.heroTitle}</h1>
+        <p>{summary ? copy.heroSubtitle : copy.noMarketOneLine}</p>
+        {summary ? <div className="heroMarketLine"><span>{copy.aiInsight}</span>{headline}</div> : null}
         <div className="heroMeta">
           <span>{copy.dataAsOf}: {dataAsOf}</span>
           <span>{copy.sourceConfidence}: {confidenceLabel}</span>
@@ -70,21 +71,14 @@ export function MarketHero({
           ) : null}
         </div>
       </div>
-      <div className="marketPulse" aria-label="주요 종목 흐름">
+      <div className="marketPulse" role="list" aria-label="주요 종목 흐름">
         {pulseItems.map((stock, index) => {
           const rate = Number(stock.rate || 0);
           const width = stock.count
             ? Math.min(100, Math.max(18, Number(stock.count)))
             : Math.min(100, Math.max(18, Math.abs(rate) * 2.2));
-          return (
-            <button
-              type="button"
-              key={`${stock.group}-${stock.code || stock.name}-${index}`}
-              className={`pulseRow ${currentStock?.code && stock.code === currentStock.code ? "active" : ""}`}
-              aria-pressed={Boolean(currentStock?.code && stock.code === currentStock.code)}
-              disabled={!stock.code}
-              onClick={() => stock.code ? selectStock(stock) : null}
-            >
+          const content = (
+            <>
               <span className="pulseName">{stock.name}</span>
               <span className="pulseGroup">{stock.group}</span>
               <span className="pulseTrack">
@@ -94,7 +88,26 @@ export function MarketHero({
                 />
               </span>
               <strong>{stock.count ? `${formatNumber(stock.count)}건` : formatRate(stock.rate)}</strong>
-            </button>
+            </>
+          );
+
+          if (!stock.code) {
+            return (
+              <button type="button" key={`${stock.group}-${stock.name}-${index}`} className="pulseRow" disabled>
+                {content}
+              </button>
+            );
+          }
+
+          return (
+            <div
+              key={`${stock.group}-${stock.code || stock.name}-${index}`}
+              className={`pulseRow ${currentStock?.code && stock.code === currentStock.code ? "active" : ""}`}
+              role="listitem"
+              aria-label={`${stock.name} ${stock.group} ${stock.count ? `${formatNumber(stock.count)}건` : formatRate(stock.rate)}`}
+            >
+              {content}
+            </div>
           );
         })}
       </div>
@@ -338,6 +351,7 @@ export function PortfolioPanel({
 
 export function StockResearchPanel({
   copy,
+  homeCompact = false,
   currentStock,
   stockInterval,
   setStockInterval,
@@ -363,13 +377,13 @@ export function StockResearchPanel({
   if (!currentStock) return null;
 
   return (
-    <section id="stock-detail" className="stockResearch">
+    <section id="stock-detail" className={`stockResearch ${homeCompact ? "homeCompact" : ""}`}>
       <div className="stockResearchHead">
         <div>
           <span className="stockGroup">{currentStock.group}</span>
           <h3>{currentStock.name} {currentStock.code ? <small>{currentStock.code}</small> : null}</h3>
         </div>
-        <div className="intervalTabs" aria-label="차트 기간">
+        {!homeCompact ? <div className="intervalTabs" aria-label="차트 기간">
           {[
             ["daily", "일봉"],
             ["weekly", "주봉"],
@@ -385,7 +399,7 @@ export function StockResearchPanel({
               {label}
             </button>
           ))}
-        </div>
+        </div> : null}
       </div>
 
       <div className="stockResearchGrid">
@@ -400,7 +414,7 @@ export function StockResearchPanel({
           ) : null}
         </div>
         <div className="stockSignalPanel">
-          <div className="riskTabs" aria-label={copy.riskMode}>
+          {!homeCompact ? <div className="riskTabs" aria-label={copy.riskMode}>
             {[
               ["aggressive", copy.aggressive],
               ["neutral", copy.neutral],
@@ -413,10 +427,10 @@ export function StockResearchPanel({
                 aria-pressed={riskMode === value}
                 onClick={() => setRiskMode(value)}
               >
-                {label}
-              </button>
-            ))}
-          </div>
+              {label}
+            </button>
+          ))}
+          </div> : null}
           <div className="stockMetricRow">
             <span>랭킹</span>
             <strong>{currentStock.group}</strong>

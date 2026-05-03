@@ -2,6 +2,8 @@ export const COPY = {
   brand: "한국 주식 AI 리서치",
   productTagline: "오늘 시장을 초보자 언어로 읽는 브리프",
   todayBrief: "오늘의 시장 브리프",
+  heroTitle: "AI가 오늘 한국 주식 흐름을 차트와 근거로 정리합니다",
+  heroSubtitle: "검색하거나, 차트를 보거나, AI에게 물어보면 됩니다. 초보자도 오늘 시장의 이유와 리스크를 한 화면에서 확인합니다.",
   marketBrief: "시장 브리프",
   marketOneLine: "오늘 시장에서 눈에 띄는 종목과 확인할 근거를 먼저 보여줍니다.",
   noMarketOneLine: "아직 저장된 브리프가 없습니다. 최신 요약을 불러오거나 운영 담당자가 생성한 뒤 확인할 수 있습니다.",

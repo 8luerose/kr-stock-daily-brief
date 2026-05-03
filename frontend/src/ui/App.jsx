@@ -821,7 +821,7 @@ export default function App() {
         />
       ) : null}
 
-      {(activePage === "home" || activePage === "learning") ? assistantPanel : null}
+      {activePage === "learning" ? assistantPanel : null}
 
       {activePage === "history" ? (
         <HistoryOverview copy={COPY} stats={stats} insights={insights} />
@@ -954,6 +954,8 @@ export default function App() {
           />
         ) : null}
       </main>
+
+      {activePage === "home" ? assistantPanel : null}
     </div>
   );
 }

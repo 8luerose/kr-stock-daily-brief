@@ -112,6 +112,7 @@ textarea {
 .top {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 24px;
@@ -172,6 +173,30 @@ textarea {
   color: var(--text-secondary);
   font-size: 15px;
   line-height: 1.65;
+}
+
+.heroMarketLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent-light) 54%, var(--card));
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
+.heroMarketLine span {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 12px;
 }
 
 .heroMeta {
@@ -365,7 +390,7 @@ textarea {
   background: var(--card);
   color: var(--text);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
   transition: var(--transition);
 }
 
@@ -395,13 +420,22 @@ textarea {
 }
 
 .pulseGroup {
+  grid-column: 1;
+  grid-row: 2;
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
 
+.pulseRow strong {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
 .pulseTrack {
   grid-column: 1 / -1;
+  grid-row: 3;
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
@@ -502,6 +536,10 @@ textarea {
 
 .navMenu[open] summary {
   transform: translateY(-1px);
+}
+
+.navMenu:not([open]) .navMenuPanel {
+  display: none;
 }
 
 .navMenuPanel {
@@ -627,4 +665,3 @@ textarea {
 .detail {
   order: 1;
 }
-
