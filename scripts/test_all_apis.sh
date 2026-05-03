@@ -124,10 +124,13 @@ contains_field /tmp/krbrief_resp.json asOf || fail "stock chart missing asOf"
 pass "GET /api/stocks/{code}/chart"
 
 # 14) Stock events
-EVENT_FROM="$(date -v-90d +%F 2>/dev/null || date -d '90 days ago' +%F)"
+EVENT_FROM="$(date -v-180d +%F 2>/dev/null || date -d '180 days ago' +%F)"
 code=$(status_code GET "$BASE_URL/api/stocks/005930/events?from=$EVENT_FROM&to=$DATE_TODAY")
 [[ "$code" == "200" ]] || fail "stock events expected 200, got $code"
 contains_field /tmp/krbrief_resp.json events || fail "stock events missing events"
+contains_field /tmp/krbrief_resp.json evidenceSources || fail "stock events missing evidenceSources"
+grep -q '"type":"news"' /tmp/krbrief_resp.json || fail "stock events missing news evidence source"
+grep -q '"type":"disclosure"' /tmp/krbrief_resp.json || fail "stock events missing disclosure evidence source"
 pass "GET /api/stocks/{code}/events"
 
 # 15) Stock trade zones

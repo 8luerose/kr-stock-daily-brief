@@ -1,6 +1,21 @@
 import React from "react";
 import StockPriceChart from "./StockPriceChart.jsx";
 
+function eventEvidenceSources(event) {
+  const sources = Array.isArray(event?.evidenceSources) ? event.evidenceSources : [];
+  if (sources.length > 0) return sources;
+  return (Array.isArray(event?.evidenceLinks) ? event.evidenceLinks : []).map((url, index) => ({
+    type: index === 0 ? "price_history" : "source",
+    title: index === 0 ? "시세" : `근거 ${index + 1}`,
+    url,
+    description: ""
+  }));
+}
+
+function primaryEventHref(event) {
+  return eventEvidenceSources(event)[0]?.url || "#";
+}
+
 export function MarketHero({
   copy,
   summary,
@@ -470,13 +485,16 @@ export function StockResearchPanel({
               {asArray(stockEvents.events).slice(0, 4).map((event) => (
                 <a
                   key={`${event.date}-${event.type}`}
-                  href={asArray(event.evidenceLinks)[0] || "#"}
+                  href={primaryEventHref(event)}
                   target="_blank"
                   rel="noreferrer"
                   title={event.explanation}
                 >
                   <span>{event.date}</span>
                   <strong>{event.title}</strong>
+                  <em>
+                    {eventEvidenceSources(event).slice(0, 4).map((source) => source.title).join(" · ")}
+                  </em>
                 </a>
               ))}
             </div>

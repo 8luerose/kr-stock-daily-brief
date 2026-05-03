@@ -479,7 +479,28 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
       "explanation": "최근 20거래일 평균 대비 거래량이 크게 증가했습니다.",
       "evidenceLinks": [
         "https://finance.naver.com/item/sise_day.naver?code=005930",
-        "https://finance.naver.com/item/main.naver?code=005930"
+        "https://finance.naver.com/item/main.naver?code=005930",
+        "https://search.naver.com/search.naver?where=news&query=..."
+      ],
+      "evidenceSources": [
+        {
+          "type": "price_history",
+          "title": "네이버 일별 시세",
+          "url": "https://finance.naver.com/item/sise_day.naver?code=005930",
+          "description": "이벤트 날짜 전후의 일별 가격 흐름을 확인합니다."
+        },
+        {
+          "type": "news",
+          "title": "네이버 뉴스 검색",
+          "url": "https://search.naver.com/search.naver?where=news&query=...",
+          "description": "가격/거래량 변화와 같은 시점의 뉴스 후보를 확인합니다."
+        },
+        {
+          "type": "disclosure",
+          "title": "DART 공시 검색",
+          "url": "https://dart.fss.or.kr/",
+          "description": "확정 원인 판단 전 공식 공시 여부를 별도로 확인합니다."
+        }
       ]
     }
   ]

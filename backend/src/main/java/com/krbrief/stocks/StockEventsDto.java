@@ -16,5 +16,12 @@ public record StockEventsDto(
       Double volumeChangeRate,
       String title,
       String explanation,
-      List<String> evidenceLinks) {}
+      List<String> evidenceLinks,
+      List<EvidenceSourceDto> evidenceSources) {}
+
+  public record EvidenceSourceDto(
+      String type,
+      String title,
+      String url,
+      String description) {}
 }

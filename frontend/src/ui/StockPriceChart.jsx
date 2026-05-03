@@ -192,12 +192,16 @@ export default function StockPriceChart({ chart, events, darkMode }) {
       if (dayEvents.length > 0) {
         appendLine(lines, `마커 근거 ${dayEvents.length}건`, "tooltipEventHead");
         dayEvents.slice(0, 2).forEach((event) => {
-          const links = asArray(event.evidenceLinks);
+          const sources = asArray(event.evidenceSources);
+          const links = sources.length > 0 ? sources.map((source) => source.url).filter(Boolean) : asArray(event.evidenceLinks);
+          const sourceLabels = sources.length > 0
+            ? sources.slice(0, 3).map((source) => source.title).filter(Boolean).join(" · ")
+            : `출처 ${links.length || 0}개`;
           appendLine(lines, `${event.title || "차트 이벤트"} · 신뢰도 ${confidenceFromSeverity(event.severity)}`, "tooltipEventTitle");
           appendLine(lines, `이유: ${event.explanation || "가격/거래량 변화가 감지됐습니다."}`, "tooltipEventText");
           appendLine(
             lines,
-            `근거: 등락률 ${formatRate(event.priceChangeRate)} · 거래량 ${formatRate(event.volumeChangeRate)} · 출처 ${links.length || 0}개`,
+            `근거: 등락률 ${formatRate(event.priceChangeRate)} · 거래량 ${formatRate(event.volumeChangeRate)} · ${sourceLabels}`,
             "tooltipEventText"
           );
         });

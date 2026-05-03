@@ -40,7 +40,7 @@
 - [x] DART 검색을 보장한다.
 - [ ] 실제 LLM 연동을 검증한다.
 - [ ] 실제 RAG retrieval과 source-grounded answer를 검증한다.
-- [ ] 차트 이벤트 원인 분석을 제공한다.
+- [x] 차트 이벤트 원인 분석을 제공한다.
 - [ ] 일봉 차트를 제공한다.
 - [ ] 주봉 차트를 제공한다.
 - [ ] 월봉 차트를 제공한다.
@@ -208,7 +208,7 @@
 - [ ] 이동평균선 표시
 - [ ] 상승 이벤트 마커 표시
 - [ ] 하락 이벤트 마커 표시
-- [ ] 공시/뉴스/언급량 마커 표시
+- [x] 공시/뉴스/언급량 마커 표시
 - [ ] 매수 검토 구간 표시
 - [ ] 분할매수 검토 구간 표시
 - [ ] 관망 구간 표시
@@ -673,7 +673,7 @@
 - [x] 이벤트 마커 구현
 - [x] 공격형/중립형/보수형 시나리오별 조건형 매수/분할매수/관망/매도/손절 UX 구현
 - [x] 차트 마커 호버 상세 툴팁 고도화
-- [ ] 이벤트별 공시/뉴스/언급량 근거 링크 저장 고도화
+- [x] 이벤트별 공시/뉴스/언급량 근거 링크 저장 고도화
 
 ### 6.4 Phase 3. AI/RAG 기능
 
@@ -850,6 +850,14 @@
 - [x] AI structured answer 루프 `npm run test:e2e -- --reporter=line -g "theme search result opens visible AI market interpretation"`: 통과
 - [x] AI structured answer 루프 최종 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 - [x] AI structured answer 루프 스크린샷: `/tmp/krbrief-screens/ai-structured-answer-1440.png`
+- [x] Event evidence source 루프 `python3 -m py_compile marketdata-python/app/main.py`: 통과
+- [x] Event evidence source 루프 `./gradlew test --tests com.krbrief.stocks.StockControllerTest`: 통과
+- [x] Event evidence source 루프 `npm run build`: 통과
+- [x] Docker 기준 `GET /api/stocks/005930/events`: `evidenceSources`에 price_history, finance_summary, news, disclosure, discussion 반환
+- [x] Event evidence source 루프 `./scripts/test_all_apis.sh`: news/disclosure evidence source 확인 포함 통과
+- [x] Event evidence source 루프 `npm run test:e2e -- --reporter=line -g "chart tab supports interval switching"`: 통과
+- [x] Event evidence source 루프 최종 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] Event evidence source 루프 스크린샷: `/tmp/krbrief-screens/chart-event-evidence-sources-1440.png`
 
 ### 9.3 최신 viewport 계측
 
@@ -885,15 +893,15 @@
 
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
-| 사용자 | 493/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변 검증 | Toss급 최종 polish, live AI 체감 부족 |
-| 프론트 개발자 | 483/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, 마커 tooltip/AI structured E2E 강화 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
-| 백엔드 개발자 | 491/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 지지/저항/거래량 근거 연결 | live RAG 검증 부족 |
+| 사용자 | 493/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
+| 프론트 개발자 | 484/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, 마커 tooltip/AI structured/event source E2E 강화 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
+| 백엔드 개발자 | 492/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, 이벤트 source contract 연결 | live RAG 검증 부족 |
 | DevOps 개발자 | 490/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
-| VC/투자자 | 458/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip, AI 답변 구조화 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 462/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source, AI 답변 구조화 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 AI structured answer 루프 변경분을 의미 있는 단위로 commit/push한다.
+1. 이번 event evidence source 루프 변경분을 의미 있는 단위로 commit/push한다.
 2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 assistant/history/summary 상태 훅 분리를 진행한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.

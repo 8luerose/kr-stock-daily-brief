@@ -8,6 +8,7 @@ def _is_normal_ticker(code: str) -> bool:
     """Return True if code is a standard 6-digit Korean stock code."""
     return bool(re.match(r'^[0-9]{6}$', str(code)))
 import urllib.request
+from urllib.parse import quote
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import datetime, timedelta
 from functools import lru_cache
@@ -464,11 +465,44 @@ def _ohlcv_records(df: pd.DataFrame) -> list[dict]:
     return records
 
 
-def _naver_evidence_links(code: str) -> list[str]:
+def _event_evidence_sources(code: str, name: str) -> list[dict[str, str]]:
+    query = quote(f"{name} {code} 주가 거래량 공시")
     return [
-        f"https://finance.naver.com/item/sise_day.naver?code={code}",
-        f"https://finance.naver.com/item/main.naver?code={code}",
+        {
+            "type": "price_history",
+            "title": "네이버 일별 시세",
+            "url": f"https://finance.naver.com/item/sise_day.naver?code={code}",
+            "description": "이벤트 날짜 전후의 일별 가격 흐름을 확인합니다.",
+        },
+        {
+            "type": "finance_summary",
+            "title": "네이버 종목 종합",
+            "url": f"https://finance.naver.com/item/main.naver?code={code}",
+            "description": "종목 기본 정보와 시세 요약을 확인합니다.",
+        },
+        {
+            "type": "news",
+            "title": "네이버 뉴스 검색",
+            "url": f"https://search.naver.com/search.naver?where=news&query={query}",
+            "description": "가격/거래량 변화와 같은 시점의 뉴스 후보를 확인합니다.",
+        },
+        {
+            "type": "disclosure",
+            "title": "DART 공시 검색",
+            "url": "https://dart.fss.or.kr/",
+            "description": "확정 원인 판단 전 공식 공시 여부를 별도로 확인합니다.",
+        },
+        {
+            "type": "discussion",
+            "title": "네이버 종목토론",
+            "url": f"https://finance.naver.com/item/board.naver?code={code}&page=1",
+            "description": "개인투자자 관심 변화와 언급 후보를 참고합니다.",
+        },
     ]
+
+
+def _event_evidence_links(sources: list[dict[str, str]]) -> list[str]:
+    return [source["url"] for source in sources if source.get("url")]
 
 
 def _event_severity(abs_price_rate: float, volume_rate: float) -> str:
@@ -479,7 +513,7 @@ def _event_severity(abs_price_rate: float, volume_rate: float) -> str:
     return "low"
 
 
-def _detect_chart_events(code: str, df: pd.DataFrame, from_ymd: str, to_ymd: str) -> list[dict]:
+def _detect_chart_events(code: str, name: str, df: pd.DataFrame, from_ymd: str, to_ymd: str) -> list[dict]:
     events: list[dict] = []
     daily = df.copy().sort_index()
     daily["prev_close"] = daily["close"].shift(1)
@@ -490,7 +524,8 @@ def _detect_chart_events(code: str, df: pd.DataFrame, from_ymd: str, to_ymd: str
     start = pd.to_datetime(from_ymd)
     end = pd.to_datetime(to_ymd)
     target = daily[(daily.index >= start) & (daily.index <= end)]
-    evidence = _naver_evidence_links(code)
+    evidence_sources = _event_evidence_sources(code, name)
+    evidence_links = _event_evidence_links(evidence_sources)
 
     for idx, row in target.iterrows():
         price_rate = round(float(row["price_rate"]), 2)
@@ -534,7 +569,8 @@ def _detect_chart_events(code: str, df: pd.DataFrame, from_ymd: str, to_ymd: str
                     "volumeChangeRate": volume_rate,
                     "title": title,
                     "explanation": explanation,
-                    "evidenceLinks": evidence,
+                    "evidenceLinks": evidence_links,
+                    "evidenceSources": evidence_sources,
                 }
             )
 
@@ -914,12 +950,14 @@ def stock_events(code: str, from_date: str | None = Query(default=None, alias="f
     lookback_from = (datetime.strptime(from_ymd, "%Y%m%d").date() - timedelta(days=90)).strftime("%Y%m%d")
     raw = _load_ohlcv_frame(ticker, lookback_from, to_ymd)
 
+    name = _name(ticker)
+
     return {
         "code": ticker,
-        "name": _name(ticker),
+        "name": name,
         "from": f"{from_ymd[0:4]}-{from_ymd[4:6]}-{from_ymd[6:8]}",
         "to": f"{to_ymd[0:4]}-{to_ymd[4:6]}-{to_ymd[6:8]}",
-        "events": _detect_chart_events(ticker, raw, from_ymd, to_ymd),
+        "events": _detect_chart_events(ticker, name, raw, from_ymd, to_ymd),
     }
 
 

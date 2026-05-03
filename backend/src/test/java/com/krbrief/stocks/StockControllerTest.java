@@ -60,12 +60,20 @@ class StockControllerTest {
                         230.5,
                         "거래량 급증",
                         "최근 20거래일 평균 대비 거래량이 크게 증가했습니다.",
-                        List.of("https://finance.naver.com/item/main.naver?code=005930")))));
+                        List.of("https://finance.naver.com/item/main.naver?code=005930"),
+                        List.of(
+                            new StockEventsDto.EvidenceSourceDto(
+                                "news",
+                                "네이버 뉴스 검색",
+                                "https://search.naver.com/search.naver?where=news&query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90",
+                                "가격/거래량 변화와 같은 시점의 뉴스 후보를 확인합니다."))))));
 
     mvc.perform(get("/api/stocks/005930/events?from=2026-04-01&to=2026-05-01"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.events[0].type").value("volume_spike"))
-        .andExpect(jsonPath("$.events[0].evidenceLinks").isArray());
+        .andExpect(jsonPath("$.events[0].evidenceLinks").isArray())
+        .andExpect(jsonPath("$.events[0].evidenceSources").isArray())
+        .andExpect(jsonPath("$.events[0].evidenceSources[0].type").value("news"));
   }
 
   @Test
