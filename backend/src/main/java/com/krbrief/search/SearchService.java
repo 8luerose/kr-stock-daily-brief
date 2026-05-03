@@ -155,18 +155,19 @@ public class SearchService {
 
   private int score(SearchResultDto item, String q) {
     String type = safe(item.type());
+    String source = safe(item.source());
     String title = normalize(item.title());
     String code = normalize(item.code());
+    boolean taxonomy = "theme".equals(type) || "industry".equals(type) || "market".equals(type) || "term".equals(type);
     if (title.equals(q) || code.equals(q)) return 0;
-    if (("theme".equals(type) || "industry".equals(type) || "market".equals(type) || "term".equals(type))
-        && title.contains(q)) return 1;
-    if ("stock".equals(type) && "stock_universe_baseline".equals(item.source()) && tagMatches(item.tags(), q)) return 2;
+    if (taxonomy && "search_taxonomy_baseline".equals(source) && title.contains(q)) return 1;
+    if ("stock".equals(type) && "stock_universe_baseline".equals(source) && tagMatches(item.tags(), q)) return 2;
     if ("stock".equals(type) && (title.contains(q) || code.contains(q))) return 3;
-    if (("theme".equals(type) || "industry".equals(type) || "market".equals(type) || "term".equals(type))
-        && tagMatches(item.tags(), q)) return 4;
-    if ("stock".equals(type) && tagMatches(item.tags(), q)) return 5;
-    if (normalize(item.summary()).contains(q)) return 6;
-    return 7;
+    if (taxonomy && title.contains(q)) return 4;
+    if (taxonomy && tagMatches(item.tags(), q)) return 5;
+    if ("stock".equals(type) && tagMatches(item.tags(), q)) return 6;
+    if (normalize(item.summary()).contains(q)) return 7;
+    return 8;
   }
 
   private boolean tagMatches(List<String> tags, String q) {

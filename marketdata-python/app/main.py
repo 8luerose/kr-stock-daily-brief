@@ -11,6 +11,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import datetime, timedelta
 from functools import lru_cache
+from io import StringIO
 
 import os
 
@@ -679,6 +680,66 @@ def _sector_taxonomy_for_day(ymd: str) -> tuple[dict, ...]:
     return tuple(out)
 
 
+def _clean_text(value) -> str:
+    text = str(value or "").strip()
+    return "" if text == "nan" else text
+
+
+@lru_cache(maxsize=4)
+def _theme_taxonomy_from_naver(max_pages: int = 10) -> tuple[dict, ...]:
+    first_html = _naver_fetch("https://finance.naver.com/sise/theme.naver")
+    page_numbers = [int(v) for v in re.findall(r"theme\.naver\?&(?:amp;)?page=(\d+)", first_html)]
+    total_pages = max(page_numbers) if page_numbers else 1
+    total_pages = max(1, min(total_pages, max_pages))
+
+    items: list[dict] = []
+    seen: set[str] = set()
+    for page in range(1, total_pages + 1):
+        html = first_html if page == 1 else _naver_fetch(f"https://finance.naver.com/sise/theme.naver?&page={page}")
+        try:
+            tables = pd.read_html(StringIO(html))
+        except Exception:
+            continue
+        if not tables:
+            continue
+        table = tables[0]
+        for _, row in table.iterrows():
+            if len(row) < 8:
+                continue
+            name = _clean_text(row.iloc[0])
+            if not name or name in seen:
+                continue
+            seen.add(name)
+
+            leader_names = [_clean_text(row.iloc[6]), _clean_text(row.iloc[7])]
+            leaders = [value for value in leader_names if value]
+            rising = _safe_int(row.iloc[3])
+            flat = _safe_int(row.iloc[4])
+            falling = _safe_int(row.iloc[5])
+            rate = _clean_text(row.iloc[1])
+            three_day_rate = _clean_text(row.iloc[2])
+            items.append(
+                {
+                    "name": name,
+                    "type": "theme",
+                    "market": "테마",
+                    "rate": rate,
+                    "threeDayRate": three_day_rate,
+                    "risingCount": rising,
+                    "flatCount": flat,
+                    "fallingCount": falling,
+                    "leaders": leaders,
+                    "summary": (
+                        f"Naver Finance 테마 시세 기준입니다. "
+                        f"상승 {rising}개, 보합 {flat}개, 하락 {falling}개. "
+                        f"주도주: {', '.join(leaders) if leaders else '확인 필요'}."
+                    ),
+                }
+            )
+
+    return tuple(items)
+
+
 @app.get("/stocks/universe")
 def stock_universe(query: str | None = None, limit: int = 5000):
     today_ymd = datetime.now().strftime("%Y%m%d")
@@ -749,6 +810,40 @@ def stock_sectors(query: str | None = None, limit: int = 200):
         "count": min(len(filtered), safe_limit),
         "adjustmentNote": adjust_note,
         "sectors": filtered[:safe_limit],
+    }
+
+
+@app.get("/stocks/themes")
+def stock_themes(query: str | None = None, limit: int = 300):
+    safe_limit = max(1, min(int(limit or 300), 500))
+    try:
+        themes = list(_theme_taxonomy_from_naver())
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"naver_theme_taxonomy_error: {type(e).__name__}") from e
+
+    q = _normalize_query(query)
+    if q:
+        filtered = [
+            item
+            for item in themes
+            if q in " ".join(
+                [
+                    item.get("name", ""),
+                    item.get("market", ""),
+                    item.get("summary", ""),
+                    " ".join(item.get("leaders", [])),
+                ]
+            ).lower()
+        ]
+    else:
+        filtered = themes
+
+    return {
+        "asOf": datetime.now().strftime("%Y-%m-%d"),
+        "source": "naver_finance_theme",
+        "totalCount": len(themes),
+        "count": min(len(filtered), safe_limit),
+        "themes": filtered[:safe_limit],
     }
 
 

@@ -150,6 +150,35 @@ class StockControllerTest {
   }
 
   @Test
+  void themes_returnsGatewayResponse() throws Exception {
+    when(client.themes(eq("전선"), eq(5)))
+        .thenReturn(
+            new StockThemeUniverseDto(
+                "2026-05-01",
+                "naver_finance_theme",
+                260,
+                1,
+                List.of(
+                    new StockThemeUniverseDto.StockThemeDto(
+                        "전선",
+                        "theme",
+                        "테마",
+                        "+9.20%",
+                        "+7.40%",
+                        7,
+                        0,
+                        1,
+                        List.of("KBI메탈", "대원전선"),
+                        "Naver Finance 테마 시세 기준입니다."))));
+
+    mvc.perform(get("/api/stocks/themes").param("query", "전선").param("limit", "5"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.source").value("naver_finance_theme"))
+        .andExpect(jsonPath("$.themes[0].name").value("전선"))
+        .andExpect(jsonPath("$.themes[0].leaders[0]").value("KBI메탈"));
+  }
+
+  @Test
   void invalidInputs_return400() throws Exception {
     mvc.perform(get("/api/stocks/abc/chart")).andExpect(status().isBadRequest());
     mvc.perform(get("/api/stocks/005930/chart?range=2Y")).andExpect(status().isBadRequest());

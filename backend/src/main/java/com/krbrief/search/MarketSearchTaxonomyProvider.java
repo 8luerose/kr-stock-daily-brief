@@ -2,6 +2,7 @@ package com.krbrief.search;
 
 import com.krbrief.stocks.StockResearchClient;
 import com.krbrief.stocks.StockSectorUniverseDto;
+import com.krbrief.stocks.StockThemeUniverseDto;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -32,24 +33,32 @@ public class MarketSearchTaxonomyProvider implements SearchTaxonomyProvider {
       return current.items();
     }
 
-    try {
-      StockSectorUniverseDto res = client.sectors(null, 500);
-      List<SearchResultDto> merged = mergeWithBaseline(res);
-      cache = new CacheEntry(merged, Instant.now().plus(CACHE_TTL));
-      return merged;
-    } catch (RuntimeException e) {
-      log.warn("Falling back to baseline search taxonomy after sector classification load failed: {}", e.toString());
-      return SearchTaxonomyCatalog.baseline();
-    }
+    List<SearchResultDto> merged = mergeWithBaseline();
+    cache = new CacheEntry(merged, Instant.now().plus(CACHE_TTL));
+    return merged;
   }
 
-  private List<SearchResultDto> mergeWithBaseline(StockSectorUniverseDto res) {
+  private List<SearchResultDto> mergeWithBaseline() {
     Map<String, SearchResultDto> out = new LinkedHashMap<>();
     for (SearchResultDto item : SearchTaxonomyCatalog.baseline()) {
       out.put(item.id(), item);
     }
+
+    addSectors(out);
+    addThemes(out);
+    return List.copyOf(out.values());
+  }
+
+  private void addSectors(Map<String, SearchResultDto> out) {
+    StockSectorUniverseDto res;
+    try {
+      res = client.sectors(null, 500);
+    } catch (RuntimeException e) {
+      log.warn("Falling back to baseline industry taxonomy after sector classification load failed: {}", e.toString());
+      return;
+    }
     if (res == null || res.sectors() == null) {
-      return List.copyOf(out.values());
+      return;
     }
 
     for (StockSectorUniverseDto.StockSectorDto sector : res.sectors()) {
@@ -57,7 +66,25 @@ public class MarketSearchTaxonomyProvider implements SearchTaxonomyProvider {
       SearchResultDto item = toSearchResult(sector, res.asOf());
       out.putIfAbsent(item.id(), item);
     }
-    return List.copyOf(out.values());
+  }
+
+  private void addThemes(Map<String, SearchResultDto> out) {
+    StockThemeUniverseDto res;
+    try {
+      res = client.themes(null, 500);
+    } catch (RuntimeException e) {
+      log.warn("Falling back to baseline theme taxonomy after Naver theme load failed: {}", e.toString());
+      return;
+    }
+    if (res == null || res.themes() == null) {
+      return;
+    }
+
+    for (StockThemeUniverseDto.StockThemeDto theme : res.themes()) {
+      if (theme == null || isBlank(theme.name())) continue;
+      SearchResultDto item = toSearchResult(theme, res.asOf());
+      out.putIfAbsent(item.id(), item);
+    }
   }
 
   private SearchResultDto toSearchResult(StockSectorUniverseDto.StockSectorDto sector, String asOf) {
@@ -94,12 +121,55 @@ public class MarketSearchTaxonomyProvider implements SearchTaxonomyProvider {
         null);
   }
 
+  private SearchResultDto toSearchResult(StockThemeUniverseDto.StockThemeDto theme, String asOf) {
+    String title = theme.name();
+    String leaders = topThemeLeaders(theme.leaders());
+    String summary = isBlank(theme.summary())
+        ? "Naver Finance 테마 시세 기준 테마입니다."
+        : theme.summary();
+    if (!isBlank(asOf)) {
+      summary = summary + " 기준일: " + asOf + ".";
+    }
+
+    List<String> tags = new ArrayList<>();
+    tags.add("Naver 테마");
+    if (!isBlank(theme.threeDayRate())) {
+      tags.add("3일 " + theme.threeDayRate());
+    }
+    if (!isBlank(leaders)) {
+      tags.add(leaders);
+    }
+
+    return new SearchResultDto(
+        "theme-naver-" + Integer.toHexString(title.hashCode()),
+        "theme",
+        title,
+        "THEME",
+        "테마",
+        isBlank(theme.rate()) ? "Naver 테마" : theme.rate(),
+        tags,
+        summary,
+        "naver_theme_taxonomy",
+        null,
+        null,
+        null);
+  }
+
   private String topStockNames(List<StockSectorUniverseDto.StockSectorMemberDto> stocks) {
     if (stocks == null || stocks.isEmpty()) return "";
     return stocks.stream()
         .filter(item -> item != null && !isBlank(item.name()))
         .limit(3)
         .map(StockSectorUniverseDto.StockSectorMemberDto::name)
+        .reduce((a, b) -> a + ", " + b)
+        .orElse("");
+  }
+
+  private String topThemeLeaders(List<String> leaders) {
+    if (leaders == null || leaders.isEmpty()) return "";
+    return leaders.stream()
+        .filter(value -> !isBlank(value))
+        .limit(2)
         .reduce((a, b) -> a + ", " + b)
         .orElse("");
   }

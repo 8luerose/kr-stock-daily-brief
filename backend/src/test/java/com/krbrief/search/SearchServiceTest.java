@@ -154,4 +154,29 @@ class SearchServiceTest {
             && item.title().equals("의료·정밀기기")
             && item.source().equals("krx_sector_classification")));
   }
+
+  @Test
+  void search_usesExternalThemeTaxonomyProviderOutsideRepresentativeBaseline() {
+    DailySummaryService summaries = mock(DailySummaryService.class);
+    when(summaries.latest()).thenReturn(Optional.empty());
+    SearchTaxonomyProvider themeTaxonomy = () -> List.of(new SearchResultDto(
+        "theme-naver-wire",
+        "theme",
+        "전선",
+        "THEME",
+        "테마",
+        "+9.20%",
+        List.of("Naver 테마", "KBI메탈, 대원전선"),
+        "Naver Finance 테마 시세 기준입니다.",
+        "naver_theme_taxonomy",
+        null,
+        null,
+        null));
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse, themeTaxonomy);
+
+    assertTrue(service.search("전선", 10).stream()
+        .anyMatch(item -> item.type().equals("theme")
+            && item.title().equals("전선")
+            && item.source().equals("naver_theme_taxonomy")));
+  }
 }

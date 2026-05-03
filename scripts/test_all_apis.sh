@@ -152,7 +152,14 @@ grep -q '"name":"의료·정밀기기"' /tmp/krbrief_resp.json || fail "stock se
 contains_field /tmp/krbrief_resp.json totalCount || fail "stock sectors missing totalCount"
 pass "GET /api/stocks/sectors"
 
-# 18) AI chat
+# 18) Stock themes
+code=$(status_code GET "$BASE_URL/api/stocks/themes" --get --data-urlencode "query=전선" --data-urlencode "limit=5")
+[[ "$code" == "200" ]] || fail "stock themes expected 200, got $code"
+grep -q '"name":"전선"' /tmp/krbrief_resp.json || fail "stock themes missing 전선"
+contains_field /tmp/krbrief_resp.json totalCount || fail "stock themes missing totalCount"
+pass "GET /api/stocks/themes"
+
+# 19) AI chat
 code=$(status_code POST "$BASE_URL/api/ai/chat" \
   -H "Content-Type: application/json" \
   -d '{"question":"삼성전자 차트를 초보자 관점으로 설명해줘","contextDate":"'"$DATE_TODAY"'","stockCode":"005930","stockName":"삼성전자","searchResult":{"type":"stock","title":"삼성전자","stockCode":"005930","summary":"반도체와 메모리 업황을 함께 확인해야 하는 대표 종목입니다."}}')
@@ -165,7 +172,7 @@ contains_field /tmp/krbrief_resp.json sourceCount || fail "ai chat missing retri
 grep -q '"id":"search-result"' /tmp/krbrief_resp.json || fail "ai chat missing search-result retrieval document"
 pass "POST /api/ai/chat"
 
-# 19) Unified search
+# 20) Unified search
 code=$(status_code GET "$BASE_URL/api/search?query=%EB%B0%98%EB%8F%84%EC%B2%B4&limit=5")
 [[ "$code" == "200" ]] || fail "search expected 200, got $code"
 contains_field /tmp/krbrief_resp.json source || fail "search missing source"
@@ -200,5 +207,6 @@ search_expect_contains "PER" '"termId":"per"'
 search_expect_contains "DART" '"termId":"dart"'
 search_expect_contains "유한양행" '"stockCode":"000100"'
 search_expect_contains "의료·정밀기기" '"source":"krx_sector_classification"'
+search_expect_contains "전선" '"source":"naver_theme_taxonomy"'
 
 echo "== API smoke test done: ALL PASS =="

@@ -122,4 +122,31 @@ public class StockResearchClient {
       throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "marketdata_sectors_error", e);
     }
   }
+
+  public StockThemeUniverseDto themes(String query, int limit) {
+    try {
+      StockThemeUniverseDto res =
+          http
+              .get()
+              .uri(
+                  uriBuilder -> {
+                    var builder = uriBuilder.path("/stocks/themes").queryParam("limit", limit);
+                    if (query != null && !query.isBlank()) {
+                      builder.queryParam("query", query);
+                    }
+                    return builder.build();
+                  })
+              .accept(MediaType.APPLICATION_JSON)
+              .retrieve()
+              .body(StockThemeUniverseDto.class);
+      if (res == null) {
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "marketdata_empty_themes_response");
+      }
+      return res;
+    } catch (ResponseStatusException e) {
+      throw e;
+    } catch (RestClientException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "marketdata_themes_error", e);
+    }
+  }
 }
