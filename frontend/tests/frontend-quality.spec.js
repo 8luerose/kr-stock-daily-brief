@@ -71,6 +71,16 @@ test("stock search result opens chart research flow", async ({ page }) => {
   await expect(page.locator(".realChart canvas").first()).toBeVisible();
 });
 
+test("admin surface stays hidden without admin key", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${APP_URL}/#admin`, { waitUntil: "networkidle" });
+
+  await expect(page.locator(".marketHero")).toBeVisible();
+  await expect(page.locator(".adminPanel")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "운영" })).toHaveCount(0);
+  await expect(page.locator(".appNav button[aria-current='page']")).toHaveText("오늘");
+});
+
 test("chart tab supports interval switching and bounded tooltip display", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${APP_URL}/#research`, { waitUntil: "networkidle" });

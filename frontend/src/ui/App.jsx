@@ -1473,6 +1473,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (activePage === "admin" && !adminKey) {
+      navigatePage("home");
+    }
+  }, [activePage, adminKey]);
+
+  useEffect(() => {
     setAiResearchResponse(null);
     loadStockResearch(currentStock, stockInterval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
