@@ -1894,7 +1894,7 @@ export default function App() {
 
               {summary.marketClosed === true && (
                 <div className="marketClosedBanner">
-                  <div className="marketClosedIcon">📭</div>
+                  <div className="marketClosedIcon" aria-hidden="true">휴장</div>
                   <div>
                     <div className="marketClosedTitle">{COPY.marketClosed}</div>
                     <div className="marketClosedDesc">{summary.marketClosedReason || COPY.marketClosedDesc}</div>
