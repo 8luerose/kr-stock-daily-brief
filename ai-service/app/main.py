@@ -218,6 +218,22 @@ def health():
     return {"status": "UP"}
 
 
+@app.get("/llm/status")
+def llm_status():
+    api_key_set = bool(os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY"))
+    model = os.getenv("LLM_MODEL", "").strip()
+    base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    return {
+        "provider": "openai_compatible",
+        "configured": api_key_set and bool(model),
+        "apiKeySet": api_key_set,
+        "modelConfigured": bool(model),
+        "model": model,
+        "baseUrl": base_url,
+        "fallbackMode": "rag_fallback_rule_based",
+    }
+
+
 @app.post("/chat")
 def chat(req: ChatRequest):
     subject = _clean(req.stockName or req.topicTitle, "선택한 주제")

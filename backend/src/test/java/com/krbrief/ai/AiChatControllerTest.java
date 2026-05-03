@@ -2,6 +2,7 @@ package com.krbrief.ai;
 
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,5 +43,24 @@ class AiChatControllerTest {
         .andExpect(jsonPath("$.sources").isArray())
         .andExpect(jsonPath("$.limitations").isArray())
         .andExpect(jsonPath("$.oppositeSignals").isArray());
+  }
+
+  @Test
+  void status_proxiesAiServiceLlmStatusWithoutSecretValue() throws Exception {
+    when(client.status())
+        .thenReturn(
+            Map.of(
+                "provider", "openai_compatible",
+                "configured", false,
+                "apiKeySet", false,
+                "modelConfigured", false,
+                "model", "",
+                "fallbackMode", "rag_fallback_rule_based"));
+
+    mvc.perform(get("/api/ai/status"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.provider").value("openai_compatible"))
+        .andExpect(jsonPath("$.configured").value(false))
+        .andExpect(jsonPath("$.fallbackMode").value("rag_fallback_rule_based"));
   }
 }

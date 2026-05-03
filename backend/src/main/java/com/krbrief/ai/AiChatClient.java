@@ -43,4 +43,24 @@ public class AiChatClient {
       throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "ai_service_chat_error", e);
     }
   }
+
+  public Map<String, Object> status() {
+    try {
+      Map<String, Object> res =
+          http
+              .get()
+              .uri("/llm/status")
+              .accept(MediaType.APPLICATION_JSON)
+              .retrieve()
+              .body(MAP_TYPE);
+      if (res == null) {
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "ai_service_empty_status_response");
+      }
+      return res;
+    } catch (ResponseStatusException e) {
+      throw e;
+    } catch (RestClientException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "ai_service_status_error", e);
+    }
+  }
 }

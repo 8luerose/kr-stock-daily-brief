@@ -351,19 +351,19 @@
 - [x] 산업/테마 검색 결과 클릭 시 상세/관련 종목/AI 분석으로 이동
 - [ ] 용어 검색 결과 클릭 시 배우기 상세로 이동
 - [ ] 검색 실패 시 대체 행동 제공
-- [ ] ai-service 실제 LLM adapter 추가
-- [ ] RAG 검색 계층 구현
-- [ ] RAG 대상 daily_summaries 포함
-- [ ] RAG 대상 stock_events 포함
-- [ ] RAG 대상 OHLCV/chart signals 포함
-- [ ] RAG 대상 learning terms 포함
-- [ ] RAG 대상 stock universe 포함
+- [x] ai-service 실제 LLM adapter 추가
+- [x] RAG 검색 계층 구현
+- [x] RAG 대상 daily_summaries 포함
+- [x] RAG 대상 stock_events 포함
+- [x] RAG 대상 OHLCV/chart signals 포함
+- [x] RAG 대상 learning terms 포함
+- [x] RAG 대상 stock universe 포함
 - [ ] RAG 대상 DART/news 후보 포함
-- [ ] 규칙형 응답은 fallback으로만 사용
+- [x] 규칙형 응답은 fallback으로만 사용
 - [ ] AI 응답마다 retrieval log 저장
-- [ ] AI 응답마다 source list 저장
-- [ ] AI 응답마다 confidence 저장
-- [ ] AI 응답마다 limitation 저장
+- [x] AI 응답마다 source list 저장
+- [x] AI 응답마다 confidence 저장
+- [x] AI 응답마다 limitation 저장
 
 ### 4.2 P1 이슈
 
@@ -568,21 +568,22 @@
 
 ### 5.5 AI/RAG API
 
-- [ ] `POST /api/ai/chat` 지원
-- [ ] AI request에 `question`, `contextDate`, `stockCode`, `stockName`, `focus`, `events`, `terms` 지원
-- [ ] ai-service는 검색/브리프/차트/이벤트/용어를 retrieval 문서로 정리
-- [ ] `LLM_API_KEY` 또는 `OPENAI_API_KEY`와 `LLM_MODEL`이 있으면 OpenAI-compatible chat completions adapter 호출
-- [ ] LLM 설정 없음 또는 실패 시 규칙형 RAG fallback
-- [ ] AI 응답 `mode`는 `rag_llm` 또는 `rag_fallback_rule_based`
-- [ ] AI 응답에 `answer`, `basisDate`, `confidence`, `sources`, `retrieval`, `limitations`, `oppositeSignals`, `nextQuestions` 포함
-- [ ] `retrieval.documents`에 답변 생성 근거 기록
-- [ ] `retrieval.sourceCount` 제공
-- [ ] `retrieval.llm.enabled` 제공
-- [ ] `retrieval.llm.used` 제공
-- [ ] `retrieval.llm.provider` 제공
-- [ ] `retrieval.llm.model` 제공
-- [ ] `retrieval.llm.fallbackReason` 제공
-- [ ] AI 응답에는 기준일, 출처, 신뢰도, 한계, 반대 신호 포함
+- [x] `GET /api/ai/status` 지원
+- [x] `POST /api/ai/chat` 지원
+- [x] AI request에 `question`, `contextDate`, `stockCode`, `stockName`, `focus`, `events`, `terms` 지원
+- [x] ai-service는 검색/브리프/차트/이벤트/용어를 retrieval 문서로 정리
+- [x] `LLM_API_KEY` 또는 `OPENAI_API_KEY`와 `LLM_MODEL`이 있으면 OpenAI-compatible chat completions adapter 호출
+- [x] LLM 설정 없음 또는 실패 시 규칙형 RAG fallback
+- [x] AI 응답 `mode`는 `rag_llm` 또는 `rag_fallback_rule_based`
+- [x] AI 응답에 `answer`, `basisDate`, `confidence`, `sources`, `retrieval`, `limitations`, `oppositeSignals`, `nextQuestions` 포함
+- [x] `retrieval.documents`에 답변 생성 근거 기록
+- [x] `retrieval.sourceCount` 제공
+- [x] `retrieval.llm.enabled` 제공
+- [x] `retrieval.llm.used` 제공
+- [x] `retrieval.llm.provider` 제공
+- [x] `retrieval.llm.model` 제공
+- [x] `retrieval.llm.fallbackReason` 제공
+- [x] AI 응답에는 기준일, 출처, 신뢰도, 한계, 반대 신호 포함
 - [ ] AI는 조건, 리스크, 대안 시나리오로 설명
 - [ ] AI는 개인화 투자 조언 금지
 - [ ] AI는 수익 보장 금지
@@ -825,6 +826,11 @@
 - [x] Theme taxonomy 루프 1차 `make quality`: Playwright 4개 viewport에서 `반도체` 검색 결과가 Naver 세부 테마로 채워져 `삼성전자` 누락
 - [x] Theme taxonomy 루프 scoring 수정: 외부 테마 부분 일치를 대표 종목 tag match 뒤로 이동, 정확 일치 테마는 유지
 - [x] Theme taxonomy 루프 최종 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] LLM status 루프 `python3 -m py_compile ai-service/app/main.py`: 통과
+- [x] LLM status 루프 `./gradlew test --tests com.krbrief.ai.AiChatControllerTest`: 통과
+- [x] Docker 기준 `GET /api/ai/status`: `configured=false`, `apiKeySet=false`, `modelConfigured=false`, secret 값 미노출
+- [x] Docker 기준 `POST /api/ai/chat`: `mode=rag_fallback_rule_based`, `retrieval.sourceCount=2`, `retrieval.llm.used=false`
+- [ ] live `rag_llm` 검증은 현재 컨테이너에 `LLM_API_KEY`/`OPENAI_API_KEY`와 `LLM_MODEL`이 없어 차단됨
 
 ### 9.3 최신 viewport 계측
 
@@ -862,14 +868,14 @@
 |---|---:|---|---|
 | 사용자 | 490/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색 검증 | Toss급 최종 polish, live AI 체감 부족 |
 | 프론트 개발자 | 470/500 | 홈 차트 구조 개선, App/CSS 일부 분해, E2E 존재 | domain hooks/API client/design token 경계 미완 |
-| 백엔드 개발자 | 486/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy API/cache/search provider 연결 | live RAG 검증, richer evidence 부족 |
-| DevOps 개발자 | 489/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
-| VC/투자자 | 448/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색 기반이 더 명확 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| 백엔드 개발자 | 487/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback contract 연결 | live RAG 검증, richer evidence 부족 |
+| DevOps 개발자 | 490/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
+| VC/투자자 | 449/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성이 더 명확 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 Naver theme taxonomy 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. 다음 구현 루프는 live LLM/RAG 검증을 우선한다.
+1. 이번 LLM status 루프 변경분을 의미 있는 단위로 commit/push한다.
+2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 trade-zone 근거 고도화 또는 frontend hooks/API client 분리를 진행한다.
 3. chart marker hover에 이벤트 이유/근거/신뢰도/기준일을 더 직접 표시한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.
 5. App state/API 호출을 hooks와 API client로 더 분리한다.
