@@ -72,13 +72,7 @@ deploy-smoke:
 	./scripts/deployment_smoke.sh
 
 ci-test-report:
-	@if [ -d backend/build/test-results/test ]; then \
-		echo "== Backend test XML failures/errors =="; \
-		find backend/build/test-results/test -name '*.xml' -print0 | \
-			xargs -0 awk '/<(failure|error) /,/<\/(failure|error)>/ {print}'; \
-	else \
-		echo "No backend test results directory found."; \
-	fi
+	./scripts/ci_test_report.sh
 
 frontend-quality:
 	cd frontend && npm ci --include=dev && npm run build && npm audit && npm run test:e2e -- --reporter=line
