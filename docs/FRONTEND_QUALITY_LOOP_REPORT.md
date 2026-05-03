@@ -32,7 +32,7 @@ stock AI web platform:
 | Perspective | Score | Current judgment |
 |---|---:|---|
 | User | 455/500 | Usable and clearer, but still not premium enough to call perfect |
-| Frontend developer | 430/500 | App structure and CSS are improved, but more decomposition and visual system cleanup remain |
+| Frontend developer | 445/500 | App structure and CSS are further decomposed, but utility extraction and visual system cleanup remain |
 | Backend developer | 445/500 | Search, AI adapter, and trade-zone contract improved, but full taxonomy/RAG depth is incomplete |
 | DevOps developer | 475/500 | Strong local quality gate, Docker health, API smoke, and E2E coverage |
 | VC / shareholder | 410/500 | AI is visible and adapter-ready, but live LLM/RAG moat is not fully proven |
@@ -60,7 +60,8 @@ stock AI web platform:
   - `frontend/src/ui/AppSections.jsx`
   - `frontend/src/ui/AppPanels.jsx`
   - `frontend/src/ui/AppConstants.js`
-- Reduced `App.jsx` from 2218 lines to about 1693 lines.
+- Extracted the summary detail flow into `frontend/src/ui/SummaryDetailPanel.jsx`.
+- Reduced `App.jsx` from 2218 lines to about 1423 lines.
 - Split the old single 2861-line `styles.css` into imported modules:
   - `styles/foundation.css`
   - `styles/panels.css`
@@ -76,8 +77,8 @@ stock AI web platform:
 |---|---|---|
 | Read recovery plan | `docs/FRONTEND_QUALITY_GAP_AUDIT_AND_RECOVERY_PLAN.md` reviewed | Done |
 | Re-check goal prompt | `docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` reviewed against current code | Done |
-| Meaningful commits | `baa571e`, `40f7dc8`, `2ea8098`, `861b9a1`, `9f234bd` | Done |
-| Push to origin | `origin/main` updated through `9f234bd` | Done |
+| Meaningful commits | `baa571e`, `40f7dc8`, `2ea8098`, `861b9a1`, `9f234bd`, `6458f0c` and follow-up structure commits | Done |
+| Push to origin | `origin/main` updated through the latest recovery-loop commit | Done |
 | Search for representative stock | `scripts/test_all_apis.sh` checks 삼성전자 -> `005930` | Done |
 | Visible AI panel | Home and search flows expose AI market interpretation | Done |
 | AI retrieval contract | `/api/ai/chat` returns `retrieval` and `sourceCount` | Done |
@@ -120,6 +121,8 @@ Additional screenshots were captured from the Docker-served frontend:
 
 - `/tmp/krbrief-screens/audit-desktop-css-split.png`
 - `/tmp/krbrief-screens/audit-mobile-css-split.png`
+- `/tmp/krbrief-screens/audit-desktop-summary-panel.png`
+- `/tmp/krbrief-screens/audit-mobile-summary-panel.png`
 
 ## Remaining Gaps
 
@@ -128,7 +131,7 @@ Additional screenshots were captured from the Docker-served frontend:
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
 4. Search still needs a real full KRX stock, industry, and theme taxonomy.
 5. Trade zones now have an API contract, but the first version is still heuristic and should be upgraded with richer market signals.
-6. More frontend decomposition is still warranted, especially the remaining summary detail flow.
+6. More frontend decomposition is still warranted, especially pure utility extraction and smaller domain hooks.
 
 ## Current Head
 
@@ -140,7 +143,7 @@ Additional screenshots were captured from the Docker-served frontend:
 
 Continue with these in order:
 
-1. Extract the remaining summary detail flow out of `App.jsx`.
+1. Extract pure format/search/date/chart helper functions from `App.jsx` into domain utility modules or hooks.
 2. Enrich the new `trade-zones` API with support/resistance, event, and volume-derived market signals.
 3. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
 4. Expand search from representative fallback to complete KRX stock/sector/theme taxonomy.
