@@ -115,13 +115,53 @@ def _build_retrieval_documents(req: ChatRequest, subject: str, code: str, topic_
         })
 
     for index, event in enumerate((req.events or [])[:6], start=1):
+        event_date = _clean(event.get("date"), basis_date)
+        event_title = _clean(event.get("title"), "이벤트")
         documents.append({
             "id": f"event-{index}",
             "type": _clean(event.get("type"), "event"),
-            "title": _clean(event.get("title"), "이벤트"),
+            "title": event_title,
             "text": _compact(event),
-            "basisDate": _clean(event.get("date"), basis_date),
+            "basisDate": event_date,
         })
+        for source_index, source in enumerate((event.get("evidenceSources") or [])[:4], start=1):
+            if not isinstance(source, dict):
+                continue
+            source_type = _clean(source.get("type"), "event_evidence")
+            documents.append({
+                "id": f"event-{index}-evidence-{source_index}",
+                "type": source_type,
+                "title": _clean(source.get("title"), f"{event_title} 근거"),
+                "text": _compact({
+                    "eventTitle": event_title,
+                    "description": source.get("description"),
+                    "url": source.get("url"),
+                }),
+                "basisDate": event_date,
+            })
+        for score_index, score in enumerate((event.get("causalScores") or [])[:4], start=1):
+            if not isinstance(score, dict):
+                continue
+            source_type = _clean(score.get("sourceType"), "causal_score")
+            documents.append({
+                "id": f"event-{index}-causal-{score_index}",
+                "type": f"causal_{source_type}",
+                "title": _clean(score.get("label"), f"{event_title} 원인 후보"),
+                "text": _compact({
+                    "eventTitle": event_title,
+                    "score": score.get("score"),
+                    "confidence": score.get("confidence"),
+                    "basis": score.get("basis"),
+                    "interpretation": score.get("interpretation"),
+                    "signalSummary": score.get("signalSummary"),
+                    "causalFactors": score.get("causalFactors"),
+                    "causalDirection": score.get("causalDirection"),
+                    "evidenceLevel": score.get("evidenceLevel"),
+                    "signalOrigins": score.get("signalOrigins"),
+                    "signalUrls": score.get("signalUrls"),
+                }),
+                "basisDate": event_date,
+            })
 
     for index, term in enumerate((req.terms or [])[:6], start=1):
         documents.append({
@@ -135,6 +175,65 @@ def _build_retrieval_documents(req: ChatRequest, subject: str, code: str, topic_
     return documents
 
 
+def _count_documents_by_type(documents: list[dict[str, str]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for doc in documents:
+        doc_type = _clean(doc.get("type"), "unknown")
+        counts[doc_type] = counts.get(doc_type, 0) + 1
+    return counts
+
+
+def _build_grounding_report(
+    req: ChatRequest,
+    documents: list[dict[str, str]],
+    basis_date: str,
+    used_llm: bool,
+    llm_meta: dict[str, Any],
+) -> dict[str, Any]:
+    ids = {doc["id"] for doc in documents}
+    supported_claims: list[dict[str, Any]] = []
+
+    def add_claim(claim: str, candidates: list[str]) -> None:
+        matched = [doc_id for doc_id in candidates if doc_id in ids]
+        if matched:
+            supported_claims.append({"claim": claim, "documentIds": matched})
+
+    add_claim("검색 결과 요약을 근거로 사용", ["search-result"])
+    add_claim("저장 브리프 요약을 근거로 사용", ["daily-summary"])
+    add_claim("차트 snapshot을 근거로 사용", ["chart-snapshot"])
+    event_ids = sorted(doc_id for doc_id in ids if doc_id.startswith("event-") and "-evidence-" not in doc_id and "-causal-" not in doc_id)
+    evidence_ids = sorted(doc_id for doc_id in ids if "-evidence-" in doc_id)
+    causal_ids = sorted(doc_id for doc_id in ids if "-causal-" in doc_id)
+    term_ids = sorted(doc_id for doc_id in ids if doc_id.startswith("term-"))
+    add_claim("차트 이벤트를 근거로 사용", event_ids[:6])
+    add_claim("뉴스/공시/DART/토론 evidence 후보를 근거로 사용", evidence_ids[:8])
+    add_claim("출처별 원인 점수와 텍스트 신호를 근거로 사용", causal_ids[:8])
+    add_claim("초보자 용어 사전을 근거로 사용", term_ids[:6])
+
+    missing: list[str] = []
+    if not documents:
+        missing.append("retrieval 문서가 없어 답변 근거가 제한적입니다.")
+    if req.stockCode and "chart-snapshot" not in ids:
+        missing.append("차트 snapshot이 요청에 포함되지 않았습니다.")
+    if req.stockCode and not event_ids:
+        missing.append("차트 이벤트 후보가 요청에 포함되지 않았습니다.")
+    if req.events and not evidence_ids and not causal_ids:
+        missing.append("이벤트 원인 후보의 뉴스/공시/DART evidence가 요청에 포함되지 않았습니다.")
+    if not used_llm:
+        reason = _clean(llm_meta.get("fallbackReason"), "LLM 설정 또는 호출 실패")
+        missing.append(f"실제 LLM grounded generation 미사용: {reason}")
+
+    return {
+        "policy": "retrieval_only_with_explicit_limitations",
+        "basisDate": basis_date,
+        "sourceCoverage": _count_documents_by_type(documents),
+        "supportedClaims": supported_claims,
+        "missingEvidence": missing,
+        "confidence": "medium" if supported_claims else "low",
+        "llmUsed": used_llm,
+    }
+
+
 def _build_llm_prompt(req: ChatRequest, subject: str, code: str, topic_type: str, basis_date: str, documents: list[dict[str, str]]) -> list[dict[str, str]]:
     context = "\n".join(
         f"[{doc['id']}] {doc['type']} | {doc['title']} | 기준일 {doc['basisDate']}\n{doc['text']}"
@@ -145,6 +244,7 @@ def _build_llm_prompt(req: ChatRequest, subject: str, code: str, topic_type: str
         "반드시 제공된 검색/브리프/차트/이벤트/용어 근거 안에서만 답하고, "
         "매수 또는 매도를 지시하지 말고 조건/검토/시나리오 표현만 사용한다. "
         "출처가 부족하면 부족하다고 말한다. "
+        "가능하면 근거 문장에 retrieval 문서 id를 함께 언급한다. "
         "답변 구조는 한 줄 결론, 근거, 반대 신호, 리스크, 다음 확인 순서로 작성한다."
     )
     user = (
@@ -376,6 +476,7 @@ def chat(req: ChatRequest):
 
     confidence = "medium" if retrieval_documents else "low-medium"
     structured = _build_structured_answer(req, subject, code, basis_date, confidence, sources, limitations)
+    grounding = _build_grounding_report(req, retrieval_documents, basis_date, used_llm, llm_meta)
 
     return {
         "mode": "rag_llm" if used_llm else "rag_fallback_rule_based",
@@ -384,6 +485,7 @@ def chat(req: ChatRequest):
         "confidence": confidence,
         "sources": sources,
         "structured": structured,
+        "grounding": grounding,
         "retrieval": {
             "documents": retrieval_documents,
             "sourceCount": len(retrieval_documents),

@@ -31,6 +31,7 @@ class AiChatControllerTest {
                 "answer", "기준일: 2026-05-03",
                 "confidence", "medium",
                 "sources", List.of(Map.of("title", "종목 차트 API", "type", "ohlcv")),
+                "grounding", Map.of("policy", "retrieval_only_with_explicit_limitations"),
                 "limitations", List.of("교육용 분석 보조입니다."),
                 "oppositeSignals", List.of("거래량 없는 상승")));
 
@@ -41,6 +42,7 @@ class AiChatControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.mode").value("rag_ready_rule_based"))
         .andExpect(jsonPath("$.sources").isArray())
+        .andExpect(jsonPath("$.grounding.policy").value("retrieval_only_with_explicit_limitations"))
         .andExpect(jsonPath("$.limitations").isArray())
         .andExpect(jsonPath("$.oppositeSignals").isArray());
   }

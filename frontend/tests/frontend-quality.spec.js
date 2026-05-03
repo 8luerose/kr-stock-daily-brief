@@ -106,6 +106,8 @@ test("theme search result opens visible AI market interpretation", async ({ page
   await expect(page.locator(".assistantStructured")).toContainText("리스크");
   await expect(page.locator(".assistantStructured")).toContainText("기준/신뢰도");
   await expect(page.locator(".assistantAnswer")).toContainText("출처");
+  await expect(page.locator(".assistantAnswer")).toContainText("근거 검증");
+  await expect(page.locator(".assistantAnswer")).toContainText("규칙형 RAG");
   await expectNoHorizontalOverflow(page);
 });
 

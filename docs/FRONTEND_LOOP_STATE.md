@@ -39,7 +39,7 @@
 - [x] PER 검색을 보장한다.
 - [x] DART 검색을 보장한다.
 - [ ] 실제 LLM 연동을 검증한다.
-- [ ] 실제 RAG retrieval과 source-grounded answer를 검증한다.
+- [x] 실제 RAG retrieval과 source-grounded answer를 검증한다.
 - [x] 차트 이벤트 원인 분석을 제공한다.
 - [x] 일봉 차트를 제공한다.
 - [x] 주봉 차트를 제공한다.
@@ -358,7 +358,7 @@
 - [x] RAG 대상 OHLCV/chart signals 포함
 - [x] RAG 대상 learning terms 포함
 - [x] RAG 대상 stock universe 포함
-- [ ] RAG 대상 DART/news 후보 포함
+- [x] RAG 대상 DART/news 후보 포함
 - [x] 규칙형 응답은 fallback으로만 사용
 - [ ] AI 응답마다 retrieval log 저장
 - [x] AI 응답마다 source list 저장
@@ -578,6 +578,9 @@
 - [x] AI 응답 `mode`는 `rag_llm` 또는 `rag_fallback_rule_based`
 - [x] AI 응답에 `answer`, `basisDate`, `confidence`, `sources`, `retrieval`, `limitations`, `oppositeSignals`, `nextQuestions` 포함
 - [x] `retrieval.documents`에 답변 생성 근거 기록
+- [x] `retrieval.documents`에 이벤트 evidence/news/disclosure/DART 후보 기록
+- [x] `retrieval.documents`에 출처별 causal score 문서 기록
+- [x] AI 응답에 `grounding.policy`, `sourceCoverage`, `supportedClaims`, `missingEvidence` 포함
 - [x] `retrieval.sourceCount` 제공
 - [x] `retrieval.llm.enabled` 제공
 - [x] `retrieval.llm.used` 제공
@@ -585,7 +588,7 @@
 - [x] `retrieval.llm.model` 제공
 - [x] `retrieval.llm.fallbackReason` 제공
 - [x] AI 응답에는 기준일, 출처, 신뢰도, 한계, 반대 신호 포함
-- [ ] AI는 조건, 리스크, 대안 시나리오로 설명
+- [x] AI는 조건, 리스크, 대안 시나리오로 설명
 - [ ] AI는 개인화 투자 조언 금지
 - [ ] AI는 수익 보장 금지
 
@@ -923,6 +926,12 @@
 - [x] HomePage split 루프: home 전용 `MarketHero`와 compact `StockResearchPanel` 렌더링을 `frontend/src/ui/HomePage.jsx`로 분리
 - [x] HomePage split 루프 `frontend npm ci --include=dev --prefer-online && npm run build`: 통과
 - [x] HomePage split 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] Source-grounded RAG 루프 `python3 -m py_compile ai-service/app/main.py`: 통과
+- [x] Source-grounded RAG 루프 `./gradlew test --tests com.krbrief.ai.AiChatControllerTest`: 통과
+- [x] Source-grounded RAG 루프 `frontend npm run build`: 통과
+- [x] Source-grounded RAG 루프 Docker 기준 `POST /api/ai/chat`: `mode=rag_fallback_rule_based`, `retrieval.sourceCount=7`, `docIds=search-result,chart-snapshot,event-1,event-1-evidence-1,event-1-evidence-2,event-1-causal-1,term-1`, `groundingPolicy=retrieval_only_with_explicit_limitations`, `supportedClaims=6`, `missingEvidence=1`
+- [x] Source-grounded RAG 루프 targeted Playwright `theme search result opens visible AI market interpretation`: `근거 검증`, `규칙형 RAG` 표시 확인, 통과
+- [x] Source-grounded RAG 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 
 ### 9.3 최신 viewport 계측
 
@@ -966,13 +975,13 @@
 |---|---:|---|---|
 | 사용자 | 494/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
 | 프론트 개발자 | 493/500 | 홈 차트 구조 개선, HomePage 분리, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, assistant/learning hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI 강화 | 최종 visual polish, 화면별 더 작은 컴포넌트 경계, live LLM/RAG UX 검증 미완 |
-| 백엔드 개발자 | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | live RAG 검증 부족, causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
+| 백엔드 개발자 | 495/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, source-grounded `grounding` 리포트, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | live LLM 생성 품질 검증 부족, causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
 | DevOps 개발자 | 493/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
-| VC/투자자 | 473/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 474/500 | AI/RAG 구조, source-grounded RAG evidence log, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 HomePage split 루프 변경분을 의미 있는 단위로 commit/push한다.
+1. 이번 Source-grounded RAG 루프 변경분을 의미 있는 단위로 commit/push한다.
 2. live LLM/RAG 검증을 우선하되, secret이 없으면 더 강한 source-grounded answer 품질을 검증 가능한 규칙/테스트로 보강한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. final visual polish와 원격 CI/배포 증거를 보강한다.

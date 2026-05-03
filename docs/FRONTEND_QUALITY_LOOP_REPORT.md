@@ -33,9 +33,9 @@ stock AI web platform:
 |---|---:|---|
 | User | 494/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, and event causal scores now pass, but still not Toss-perfect |
 | Frontend developer | 493/500 | Home chart flow, HomePage split, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, and expanded learning-term UI improved; final visual polish and smaller remaining component boundaries remain |
-| Backend developer | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved; live RAG depth remains incomplete |
+| Backend developer | 495/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, source-grounded grounding report, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved; live LLM generation remains unverified |
 | DevOps developer | 493/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E coverage, investment-language scan, and tracked secret scan |
-| VC / shareholder | 473/500 | AI and chart-first/search-first platform direction plus all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but live LLM/RAG moat is not fully proven |
+| VC / shareholder | 474/500 | AI and chart-first/search-first platform direction plus source-grounded RAG evidence log, all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but live LLM moat is not fully proven |
 
 ## Work Completed In The Recovery Loop
 
@@ -52,6 +52,8 @@ stock AI web platform:
 
 - Added an OpenAI-compatible LLM adapter path in `ai-service`.
 - Added retrieval document construction for search, summary, chart, events, and learning terms.
+- Promoted event `evidenceSources` and `causalScores` into first-class retrieval documents for source-grounded AI answers.
+- Added an AI `grounding` report with retrieval-only policy, source coverage, supported claims, and missing evidence.
 - Kept a rule-based RAG fallback when `LLM_API_KEY`/`OPENAI_API_KEY` or `LLM_MODEL` is not configured.
 - Updated API docs and smoke tests to require the `retrieval` response contract.
 
@@ -142,6 +144,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Search for required themes/terms | `scripts/test_all_apis.sh` checks 반도체, 2차전지, 금융, 바이오, 거래량, PER, DART | Done |
 | Visible AI panel | Home and search flows expose AI market interpretation | Done |
 | AI retrieval contract | `/api/ai/chat` returns `retrieval` and `sourceCount` | Done |
+| Source-grounded answer contract | `/api/ai/chat` returns `grounding.policy`, `sourceCoverage`, `supportedClaims`, and `missingEvidence`; API smoke checks event evidence and causal retrieval documents | Done |
 | LLM configuration status | `/api/ai/status` returns configured/apiKey/model booleans without exposing secret values | Done |
 | Desktop responsive | Playwright desktop/laptop checks pass | Done |
 | Mobile responsive | Playwright tablet/mobile checks pass | Done |
@@ -157,6 +160,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | 495/500 all perspectives | Current scores remain below 495 | Not done |
 | Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
 | Real live LLM quality | Adapter and status endpoint exist, but current container has no configured live key/model | Not done |
+| Source-grounded RAG fallback | Current Docker API returns event evidence/causal retrieval docs and a grounding report with supported claims | Done |
 | Full KRX stock universe | pykrx-backed KOSPI/KOSDAQ stock universe API/cache exists and is smoke-tested | Done |
 | KRX industry taxonomy | pykrx-backed KOSPI/KOSDAQ sector classification API/cache exists and is smoke-tested | Done |
 | Full external theme taxonomy | Naver Finance-backed theme taxonomy API/cache exists and is smoke-tested | Done |
@@ -292,6 +296,12 @@ Additional live Docker API checks:
 - LearningTerm `relatedQuestions` alias loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - HomePage split loop `frontend npm ci --include=dev --prefer-online && npm run build`: passed after adding `HomePage.jsx` and reducing `App.jsx` from 511 lines to 501 lines
 - HomePage split loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- Source-grounded RAG loop `python3 -m py_compile ai-service/app/main.py`: passed
+- Source-grounded RAG loop `./gradlew test --tests com.krbrief.ai.AiChatControllerTest`: passed
+- Source-grounded RAG loop `frontend npm run build`: passed
+- Source-grounded RAG loop Docker `POST /api/ai/chat`: `mode=rag_fallback_rule_based`, `retrieval.sourceCount=7`, `docIds=search-result,chart-snapshot,event-1,event-1-evidence-1,event-1-evidence-2,event-1-causal-1,term-1`, `groundingPolicy=retrieval_only_with_explicit_limitations`, `supportedClaims=6`, `missingEvidence=1`
+- Source-grounded RAG loop targeted Playwright `theme search result opens visible AI market interpretation`: passed with `근거 검증` and `규칙형 RAG` visible
+- Source-grounded RAG loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -333,14 +343,14 @@ Latest viewport metrics:
 
 1. The product is better, but still below the prompt's 495/500 bar.
 2. The first-view UX is clearer and less button-heavy, but still not a complete Toss-quality redesign.
-3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
-4. Search now has a KRX stock universe, KRX industry taxonomy, and external Naver theme taxonomy; `/api/ai/status` makes live LLM readiness visible, but current live RAG remains blocked by missing non-committed credentials.
+3. Real live LLM product quality cannot be proven without configured model credentials and live evaluation.
+4. Search now has a KRX stock universe, KRX industry taxonomy, external Naver theme taxonomy, and source-grounded fallback RAG; `/api/ai/status` makes live LLM readiness visible, but live LLM evaluation remains blocked by missing non-committed credentials.
 5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event causal scoring now uses news search, news article bodies, DART search rows, DART filing-detail bodies, and rule-based causal factor classification, but still needs broader filing section extraction and live LLM-backed judgment.
 6. More frontend decomposition is still warranted for smaller section-level components and final visual-system polish.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, and `Add learning related questions alias`. The HomePage split is ready for the next commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, and `Split home page component`. The source-grounded RAG loop is ready for the next commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 

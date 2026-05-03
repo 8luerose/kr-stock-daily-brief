@@ -852,6 +852,31 @@ ai-service의 OpenAI-compatible LLM 설정 상태를 secret 값 없이 확인한
   "sources": [
     { "title": "종목 차트 API", "type": "ohlcv", "url": "/api/stocks/005930/chart" }
   ],
+  "grounding": {
+    "policy": "retrieval_only_with_explicit_limitations",
+    "basisDate": "2026-04-30",
+    "sourceCoverage": {
+      "chart": 1,
+      "volume_spike": 1,
+      "news": 1,
+      "causal_news": 1
+    },
+    "supportedClaims": [
+      {
+        "claim": "차트 이벤트를 근거로 사용",
+        "documentIds": ["event-1"]
+      },
+      {
+        "claim": "뉴스/공시/DART/토론 evidence 후보를 근거로 사용",
+        "documentIds": ["event-1-evidence-1"]
+      }
+    ],
+    "missingEvidence": [
+      "실제 LLM grounded generation 미사용: LLM_API_KEY/OPENAI_API_KEY 또는 LLM_MODEL이 설정되지 않았습니다."
+    ],
+    "confidence": "medium",
+    "llmUsed": false
+  },
   "retrieval": {
     "documents": [
       {
@@ -859,9 +884,21 @@ ai-service의 OpenAI-compatible LLM 설정 상태를 secret 값 없이 확인한
         "type": "volume_spike",
         "title": "거래량 급증",
         "basisDate": "2026-04-30"
+      },
+      {
+        "id": "event-1-evidence-1",
+        "type": "news",
+        "title": "네이버 뉴스 검색",
+        "basisDate": "2026-04-30"
+      },
+      {
+        "id": "event-1-causal-1",
+        "type": "causal_news",
+        "title": "네이버 뉴스 검색",
+        "basisDate": "2026-04-30"
       }
     ],
-    "sourceCount": 1,
+    "sourceCount": 3,
     "llm": {
       "enabled": true,
       "used": true,
@@ -882,7 +919,8 @@ ai-service의 OpenAI-compatible LLM 설정 상태를 secret 값 없이 확인한
 #### 응답 정책
 
 - 반드시 기준일, 출처, 신뢰도, 한계, 반대 신호를 포함한다.
-- `retrieval.documents`에는 답변 생성에 사용한 검색/브리프/차트/이벤트/용어 근거를 남긴다.
+- `retrieval.documents`에는 답변 생성에 사용한 검색/브리프/차트/이벤트/이벤트 evidence/원인 점수/용어 근거를 남긴다.
+- `grounding`은 retrieval 근거만 사용한다는 정책, 근거 유형별 커버리지, 지원 가능한 주장, 부족한 근거를 노출한다.
 - `LLM_MODEL` 또는 API key가 없으면 `mode=rag_fallback_rule_based`로 동작한다.
 - “지금 사라/팔아라”가 아니라 조건, 리스크, 대안 시나리오로 설명한다.
 - 개인화 투자 조언이나 수익 보장을 하지 않는다.

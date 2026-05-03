@@ -8,6 +8,11 @@ function hasStructuredAnswer(value) {
   return value && typeof value === "object" && Boolean(value.conclusion);
 }
 
+function coverageCount(value) {
+  if (!value || typeof value !== "object") return 0;
+  return Object.values(value).reduce((sum, count) => sum + Number(count || 0), 0);
+}
+
 export function AiInsightPanel({
   activePage,
   copy,
@@ -109,6 +114,26 @@ export function AiInsightPanel({
                   <span key={`${source.type}-${source.title}`}>{source.title}</span>
                 ))}
               </div>
+            </div>
+          ) : null}
+          {assistantResponse.grounding ? (
+            <div className="assistantMeta">
+              <strong>근거 검증</strong>
+              <div>
+                <span>근거 문서 {coverageCount(assistantResponse.grounding.sourceCoverage)}개</span>
+                <span>{assistantResponse.grounding.llmUsed ? "LLM 사용" : "규칙형 RAG"}</span>
+                <span>{assistantResponse.grounding.confidence}</span>
+              </div>
+              {asArray(assistantResponse.grounding.supportedClaims).length > 0 ? (
+                <ul>
+                  {asArray(assistantResponse.grounding.supportedClaims).slice(0, 3).map((item) => (
+                    <li key={item.claim}>{item.claim}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {asArray(assistantResponse.grounding.missingEvidence).length > 0 ? (
+                <small>{asArray(assistantResponse.grounding.missingEvidence)[0]}</small>
+              ) : null}
             </div>
           ) : null}
           {asArray(assistantResponse.limitations).length > 0 ? (

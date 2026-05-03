@@ -192,9 +192,78 @@ contains_field /tmp/krbrief_resp.json fallbackMode || fail "ai status missing fa
 pass "GET /api/ai/status"
 
 # 20) AI chat
+cat > /tmp/krbrief_ai_chat_payload.json <<JSON
+{
+  "question": "삼성전자 차트를 초보자 관점으로 설명해줘",
+  "contextDate": "$DATE_TODAY",
+  "stockCode": "005930",
+  "stockName": "삼성전자",
+  "searchResult": {
+    "type": "stock",
+    "title": "삼성전자",
+    "stockCode": "005930",
+    "summary": "반도체와 메모리 업황을 함께 확인해야 하는 대표 종목입니다."
+  },
+  "chart": {
+    "interval": "daily",
+    "range": "6M",
+    "asOf": "$DATE_TODAY",
+    "latest": { "date": "$DATE_TODAY", "close": 75000 },
+    "tradeZones": []
+  },
+  "events": [
+    {
+      "date": "$DATE_TODAY",
+      "type": "volume_spike",
+      "severity": "medium",
+      "title": "거래량 급증",
+      "priceChangeRate": 2.3,
+      "volumeChangeRate": 230.1,
+      "explanation": "가격과 거래량이 동시에 커진 이벤트입니다.",
+      "evidenceSources": [
+        {
+          "type": "news",
+          "title": "네이버 뉴스 검색",
+          "url": "https://search.naver.com/search.naver?where=news&query=005930",
+          "description": "가격/거래량 변화와 같은 시점의 뉴스 후보입니다."
+        },
+        {
+          "type": "disclosure",
+          "title": "DART 공시 검색",
+          "url": "https://dart.fss.or.kr/",
+          "description": "공식 공시 후보입니다."
+        }
+      ],
+      "causalScores": [
+        {
+          "sourceType": "news",
+          "label": "네이버 뉴스 검색",
+          "score": 66,
+          "confidence": "medium",
+          "basis": "등락률과 거래량 증가",
+          "interpretation": "뉴스 텍스트가 원인 후보를 보강합니다.",
+          "signalCount": 2,
+          "signalSummary": "반도체 업황과 거래량 변화가 함께 언급된 후보 기사",
+          "causalFactors": ["수급/거래량", "업종/테마 모멘텀"],
+          "causalDirection": "mixed",
+          "evidenceLevel": "body",
+          "signalOrigins": ["article_body", "search_result"],
+          "signalUrls": ["https://example.com/news"]
+        }
+      ]
+    }
+  ],
+  "terms": [
+    {
+      "term": "거래량",
+      "plainDefinition": "하루 동안 거래된 주식 수입니다."
+    }
+  ]
+}
+JSON
 code=$(status_code POST "$BASE_URL/api/ai/chat" \
   -H "Content-Type: application/json" \
-  -d '{"question":"삼성전자 차트를 초보자 관점으로 설명해줘","contextDate":"'"$DATE_TODAY"'","stockCode":"005930","stockName":"삼성전자","searchResult":{"type":"stock","title":"삼성전자","stockCode":"005930","summary":"반도체와 메모리 업황을 함께 확인해야 하는 대표 종목입니다."}}')
+  --data-binary @/tmp/krbrief_ai_chat_payload.json)
 [[ "$code" == "200" ]] || fail "ai chat expected 200, got $code"
 contains_field /tmp/krbrief_resp.json mode || fail "ai chat missing mode"
 contains_field /tmp/krbrief_resp.json limitations || fail "ai chat missing limitations"
@@ -204,7 +273,13 @@ contains_field /tmp/krbrief_resp.json conclusion || fail "ai chat missing struct
 contains_field /tmp/krbrief_resp.json risks || fail "ai chat missing structured risks"
 contains_field /tmp/krbrief_resp.json retrieval || fail "ai chat missing retrieval"
 contains_field /tmp/krbrief_resp.json sourceCount || fail "ai chat missing retrieval sourceCount"
+contains_field /tmp/krbrief_resp.json grounding || fail "ai chat missing grounding"
+contains_field /tmp/krbrief_resp.json sourceCoverage || fail "ai chat missing grounding sourceCoverage"
+contains_field /tmp/krbrief_resp.json supportedClaims || fail "ai chat missing grounding supportedClaims"
+contains_field /tmp/krbrief_resp.json missingEvidence || fail "ai chat missing grounding missingEvidence"
 grep -q '"id":"search-result"' /tmp/krbrief_resp.json || fail "ai chat missing search-result retrieval document"
+grep -q '"event-1-evidence-1"' /tmp/krbrief_resp.json || fail "ai chat missing event evidence retrieval document"
+grep -q '"event-1-causal-1"' /tmp/krbrief_resp.json || fail "ai chat missing causal retrieval document"
 pass "POST /api/ai/chat"
 
 # 21) Unified search
