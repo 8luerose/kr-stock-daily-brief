@@ -31,11 +31,11 @@ stock AI web platform:
 
 | Perspective | Score | Current judgment |
 |---|---:|---|
-| User | 494/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, and event causal scores now pass, but still not Toss-perfect |
+| User | 495/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, event causal scores, and repeatable live LLM benchmark now pass, but still not Toss-perfect |
 | Frontend developer | 494/500 | Home chart flow, HomePage split, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, expanded learning-term UI, and existing-feature preservation E2E improved; final visual polish and smaller remaining component boundaries remain |
-| Backend developer | 496/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, OpenAI/Anthropic-compatible AI status/RAG contract, source-grounded grounding report, live `rag_llm` smoke, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved |
+| Backend developer | 497/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, OpenAI/Anthropic-compatible AI status/RAG contract, source-grounded grounding report, live `rag_llm` smoke, repeatable live LLM benchmark 3/3 PASS, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved |
 | DevOps developer | 494/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E and preservation coverage, investment-language scan, and tracked secret scan |
-| VC / shareholder | 482/500 | AI and chart-first/search-first platform direction plus Anthropic-compatible live `rag_llm` smoke, source-grounded RAG evidence log, all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but repeatable AI quality and product polish evidence remain incomplete |
+| VC / shareholder | 486/500 | AI and chart-first/search-first platform direction plus Anthropic-compatible live `rag_llm` smoke, repeatable live LLM benchmark 3/3 PASS, source-grounded RAG evidence log, all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but deployment evidence and product polish remain incomplete |
 
 ## Work Completed In The Recovery Loop
 
@@ -161,7 +161,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | 495/500 all perspectives | Current scores remain below 495 | Not done |
 | Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
 | Live LLM integration smoke | Docker/backend `POST /api/ai/chat` returned `mode=rag_llm`, `provider=anthropic_compatible`, `used=true`, and `grounding.llmUsed=true` with non-committed local credentials | Done |
-| Repeatable live LLM quality benchmark | A single live smoke passed, but no multi-case benchmark or production credential runbook exists yet | Not done |
+| Repeatable live LLM quality benchmark | `make llm-benchmark` runs 3 fixed live LLM cases and checks `rag_llm`, `used=true`, grounding, source/claim thresholds, retrieval doc id citations, and banned investment advice phrases; `/tmp/krbrief-llm-quality-report.json` recorded 3/3 PASS | Done |
 | Source-grounded RAG fallback | Current Docker API returns event evidence/causal retrieval docs and a grounding report with supported claims | Done |
 | Search response contract | `scripts/test_all_apis.sh` checks the full `SearchResultDto` field set, `source=learning_terms`, and `termId` for learning-term results | Done |
 | Search service source contract | `SearchServiceTest` checks `source=latest_summary` for stock results and `source=learning_terms` for learning-term results | Done |
@@ -319,6 +319,11 @@ Additional live Docker API checks:
 - Live LLM provider loop Docker/backend `POST /api/ai/chat`: returned `mode=rag_llm`, `retrieval.llm.used=true`, `grounding.llmUsed=true`, `retrieval.sourceCount=5`, and a Korean answer citing retrieval document ids
 - Live LLM provider loop API smoke: configured LLM environments now assert `mode=rag_llm` and `used=true`; passed after raising the default LLM timeout to 45 seconds
 - Live LLM provider loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, live LLM API smoke, and Playwright `16 passed`
+- Repeatable LLM benchmark loop `python3 -m py_compile ai-service/app/main.py scripts/benchmark_llm_quality.py`: passed
+- Repeatable LLM benchmark loop `docker compose up -d --build ai-service backend && make health`: passed
+- Repeatable LLM benchmark loop `make llm-benchmark`: 3/3 PASS; `samsung_chart_event`, `semiconductor_theme_grounding`, and `per_safety_guardrail` all returned `mode=rag_llm`, `provider=anthropic_compatible`, at least two cited retrieval document ids, and no banned investment-advice phrase
+- Repeatable LLM benchmark report: `/tmp/krbrief-llm-quality-report.json`, `totalCases=3`, `passedCases=3`, `failedCases=0`, `elapsedSeconds=22.259`
+- Repeatable LLM benchmark loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `16 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -360,14 +365,14 @@ Latest viewport metrics:
 
 1. The product is better, but still below the prompt's 495/500 bar.
 2. The first-view UX is clearer and less button-heavy, but still not a complete Toss-quality redesign.
-3. Live LLM integration now has a local Anthropic-compatible smoke pass, but repeatable multi-case quality evaluation and production credential runbook are still missing.
-4. Search now has a KRX stock universe, KRX industry taxonomy, external Naver theme taxonomy, source-grounded fallback RAG, and live LLM readiness visibility; remote deployment evidence is still missing.
+3. Live LLM integration now has both a local Anthropic-compatible smoke pass and repeatable 3-case quality benchmark; remote deployment evidence is still missing.
+4. Search now has a KRX stock universe, KRX industry taxonomy, external Naver theme taxonomy, source-grounded fallback RAG, and live LLM readiness visibility; deployment-platform smoke evidence is still missing.
 5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event causal scoring now uses news search, news article bodies, DART search rows, DART filing-detail bodies, and rule-based causal factor classification, but still needs broader filing section extraction and LLM-assisted causal review.
 6. More frontend decomposition is still warranted for smaller section-level components and final visual-system polish.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, `Add source grounded AI evidence`, `Strengthen search contract coverage`, and `Cover preserved frontend flows`. This report also records the subsequent live LLM provider loop for the next recovery commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, `Add source grounded AI evidence`, `Strengthen search contract coverage`, `Cover preserved frontend flows`, and `Add Anthropic compatible live LLM path`. This report also records the repeatable LLM benchmark loop for the next recovery commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
@@ -375,7 +380,7 @@ Latest viewport metrics:
 
 Continue with these in order:
 
-1. Add a repeatable live LLM quality benchmark with fixed prompts, expected safety constraints, and source-grounding assertions.
-2. Capture remote CI/deploy evidence or configure a deployment smoke gate.
-3. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
-4. Continue decomposing the remaining large section components after the assistant/learning hook split.
+1. Capture remote CI/deploy evidence or configure a deployment smoke gate.
+2. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
+3. Continue decomposing the remaining large section components after the assistant/learning hook split.
+4. Expand LLM-assisted causal review beyond the current rule-based causal factor scoring.

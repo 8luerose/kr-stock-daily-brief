@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check
+.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check llm-benchmark
 
 DOCKER_SOCK ?= /var/run/docker.sock
 
@@ -64,6 +64,9 @@ qa:
 ops-check:
 	docker compose config -q
 	./scripts/verify_no_secrets.sh
+
+llm-benchmark:
+	./scripts/benchmark_llm_quality.py
 
 frontend-quality:
 	cd frontend && npm ci --include=dev && npm run build && npm audit && npm run test:e2e -- --reporter=line

@@ -936,6 +936,7 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
 - `grounding`은 retrieval 근거만 사용한다는 정책, 근거 유형별 커버리지, 지원 가능한 주장, 부족한 근거를 노출한다.
 - 선택된 provider의 model 또는 API key가 없으면 `mode=rag_fallback_rule_based`로 동작한다.
 - Anthropic-compatible provider는 `ANTHROPIC_AUTH_TOKEN` 또는 `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` 또는 `ANTHROPIC_DEFAULT_*_MODEL`, `ANTHROPIC_BASE_URL`을 사용한다.
+- live LLM 품질은 `make llm-benchmark`로 반복 검증한다. 이 벤치마크는 3개 고정 프롬프트에서 `mode=rag_llm`, `retrieval.llm.used=true`, `grounding.llmUsed=true`, 최소 source/claim 수, retrieval 문서 id 인용, 금지 투자문구 미포함을 확인한다.
 - “지금 사라/팔아라”가 아니라 조건, 리스크, 대안 시나리오로 설명한다.
 - 개인화 투자 조언이나 수익 보장을 하지 않는다.
 
