@@ -27,8 +27,11 @@ mysql-logs:
 	docker compose logs -f --tail=200 mysql
 
 health:
-	@echo "Backend: http://localhost:$${BACKEND_PORT:-8080}/actuator/health"
-	@echo "Frontend: http://localhost:$${FRONTEND_PORT:-5173}"
+	@curl -fsS "http://localhost:$${BACKEND_PORT:-8080}/actuator/health" >/dev/null
+	@curl -fsS "http://localhost:$${FRONTEND_PORT:-5173}/health" >/dev/null
+	@curl -fsS "http://localhost:$${MARKETDATA_PORT:-8000}/health" >/dev/null
+	@curl -fsS "http://localhost:$${AI_SERVICE_PORT:-8100}/health" >/dev/null
+	@echo "Backend, frontend, marketdata, and ai-service health checks passed."
 
 # Generates today's summary (Asia/Seoul date inside backend)
 generate-today:

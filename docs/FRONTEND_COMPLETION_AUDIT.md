@@ -37,7 +37,7 @@ The objective is to execute `docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` for `/Us
 - `./gradlew test`: passed.
 - `npm ci && npm run build && npm audit`: passed; audit reports 0 vulnerabilities.
 - `make up`: passed; Docker services rebuilt and started.
-- `make health`: printed backend/frontend endpoints.
+- `make health`: passed backend, frontend, marketdata, and ai-service HTTP health checks.
 - `./scripts/test_all_apis.sh`: passed, including `GET /api/search`.
 - `./scripts/verify_investment_language.sh`: passed.
 - `npm run test:e2e -- --reporter=line`: 6 passed.
