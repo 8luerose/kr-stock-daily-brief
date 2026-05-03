@@ -94,6 +94,7 @@ Date: 2026-05-03
 
 - `./gradlew test`
 - `npm ci && npm run build`
+- `npm audit`
 - `make up`
 - `make health`
 - `./scripts/test_all_apis.sh`
@@ -105,10 +106,10 @@ Date: 2026-05-03
 
 ## 10. Failures / Remaining Risks
 
-- `npm ci` reports dependency audit findings. They were not changed in this frontend quality loop.
 - Industry/theme search entries are frontend UX mocks. The UI labels them as mock and leaves a clear future API connection point.
 - Automated chart marker hover regression test is still not part of the repository.
 - `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshots.
+- Follow-up hardening updated Vite, `@vitejs/plugin-react`, and Express transitive dependencies; `npm audit` now reports 0 vulnerabilities.
 
 ## 11. Commit Hash
 
