@@ -3,6 +3,8 @@ npm-debug.log
 yarn-error.log
 .dist
 /dist
+playwright-report
+test-results
 .git
 .gitignore
 .DS_Store
