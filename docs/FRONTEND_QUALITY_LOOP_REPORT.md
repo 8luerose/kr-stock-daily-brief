@@ -124,7 +124,7 @@ Date: 2026-05-03
   - `879ced0` Harden frontend build dependencies
   - `46c3a95` Add frontend quality e2e coverage
   - `95f07a7` Add backend unified search adapter
-- Latest pushed HEAD at this audit: `95f07a731c13b9e06889c830f0957021eefc0b71`
+- Additional hardening commits are recorded in git history; use `git rev-parse HEAD origin/main` for the current pushed head.
 
 ## 12. Push Status
 

@@ -28,7 +28,7 @@ The objective is to execute `docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` for `/Us
 | Backend changes only where needed for frontend experience | Added `/api/search` adapter and tests to remove frontend-only search mock risk. | Verified |
 | Required verification commands | `./gradlew test`, `npm ci && npm run build`, `npm audit`, `make up`, `make health`, `./scripts/test_all_apis.sh`, `./scripts/verify_investment_language.sh`, `npm run test:e2e -- --reporter=line`, `make quality`, and Playwright screenshots were run. | Verified |
 | CI guardrails | `.github/workflows/quality.yml` runs backend tests, frontend build/audit, full-stack smoke tests, investment-language safety check, and Playwright E2E on push/PR. | Verified |
-| Commit and push | Commits pushed to `origin/main`; latest verified HEAD/origin main: `95f07a731c13b9e06889c830f0957021eefc0b71`. | Verified |
+| Commit and push | Commits are pushed to `origin/main`; verify the current pushed head with `git rev-parse HEAD origin/main` during final audit. | Verified |
 | Secrets not committed | Only source, docs, tests, and package files were changed. Existing `.env` files were not touched or staged. | Verified |
 | User changes preserved | Existing untracked `docs/DB_TABLES 2.md` and `docs/ERD 2.md` were left untouched. | Verified |
 
