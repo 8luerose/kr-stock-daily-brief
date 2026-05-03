@@ -26,6 +26,7 @@ for (const viewport of viewports) {
     await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
 
     await expect(page.locator(".marketHero")).toBeVisible();
+    await expect(page).toHaveTitle("오늘 | 한국 주식 AI 리서치");
     await expect(page.locator(".appNav button[aria-current='page']")).toHaveText("오늘");
     await expect(page.getByRole("button", { name: "운영" })).toHaveCount(0);
     await expect(page.locator(".heroSearch")).toBeVisible();
@@ -45,6 +46,7 @@ test("learning tab exposes beginner structure and assistant entry points", async
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto(`${APP_URL}/#learning`, { waitUntil: "networkidle" });
 
+  await expect(page).toHaveTitle("배우기 | 한국 주식 AI 리서치");
   await expect(page.locator(".learningPanel")).toBeVisible();
   await expect(page.locator("#term-search")).toBeVisible();
   await expect(page.locator(".termDetail")).toBeVisible();

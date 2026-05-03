@@ -1322,6 +1322,11 @@ export default function App() {
   ];
   const visibleNavItems = adminKey ? [...navItems, ["admin", "운영"]] : navItems;
 
+  useEffect(() => {
+    const pageLabel = [...navItems, ["admin", "운영"]].find(([page]) => page === activePage)?.[1] || "오늘";
+    document.title = `${pageLabel} | ${COPY.brand}`;
+  }, [activePage]);
+
   function navigatePage(page) {
     setActivePage(page);
     const hash = page === "home" ? "#home" : `#${page}`;
