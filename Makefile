@@ -58,6 +58,7 @@ frontend-quality:
 quality:
 	cd backend && ./gradlew test
 	cd frontend && npm ci && npm run build && npm audit
+	$(MAKE) health
 	./scripts/verify_investment_language.sh
 	./scripts/test_all_apis.sh
 	cd frontend && npm run test:e2e -- --reporter=line
