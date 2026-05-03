@@ -88,6 +88,7 @@ Date: 2026-05-03
 | Trade UX | Sell review zone | Conditions/evidence visible | Normal | 100/100 | Sell, risk, opposing signal, confidence, data date shown | No |
 | Buttons | Main button count | Primary actions kept small | Normal | 99/100 | Public flow emphasizes search and contextual actions; admin navigation is hidden unless an admin key is present | No |
 | Mobile | 390px | No overlap | Normal | 99/100 | Full-page 390px screenshot checked after responsive fix | No |
+| Accessibility | Keyboard skip link | Repeated navigation can be skipped | Normal | 99/100 | Skip link focuses `#main-content`; segmented controls expose active ARIA state | No |
 | Motion | Animation | Premium, restrained motion | Normal | 99/100 | Focus, hover, panel, chart loading skeleton use restrained 150-320ms style | No |
 
 ## 9. Verification Commands
@@ -112,9 +113,10 @@ Date: 2026-05-03
 
 - `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshots.
 - Follow-up hardening updated Vite, `@vitejs/plugin-react`, and Express transitive dependencies; `npm audit` now reports 0 vulnerabilities.
-- Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, stock search navigation into chart research, admin surface hiding without an admin key, the learning detail structure, interval switching, active ARIA state, and bounded chart tooltip display.
+- Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, stock search navigation into chart research, admin surface hiding without an admin key, keyboard skip navigation, the learning detail structure, interval switching, active ARIA state, and bounded chart tooltip display.
 - Follow-up search work added `GET /api/search` so the first-view search now uses a backend adapter for latest-summary stocks, learning terms, and a seed industry/theme catalog; the frontend only keeps a local fallback for API failure.
-- Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack smoke tests, and Playwright E2E on push/PR.
+- Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack health, API smoke tests, and Playwright E2E on push/PR.
+- Follow-up chart work extracted `StockPriceChart.jsx` and reduced overlapping price labels while keeping chart zones visible through the legend and decision panel.
 - Follow-up safety work added `scripts/verify_investment_language.sh` to fail on direct buy/sell instruction or guarantee wording in source code.
 - Follow-up local workflow work added `make quality` and hardened `make frontend-quality` so developers can run backend tests, frontend build/audit, source safety check, API smoke, and E2E with explicit dev dependency installation.
 
