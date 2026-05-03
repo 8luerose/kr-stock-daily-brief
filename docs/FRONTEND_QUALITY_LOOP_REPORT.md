@@ -27,12 +27,12 @@ Date: 2026-05-03
 
 ## 4. Search Implementation
 
-- Added first-view universal search in `frontend/src/ui/App.jsx`.
+- Added first-view universal search in `frontend/src/ui/App.jsx` backed by `GET /api/search`.
 - Search targets:
-  - Today-moving stocks from existing TOP lists
+  - Today-moving stocks from latest summary TOP lists
   - Stock names and codes
   - Learning terms and related terms
-  - Local UX mock entries for industries/themes
+  - Backend seed catalog entries for industries/themes/market groups
 - Search result cards show:
   - Type/market
   - Name and code
@@ -42,7 +42,7 @@ Date: 2026-05-03
   - Entry behavior
 - Stock result selection opens the chart/research flow.
 - Term result selection opens the Learn tab with the selected term.
-- Industry/theme mock results fill the assistant prompt and are explicitly documented in UI copy as frontend UX mock pending a future API.
+- Industry/theme results come from the backend search adapter first; the frontend keeps only an API-failure fallback so the first-view UX does not collapse if the API is temporarily unavailable.
 
 ## 5. AI Visibility
 
@@ -75,7 +75,7 @@ Date: 2026-05-03
 | Area | Feature / Button | Expected | Actual | Score | Evaluation | Needs Improvement |
 |---|---|---|---|---|---|---|
 | First View | Service value recognition | Purpose understood within 5 seconds | Normal | 99/100 | Hero, chart-first brief, search, and AI panel are visible on Home | No |
-| Search | Industry search | Related industry/theme appears | Normal | 99/100 | `반도체` shows theme card, tags, summary, and mock notice | No |
+| Search | Industry search | Related industry/theme appears | Normal | 100/100 | `반도체` returns a backend `theme` result from `GET /api/search` with tags and summary | No |
 | Search | Company/stock search | Stock result appears | Normal | 99/100 | Existing TOP stock data is indexed by name/code and routes to chart | No |
 | AI | AI analysis panel | AI value clearly visible | Normal | 99/100 | `AI 시장 해석` is visible in Home flow; chart AI remains contextual | No |
 | Navigation | Tab switching | Smooth transition | Normal | 99/100 | Today/Chart/Learn/Portfolio/Admin navigation works in browser | No |
@@ -83,7 +83,7 @@ Date: 2026-05-03
 | Chart | Daily | Chart displays | Normal | 99/100 | Candles, MA, volume, event markers render after data load | No |
 | Chart | Weekly | Chart displays | Normal | 99/100 | Control and API path verified | No |
 | Chart | Monthly | Chart displays | Normal | 99/100 | Control and API path verified | No |
-| Chart | Marker hover | Tooltip displays | Normal implementation | 98/100 | Crosshair tooltip is implemented; automated pointer-hover regression remains absent | No |
+| Chart | Marker hover | Tooltip displays | Normal | 99/100 | Crosshair tooltip is implemented and E2E now checks bounded tooltip display | No |
 | Trade UX | Buy review zone | Conditions/evidence visible | Normal | 100/100 | Buy and split-buy conditions use conditional language | No |
 | Trade UX | Sell review zone | Conditions/evidence visible | Normal | 100/100 | Sell, risk, opposing signal, confidence, data date shown | No |
 | Buttons | Main button count | Primary actions kept small | Normal | 98/100 | User-facing flow emphasizes search and contextual actions; nav still has 5 tabs | No |
@@ -114,8 +114,12 @@ Date: 2026-05-03
 
 ## 11. Commit Hash
 
-- Implementation commit: `f6797ee11a11008dd1a919d2a2e44c66f4674cc9`
-- Report finalization commit is recorded in git history after this document update.
+- Implementation commits:
+  - `f6797ee11a11008dd1a919d2a2e44c66f4674cc9` Add frontend universal search and AI-first home
+  - `879ced0` Harden frontend build dependencies
+  - `46c3a95` Add frontend quality e2e coverage
+  - `95f07a7` Add backend unified search adapter
+- Latest pushed HEAD at this audit: `95f07a731c13b9e06889c830f0957021eefc0b71`
 
 ## 12. Push Status
 
@@ -124,7 +128,6 @@ Date: 2026-05-03
 
 ## 13. Recommended Next Work
 
-- Add a real `/api/search` endpoint for industry/theme/company/stock results.
-- Add Playwright-based regression tests for search, tab switching, chart interval switching, and marker hover.
-- Resolve npm audit findings in a dedicated dependency/security task.
 - Add risk-review automation for AI/chart text to catch direct investment wording.
+- Replace the backend seed industry/theme catalog with a richer market taxonomy API when real sector/theme data is available.
+- Add CI wiring for `npm run test:e2e` so browser regressions block pull requests automatically.
