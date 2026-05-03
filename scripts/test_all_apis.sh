@@ -286,7 +286,17 @@ pass "POST /api/ai/chat"
 code=$(status_code GET "$BASE_URL/api/search?query=%EB%B0%98%EB%8F%84%EC%B2%B4&limit=5")
 [[ "$code" == "200" ]] || fail "search expected 200, got $code"
 contains_field /tmp/krbrief_resp.json source || fail "search missing source"
+contains_field /tmp/krbrief_resp.json id || fail "search missing id"
+contains_field /tmp/krbrief_resp.json type || fail "search missing type"
 contains_field /tmp/krbrief_resp.json title || fail "search missing title"
+contains_field /tmp/krbrief_resp.json code || fail "search missing code"
+contains_field /tmp/krbrief_resp.json market || fail "search missing market"
+contains_field /tmp/krbrief_resp.json rate || fail "search missing rate"
+contains_field /tmp/krbrief_resp.json tags || fail "search missing tags"
+contains_field /tmp/krbrief_resp.json summary || fail "search missing summary"
+contains_field /tmp/krbrief_resp.json stockCode || fail "search missing stockCode"
+contains_field /tmp/krbrief_resp.json stockName || fail "search missing stockName"
+contains_field /tmp/krbrief_resp.json termId || fail "search missing termId"
 pass "GET /api/search"
 
 code=$(status_code GET "$BASE_URL/api/search?query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90&limit=5")
@@ -312,8 +322,11 @@ search_expect_contains "반도체" '"title":"반도체"'
 search_expect_contains "2차전지" '"title":"2차전지"'
 search_expect_contains "금융" '"title":"증권/금융"'
 search_expect_contains "바이오" '"title":"바이오"'
+search_expect_contains "거래량" '"source":"learning_terms"'
 search_expect_contains "거래량" '"termId":"volume"'
+search_expect_contains "PER" '"source":"learning_terms"'
 search_expect_contains "PER" '"termId":"per"'
+search_expect_contains "DART" '"source":"learning_terms"'
 search_expect_contains "DART" '"termId":"dart"'
 search_expect_contains "유한양행" '"stockCode":"000100"'
 search_expect_contains "의료·정밀기기" '"source":"krx_sector_classification"'

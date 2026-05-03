@@ -26,7 +26,8 @@ class SearchServiceTest {
     var termResults = service.search("PER", 10);
 
     assertTrue(themeResults.stream().anyMatch(item -> item.type().equals("theme") && item.title().equals("반도체")));
-    assertTrue(termResults.stream().anyMatch(item -> item.type().equals("term") && item.termId().equals("per")));
+    assertTrue(termResults.stream().anyMatch(item ->
+        item.type().equals("term") && item.termId().equals("per") && item.source().equals("learning_terms")));
   }
 
   @Test
@@ -41,7 +42,8 @@ class SearchServiceTest {
     var results = service.search("삼성전자", 10);
 
     assertFalse(results.isEmpty());
-    assertTrue(results.stream().anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("005930")));
+    assertTrue(results.stream().anyMatch(item ->
+        item.type().equals("stock") && item.stockCode().equals("005930") && item.source().equals("latest_summary")));
   }
 
   @Test

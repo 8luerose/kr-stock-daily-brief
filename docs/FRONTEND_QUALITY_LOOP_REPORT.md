@@ -152,7 +152,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Frontend build/audit | `npm ci --include=dev && npm run build && npm audit` via `make quality` | Done |
 | Docker health | `make health` via `make quality` | Done |
 | API smoke | `./scripts/test_all_apis.sh` via `make quality` | Done |
-| E2E | Playwright `13 passed` via `make quality` | Done |
+| E2E | Playwright `14 passed` via `make quality` after adding the learning-term search flow | Done |
 | First-view button reduction | Desktop first viewport `2`, mobile first viewport `2` from Playwright DOM measurement | Done |
 | Chart-first responsive audit | Chart enters first viewport on 390 mobile, 768 tablet, 1280 laptop, and 1440 desktop after the home chart extraction | Done |
 | Loop state checklist | `docs/FRONTEND_LOOP_STATE.md` extracts requirements from the four required docs and records current evidence | Done |
@@ -161,6 +161,9 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
 | Real live LLM quality | Adapter and status endpoint exist, but current container has no configured live key/model | Not done |
 | Source-grounded RAG fallback | Current Docker API returns event evidence/causal retrieval docs and a grounding report with supported claims | Done |
+| Search response contract | `scripts/test_all_apis.sh` checks the full `SearchResultDto` field set, `source=learning_terms`, and `termId` for learning-term results | Done |
+| Search service source contract | `SearchServiceTest` checks `source=latest_summary` for stock results and `source=learning_terms` for learning-term results | Done |
+| Term search learning navigation | Playwright `term search result opens learning detail flow` verifies home search `PER` opens the learning detail state | Done |
 | Full KRX stock universe | pykrx-backed KOSPI/KOSDAQ stock universe API/cache exists and is smoke-tested | Done |
 | KRX industry taxonomy | pykrx-backed KOSPI/KOSDAQ sector classification API/cache exists and is smoke-tested | Done |
 | Full external theme taxonomy | Naver Finance-backed theme taxonomy API/cache exists and is smoke-tested | Done |
@@ -202,7 +205,7 @@ The command covered:
 - API smoke tests
 - Playwright E2E across responsive viewports
 
-Result: full pass. The command completed ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright E2E with `13 passed`.
+Result: full pass. The command completed ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright E2E with `14 passed`.
 
 The latest search/taxonomy and chart-first loop was verified with:
 
@@ -302,6 +305,9 @@ Additional live Docker API checks:
 - Source-grounded RAG loop Docker `POST /api/ai/chat`: `mode=rag_fallback_rule_based`, `retrieval.sourceCount=7`, `docIds=search-result,chart-snapshot,event-1,event-1-evidence-1,event-1-evidence-2,event-1-causal-1,term-1`, `groundingPolicy=retrieval_only_with_explicit_limitations`, `supportedClaims=6`, `missingEvidence=1`
 - Source-grounded RAG loop targeted Playwright `theme search result opens visible AI market interpretation`: passed with `근거 검증` and `규칙형 RAG` visible
 - Source-grounded RAG loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- Search contract loop `./gradlew test --tests com.krbrief.search.SearchServiceTest`: passed with `source=latest_summary` and `source=learning_terms` assertions
+- Search contract loop targeted Playwright `term search result opens learning detail flow`: passed after selecting the exact `PER` learning-term result and verifying the learning detail state
+- Search contract loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke including `source`/`termId` search checks, and Playwright `14 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -350,7 +356,7 @@ Latest viewport metrics:
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, and `Split home page component`. The source-grounded RAG loop is ready for the next commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, and `Add source grounded AI evidence`. This report also records the subsequent search contract loop for the next recovery commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 

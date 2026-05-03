@@ -594,19 +594,19 @@
 
 ### 5.6 Search API
 
-- [ ] `GET /api/search?query=&limit=` 지원
+- [x] `GET /api/search?query=&limit=` 지원
 - [ ] query는 필수
 - [ ] limit 기본 8, 최대 20
-- [ ] 검색 대상은 기업명
-- [ ] 검색 대상은 종목 코드
-- [ ] 검색 대상은 산업
-- [ ] 검색 대상은 테마
-- [ ] 검색 대상은 시장 구분
-- [ ] 검색 대상은 용어
-- [ ] 검색 대상은 오늘 움직인 종목
-- [ ] search 응답에 `id`, `type`, `title`, `code`, `market`, `rate`, `tags`, `summary`, `source`, `stockCode`, `stockName`, `termId` 포함
-- [ ] `source=latest_summary` 지원
-- [ ] `source=learning_terms` 지원
+- [x] 검색 대상은 기업명
+- [x] 검색 대상은 종목 코드
+- [x] 검색 대상은 산업
+- [x] 검색 대상은 테마
+- [x] 검색 대상은 시장 구분
+- [x] 검색 대상은 용어
+- [x] 검색 대상은 오늘 움직인 종목
+- [x] search 응답에 `id`, `type`, `title`, `code`, `market`, `rate`, `tags`, `summary`, `source`, `stockCode`, `stockName`, `termId` 포함
+- [x] `source=latest_summary` 지원
+- [x] `source=learning_terms` 지원
 - [x] `source=krx_stock_universe` 지원
 - [x] `source=krx_sector_classification` 지원
 - [x] `source=naver_theme_taxonomy` 지원
@@ -764,7 +764,7 @@
 | Search | 기업/종목 검색 | 종목 결과 표시 | 정상 | 88/100 | 삼성전자, SK하이닉스, 현대차, 네이버/NAVER, 카카오 smoke 통과 | 예 |
 | AI | AI 분석 패널 | AI 기능이 명확히 보임 | 정상 | 88/100 | structured 결론/근거/반대 신호/리스크/출처/신뢰도/기준일/한계 UI 및 API 검증. live LLM 검증 없음 | 예 |
 | Navigation | 탭 전환 | 부드럽게 전환 | 정상 | 86/100 | Playwright navigation/skip/admin/history 흐름 통과 | 예 |
-| Learn | 용어 상세 | 핵심요약/3줄 설명/시나리오 표시 | 부분 정상 | 78/100 | UI 보강은 있음. backend schema가 목표 구조 전체를 보장하지 않음 | 예 |
+| Learn | 용어 상세 | 핵심요약/3줄 설명/시나리오 표시 | 정상 | 84/100 | backend schema, relatedQuestions alias, home search -> learning detail E2E 통과. 차트 위치 연동은 남음 | 예 |
 | Chart | 일봉 | 차트 표시 | 정상 | 90/100 | Playwright interval test와 viewport screenshot 통과 | 아니오 |
 | Chart | 주봉 | 차트 표시 | 정상 | 88/100 | Playwright interval test 통과 | 아니오 |
 | Chart | 월봉 | 차트 표시 | 정상 | 88/100 | Playwright interval test 통과 | 아니오 |
@@ -932,6 +932,9 @@
 - [x] Source-grounded RAG 루프 Docker 기준 `POST /api/ai/chat`: `mode=rag_fallback_rule_based`, `retrieval.sourceCount=7`, `docIds=search-result,chart-snapshot,event-1,event-1-evidence-1,event-1-evidence-2,event-1-causal-1,term-1`, `groundingPolicy=retrieval_only_with_explicit_limitations`, `supportedClaims=6`, `missingEvidence=1`
 - [x] Source-grounded RAG 루프 targeted Playwright `theme search result opens visible AI market interpretation`: `근거 검증`, `규칙형 RAG` 표시 확인, 통과
 - [x] Source-grounded RAG 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] Search contract 루프 `./gradlew test --tests com.krbrief.search.SearchServiceTest`: `source=latest_summary`, `source=learning_terms` 확인 포함 통과
+- [x] Search contract 루프 targeted Playwright `term search result opens learning detail flow`: PER 검색 결과에서 배우기 상세 이동 확인, 통과
+- [x] Search contract 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `14 passed`
 
 ### 9.3 최신 viewport 계측
 

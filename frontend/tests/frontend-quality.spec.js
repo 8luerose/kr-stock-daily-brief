@@ -89,6 +89,24 @@ test("stock search result opens chart research flow", async ({ page }) => {
   await expect(page.locator(".realChart canvas").first()).toBeVisible();
 });
 
+test("term search result opens learning detail flow", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+
+  await page.fill("#universal-search", "PER");
+  const perResult = page.locator(".searchResults button").filter({
+    has: page.locator("strong", { hasText: /^PER/ })
+  }).first();
+  await expect(perResult).toBeVisible();
+  await perResult.click();
+
+  await expect(page).toHaveTitle("배우기 | 한국 주식 AI 리서치");
+  await expect(page.locator(".learningPanel")).toBeVisible();
+  await expect(page.locator(".termButton.active")).toContainText("PER");
+  await expect(page.getByLabel("AI에게 물어볼 질문")).not.toHaveValue("");
+  await expectNoHorizontalOverflow(page);
+});
+
 test("theme search result opens visible AI market interpretation", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
