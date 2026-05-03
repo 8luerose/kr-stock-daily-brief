@@ -111,6 +111,7 @@ Date: 2026-05-03
 - Follow-up hardening updated Vite, `@vitejs/plugin-react`, and Express transitive dependencies; `npm audit` now reports 0 vulnerabilities.
 - Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, the learning detail structure, interval switching, and bounded chart tooltip display.
 - Follow-up search work added `GET /api/search` so the first-view search now uses a backend adapter for latest-summary stocks, learning terms, and a seed industry/theme catalog; the frontend only keeps a local fallback for API failure.
+- Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack smoke tests, and Playwright E2E on push/PR.
 
 ## 11. Commit Hash
 
@@ -130,4 +131,3 @@ Date: 2026-05-03
 
 - Add risk-review automation for AI/chart text to catch direct investment wording.
 - Replace the backend seed industry/theme catalog with a richer market taxonomy API when real sector/theme data is available.
-- Add CI wiring for `npm run test:e2e` so browser regressions block pull requests automatically.
