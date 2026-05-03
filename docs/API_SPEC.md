@@ -497,7 +497,7 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 ### `POST /api/ai/chat`
 
-차트, 이벤트, 브리프, 용어 사전 컨텍스트를 받아 AI 분석 응답 형식으로 반환한다. 현재는 별도 `ai-service`의 규칙형 응답이며, 이후 LLM/RAG로 교체한다.
+차트, 이벤트, 브리프, 용어 사전 컨텍스트를 받아 AI 분석 응답 형식으로 반환한다. `ai-service`는 요청에 포함된 검색/브리프/차트/이벤트/용어를 retrieval 문서로 정리하고, `LLM_API_KEY` 또는 `OPENAI_API_KEY`와 `LLM_MODEL`이 설정되어 있으면 OpenAI-compatible chat completions adapter를 호출한다. LLM 설정이 없거나 실패하면 규칙형 RAG fallback 응답을 반환한다.
 
 #### 요청 예시
 
@@ -524,15 +524,33 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 ```json
 {
-  "mode": "rag_ready_rule_based",
+  "mode": "rag_llm | rag_fallback_rule_based",
   "answer": "기준일: 2026-04-30\n대상: 삼성전자(005930)...",
   "basisDate": "2026-04-30",
   "confidence": "medium",
   "sources": [
     { "title": "종목 차트 API", "type": "ohlcv", "url": "/api/stocks/005930/chart" }
   ],
+  "retrieval": {
+    "documents": [
+      {
+        "id": "event-1",
+        "type": "volume_spike",
+        "title": "거래량 급증",
+        "basisDate": "2026-04-30"
+      }
+    ],
+    "sourceCount": 1,
+    "llm": {
+      "enabled": true,
+      "used": true,
+      "provider": "openai_compatible",
+      "model": "설정된 LLM_MODEL",
+      "fallbackReason": ""
+    }
+  },
   "limitations": [
-    "현재 ai-service는 외부 LLM 호출 없이 규칙형 응답을 제공합니다.",
+    "LLM 응답은 제공된 retrieval 근거 안에서 생성되도록 제한했습니다.",
     "투자 지시가 아니라 교육용 분석 보조입니다."
   ],
   "oppositeSignals": ["거래량 없는 상승"],
@@ -543,6 +561,8 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 #### 응답 정책
 
 - 반드시 기준일, 출처, 신뢰도, 한계, 반대 신호를 포함한다.
+- `retrieval.documents`에는 답변 생성에 사용한 검색/브리프/차트/이벤트/용어 근거를 남긴다.
+- `LLM_MODEL` 또는 API key가 없으면 `mode=rag_fallback_rule_based`로 동작한다.
 - “지금 사라/팔아라”가 아니라 조건, 리스크, 대안 시나리오로 설명한다.
 - 개인화 투자 조언이나 수익 보장을 하지 않는다.
 

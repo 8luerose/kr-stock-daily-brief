@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from datetime import date
+import json
+import os
 from typing import Any
+from urllib import error, request
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
@@ -28,6 +31,17 @@ class ChatRequest(BaseModel):
 def _clean(value: Any, fallback: str = "-") -> str:
     text = str(value or "").strip()
     return text if text else fallback
+
+
+def _compact(value: Any, limit: int = 420) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        text = value
+    else:
+        text = json.dumps(value, ensure_ascii=False, default=str)
+    text = " ".join(text.split())
+    return text[:limit]
 
 
 def _event_lines(events: list[dict[str, Any]]) -> list[str]:
@@ -70,6 +84,135 @@ def _search_context_lines(search_result: dict[str, Any] | None) -> list[str]:
     return lines
 
 
+def _build_retrieval_documents(req: ChatRequest, subject: str, code: str, topic_type: str, basis_date: str) -> list[dict[str, str]]:
+    documents: list[dict[str, str]] = []
+
+    if req.searchResult:
+        documents.append({
+            "id": "search-result",
+            "type": _clean(req.searchResult.get("type"), topic_type),
+            "title": _clean(req.searchResult.get("title"), subject),
+            "text": _compact(req.searchResult),
+            "basisDate": basis_date,
+        })
+
+    if req.summary:
+        documents.append({
+            "id": "daily-summary",
+            "type": "daily_summary",
+            "title": f"{basis_date} 저장 브리프",
+            "text": _compact(req.summary),
+            "basisDate": basis_date,
+        })
+
+    if req.chart:
+        documents.append({
+            "id": "chart-snapshot",
+            "type": "chart",
+            "title": f"{subject}{f'({code})' if code else ''} 차트 스냅샷",
+            "text": _compact(req.chart),
+            "basisDate": _clean(req.chart.get("asOf"), basis_date) if isinstance(req.chart, dict) else basis_date,
+        })
+
+    for index, event in enumerate((req.events or [])[:6], start=1):
+        documents.append({
+            "id": f"event-{index}",
+            "type": _clean(event.get("type"), "event"),
+            "title": _clean(event.get("title"), "이벤트"),
+            "text": _compact(event),
+            "basisDate": _clean(event.get("date"), basis_date),
+        })
+
+    for index, term in enumerate((req.terms or [])[:6], start=1):
+        documents.append({
+            "id": f"term-{index}",
+            "type": "learning_term",
+            "title": _clean(term.get("term") or term.get("id"), "용어"),
+            "text": _compact(term),
+            "basisDate": basis_date,
+        })
+
+    return documents
+
+
+def _build_llm_prompt(req: ChatRequest, subject: str, code: str, topic_type: str, basis_date: str, documents: list[dict[str, str]]) -> list[dict[str, str]]:
+    context = "\n".join(
+        f"[{doc['id']}] {doc['type']} | {doc['title']} | 기준일 {doc['basisDate']}\n{doc['text']}"
+        for doc in documents
+    )
+    system = (
+        "너는 한국 주식 초보자를 위한 AI 리서치 보조자다. "
+        "반드시 제공된 검색/브리프/차트/이벤트/용어 근거 안에서만 답하고, "
+        "매수 또는 매도를 지시하지 말고 조건/검토/시나리오 표현만 사용한다. "
+        "출처가 부족하면 부족하다고 말한다. "
+        "답변 구조는 한 줄 결론, 근거, 반대 신호, 리스크, 다음 확인 순서로 작성한다."
+    )
+    user = (
+        f"질문: {_clean(req.question, '시장과 차트 해석')}\n"
+        f"대상: {subject}{f'({code})' if code else ''}\n"
+        f"분석 범위: {topic_type}\n"
+        f"기준일: {basis_date}\n\n"
+        f"검색된 근거:\n{context or '제공된 근거가 없습니다.'}"
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
+    api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
+    model = os.getenv("LLM_MODEL", "").strip()
+    base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "20"))
+
+    if not api_key or not model:
+        return None, {
+            "enabled": False,
+            "provider": "openai_compatible",
+            "model": model or "",
+            "fallbackReason": "LLM_API_KEY/OPENAI_API_KEY 또는 LLM_MODEL이 설정되지 않았습니다.",
+        }
+
+    payload = json.dumps({
+        "model": model,
+        "messages": messages,
+        "temperature": 0.2,
+        "max_tokens": 900,
+    }).encode("utf-8")
+    req = request.Request(
+        f"{base_url}/chat/completions",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with request.urlopen(req, timeout=timeout) as res:
+            data = json.loads(res.read().decode("utf-8"))
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        if not content:
+            return None, {
+                "enabled": True,
+                "provider": "openai_compatible",
+                "model": model,
+                "fallbackReason": "LLM 응답에 content가 없습니다.",
+            }
+        return content, {
+            "enabled": True,
+            "provider": "openai_compatible",
+            "model": model,
+            "fallbackReason": "",
+        }
+    except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
+        return None, {
+            "enabled": True,
+            "provider": "openai_compatible",
+            "model": model,
+            "fallbackReason": f"LLM 호출 실패: {type(exc).__name__}",
+        }
+
+
 @app.get("/health")
 def health():
     return {"status": "UP"}
@@ -87,6 +230,7 @@ def chat(req: ChatRequest):
     event_lines = _event_lines(events)
     term_lines = _term_lines(terms)
     search_context_lines = _search_context_lines(req.searchResult)
+    retrieval_documents = _build_retrieval_documents(req, subject, code, topic_type, basis_date)
     answer_parts = [
         f"기준일: {basis_date}",
         f"대상: {subject}{f'({code})' if code else ''}",
@@ -133,17 +277,35 @@ def chat(req: ChatRequest):
         sources.insert(1, {"title": "종목 차트 API", "type": "ohlcv", "url": f"/api/stocks/{code}/chart"})
         sources.insert(2, {"title": "종목 이벤트 API", "type": "events", "url": f"/api/stocks/{code}/events"})
 
+    llm_answer, llm_meta = _call_openai_compatible_llm(
+        _build_llm_prompt(req, subject, code, topic_type, basis_date, retrieval_documents)
+    )
+    used_llm = bool(llm_answer)
+
+    limitations = [
+        "투자 지시가 아니라 교육용 분석 보조입니다.",
+        "개인 재무 상황, 보유 비중, 투자 기간을 반영하지 않습니다.",
+    ]
+    if not used_llm:
+        limitations.insert(0, "LLM 설정 또는 호출 실패로 규칙형 RAG fallback 응답을 제공합니다.")
+    else:
+        limitations.insert(0, "LLM 응답은 제공된 retrieval 근거 안에서 생성되도록 제한했습니다.")
+
     return {
-        "mode": "rag_ready_rule_based",
-        "answer": "\n".join(answer_parts),
+        "mode": "rag_llm" if used_llm else "rag_fallback_rule_based",
+        "answer": llm_answer or "\n".join(answer_parts),
         "basisDate": basis_date,
-        "confidence": "medium" if events else "low-medium",
+        "confidence": "medium" if retrieval_documents else "low-medium",
         "sources": sources,
-        "limitations": [
-            "현재 ai-service는 외부 LLM 호출 없이 규칙형 응답을 제공합니다.",
-            "투자 지시가 아니라 교육용 분석 보조입니다.",
-            "개인 재무 상황, 보유 비중, 투자 기간을 반영하지 않습니다.",
-        ],
+        "retrieval": {
+            "documents": retrieval_documents,
+            "sourceCount": len(retrieval_documents),
+            "llm": {
+                **llm_meta,
+                "used": used_llm,
+            },
+        },
+        "limitations": limitations,
         "oppositeSignals": [
             "거래량 없는 상승",
             "하락일 거래량 급증",

@@ -133,11 +133,14 @@ pass "GET /api/stocks/{code}/events"
 # 15) AI chat
 code=$(status_code POST "$BASE_URL/api/ai/chat" \
   -H "Content-Type: application/json" \
-  -d '{"question":"삼성전자 차트를 초보자 관점으로 설명해줘","contextDate":"'"$DATE_TODAY"'","stockCode":"005930","stockName":"삼성전자"}')
+  -d '{"question":"삼성전자 차트를 초보자 관점으로 설명해줘","contextDate":"'"$DATE_TODAY"'","stockCode":"005930","stockName":"삼성전자","searchResult":{"type":"stock","title":"삼성전자","stockCode":"005930","summary":"반도체와 메모리 업황을 함께 확인해야 하는 대표 종목입니다."}}')
 [[ "$code" == "200" ]] || fail "ai chat expected 200, got $code"
 contains_field /tmp/krbrief_resp.json mode || fail "ai chat missing mode"
 contains_field /tmp/krbrief_resp.json limitations || fail "ai chat missing limitations"
 contains_field /tmp/krbrief_resp.json oppositeSignals || fail "ai chat missing oppositeSignals"
+contains_field /tmp/krbrief_resp.json retrieval || fail "ai chat missing retrieval"
+contains_field /tmp/krbrief_resp.json sourceCount || fail "ai chat missing retrieval sourceCount"
+grep -q '"id":"search-result"' /tmp/krbrief_resp.json || fail "ai chat missing search-result retrieval document"
 pass "POST /api/ai/chat"
 
 # 16) Unified search
