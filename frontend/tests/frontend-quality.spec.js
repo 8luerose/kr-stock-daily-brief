@@ -57,6 +57,8 @@ test("learning tab exposes beginner structure and assistant entry points", async
   await expect(page.locator("#term-search")).toBeVisible();
   await expect(page.locator(".termDetail")).toBeVisible();
   await expect(page.getByText("핵심요약")).toBeVisible();
+  await expect(page.getByText("자세한 설명")).toBeVisible();
+  await expect(page.getByText("차트에서 보는 법")).toBeVisible();
   await expect(page.getByText("왜 중요한가")).toBeVisible();
   await expect(page.getByText("시나리오 예시")).toBeVisible();
   await expect(page.getByText("바로 물어보기")).toBeVisible();

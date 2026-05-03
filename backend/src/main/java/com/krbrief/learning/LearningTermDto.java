@@ -10,5 +10,10 @@ public record LearningTermDto(
     String whyItMatters,
     String beginnerCheck,
     String caution,
+    String coreSummary,
+    String longExplanation,
+    String chartUsage,
+    String commonMisunderstanding,
+    String scenario,
     List<String> relatedTerms,
     List<String> exampleQuestions) {}

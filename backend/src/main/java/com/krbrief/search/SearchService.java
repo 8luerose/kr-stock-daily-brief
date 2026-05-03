@@ -136,7 +136,7 @@ public class SearchService {
               "용어",
               "학습",
               compactTags(term.category(), term.relatedTerms()),
-              term.plainDefinition(),
+              term.coreSummary(),
               "learning_terms",
               null,
               null,

@@ -399,15 +399,15 @@
 
 ### 4.3 P2 이슈
 
-- [ ] glossary schema 확장
-- [ ] 용어 데이터에 `coreSummary` 제공
-- [ ] 용어 데이터에 `longExplanation` 제공
-- [ ] 용어 데이터에 `whyItMatters` 제공
-- [ ] 용어 데이터에 `chartUsage` 제공
-- [ ] 용어 데이터에 `commonMisunderstanding` 제공
-- [ ] 용어 데이터에 `scenario` 제공
+- [x] glossary schema 확장
+- [x] 용어 데이터에 `coreSummary` 제공
+- [x] 용어 데이터에 `longExplanation` 제공
+- [x] 용어 데이터에 `whyItMatters` 제공
+- [x] 용어 데이터에 `chartUsage` 제공
+- [x] 용어 데이터에 `commonMisunderstanding` 제공
+- [x] 용어 데이터에 `scenario` 제공
 - [ ] 용어 데이터에 `relatedQuestions` 제공
-- [ ] 프론트 임시 생성 학습 콘텐츠를 backend 데이터 기반으로 전환
+- [x] 프론트 임시 생성 학습 콘텐츠를 backend 데이터 기반으로 전환
 - [ ] "이 용어가 지금 차트에서 어디에 보여?" 기능을 AI와 연결
 - [ ] `HomePage` 분리
 - [ ] `ResearchPage` 분리
@@ -512,27 +512,28 @@
 
 ### 5.3 Learning API
 
-- [ ] `GET /api/learning/terms?query=&category=&limit=` 지원
-- [ ] terms query는 용어/설명 검색
-- [ ] terms category는 시장/차트/재무/공시/뉴스/리스크 지원
-- [ ] terms limit 기본 80, 최대 120
-- [ ] term 응답에 `id` 포함
-- [ ] term 응답에 `term` 포함
-- [ ] term 응답에 `category` 포함
-- [ ] term 응답에 `plainDefinition` 포함
-- [ ] term 응답에 `whyItMatters` 포함
-- [ ] term 응답에 `beginnerCheck` 포함
-- [ ] term 응답에 `caution` 포함
-- [ ] term 응답에 `relatedTerms` 포함
-- [ ] term 응답에 `exampleQuestions` 포함
-- [ ] `GET /api/learning/terms/{id}` 지원
-- [ ] 없는 용어는 404
-- [ ] `POST /api/learning/assistant` 지원
-- [ ] learning assistant는 현재 내부 용어 사전 기반 규칙형 응답
-- [ ] learning assistant는 향후 `/api/ai/chat` 또는 ai-service 라우팅 연결점 유지
-- [ ] learning assistant 응답에 `mode`, `answer`, `confidence`, `matchedTerms`, `sources`, `limitations`, `nextQuestions`, `futureAiEndpoint` 포함
-- [ ] learning assistant는 투자 판단 직접 지시 금지
-- [ ] learning assistant는 기준일, 출처, 한계, 연결 용어 포함
+- [x] `GET /api/learning/terms?query=&category=&limit=` 지원
+- [x] terms query는 용어/설명 검색
+- [x] terms category는 시장/차트/재무/공시/뉴스/리스크 지원
+- [x] terms limit 기본 80, 최대 120
+- [x] term 응답에 `id` 포함
+- [x] term 응답에 `term` 포함
+- [x] term 응답에 `category` 포함
+- [x] term 응답에 `plainDefinition` 포함
+- [x] term 응답에 `whyItMatters` 포함
+- [x] term 응답에 `beginnerCheck` 포함
+- [x] term 응답에 `caution` 포함
+- [x] term 응답에 `relatedTerms` 포함
+- [x] term 응답에 `exampleQuestions` 포함
+- [x] term 응답에 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 포함
+- [x] `GET /api/learning/terms/{id}` 지원
+- [x] 없는 용어는 404
+- [x] `POST /api/learning/assistant` 지원
+- [x] learning assistant는 현재 내부 용어 사전 기반 규칙형 응답
+- [x] learning assistant는 향후 `/api/ai/chat` 또는 ai-service 라우팅 연결점 유지
+- [x] learning assistant 응답에 `mode`, `answer`, `confidence`, `matchedTerms`, `sources`, `limitations`, `nextQuestions`, `futureAiEndpoint` 포함
+- [x] learning assistant는 투자 판단 직접 지시 금지
+- [x] learning assistant는 기준일, 출처, 한계, 연결 용어 포함
 
 ### 5.4 Stock/Chart API
 
@@ -899,6 +900,13 @@
 - [x] Causal factor scoring 루프 `./scripts/verify_investment_language.sh`: 통과
 - [x] Causal factor scoring 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 - [x] Causal factor scoring 루프 스크린샷: `/tmp/krbrief-screens/event-causal-factor-score-1440.png`
+- [x] LearningTerm schema 루프 `./gradlew test --tests com.krbrief.learning.LearningTermCatalogTest --tests com.krbrief.learning.LearningAssistantServiceTest --tests com.krbrief.search.SearchServiceTest`: 통과
+- [x] LearningTerm schema 루프 `npm ci --include=dev && npm run build`: 통과
+- [x] LearningTerm schema 루프 Docker 기준 `GET /api/learning/terms?query=PER&limit=5`: `coreSummary`, `longExplanation`, `chartUsage`, `commonMisunderstanding`, `scenario` 반환 확인
+- [x] LearningTerm schema 루프 Docker 기준 `GET /api/learning/terms?query=거래량&limit=5`: `volume`이 첫 결과로 복구됨
+- [x] LearningTerm schema 루프 Docker 기준 `POST /api/learning/assistant`: `matchedTerms[0].coreSummary/chartUsage/scenario`, 답변 내 `차트에서 보는 법`, `시나리오 예시` 확인
+- [x] LearningTerm schema 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] LearningTerm schema 루프 스크린샷: `/tmp/krbrief-screens/learning-term-expanded-schema-1440.png`
 
 ### 9.3 최신 viewport 계측
 
@@ -913,6 +921,7 @@
 - Event text causal scoring screenshot: `/tmp/krbrief-screens/event-text-causal-score-1440.png`
 - Event article-body causal scoring screenshot: `/tmp/krbrief-screens/event-article-body-causal-score-1440.png`
 - Event causal factor scoring screenshot: `/tmp/krbrief-screens/event-causal-factor-score-1440.png`
+- Learning term expanded schema screenshot: `/tmp/krbrief-screens/learning-term-expanded-schema-1440.png`
 
 ### 9.4 최신 API 검색 검증
 
@@ -940,15 +949,15 @@
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
 | 사용자 | 494/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
-| 프론트 개발자 | 489/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, 마커 tooltip/AI structured/event causal score/factor E2E 강화 | assistant/learning 상태 분리와 최종 visual polish 미완 |
-| 백엔드 개발자 | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | live RAG 검증 부족, causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
+| 프론트 개발자 | 490/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI 강화 | assistant/learning 상태 hook 분리와 최종 visual polish 미완 |
+| 백엔드 개발자 | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | live RAG 검증 부족, causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
 | DevOps 개발자 | 493/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
-| VC/투자자 | 471/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 472/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 causal factor scoring 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. live LLM/RAG 검증을 우선하되, secret이 없으면 DART 공시 섹션 파싱 범위와 더 정교한 LLM 대체 explainability를 진행한다.
+1. 이번 LearningTerm schema 루프 변경분을 의미 있는 단위로 commit/push한다.
+2. live LLM/RAG 검증을 우선하되, secret이 없으면 assistant/learning 상태와 API 호출을 hooks/API client로 더 분리한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
-4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.
-5. assistant/learning 상태와 API 호출을 hooks/API client로 더 분리한다.
+4. LearningTerm `relatedQuestions` 요구사항을 `exampleQuestions`와 통합할지 별도 필드로 둘지 결정한다.
+5. final visual polish와 원격 CI/배포 증거를 보강한다.

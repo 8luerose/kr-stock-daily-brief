@@ -105,6 +105,11 @@ pass "GET /api/summaries/{invalid-date} returns 400 JSON"
 code=$(status_code GET "$BASE_URL/api/learning/terms?query=PER&limit=5")
 [[ "$code" == "200" ]] || fail "learning terms expected 200, got $code"
 contains_field /tmp/krbrief_resp.json plainDefinition || fail "learning terms missing plainDefinition"
+contains_field /tmp/krbrief_resp.json coreSummary || fail "learning terms missing coreSummary"
+contains_field /tmp/krbrief_resp.json longExplanation || fail "learning terms missing longExplanation"
+contains_field /tmp/krbrief_resp.json chartUsage || fail "learning terms missing chartUsage"
+contains_field /tmp/krbrief_resp.json commonMisunderstanding || fail "learning terms missing commonMisunderstanding"
+contains_field /tmp/krbrief_resp.json scenario || fail "learning terms missing scenario"
 pass "GET /api/learning/terms"
 
 # 12) Learning assistant
@@ -114,6 +119,8 @@ code=$(status_code POST "$BASE_URL/api/learning/assistant" \
 [[ "$code" == "200" ]] || fail "learning assistant expected 200, got $code"
 contains_field /tmp/krbrief_resp.json futureAiEndpoint || fail "learning assistant missing futureAiEndpoint"
 contains_field /tmp/krbrief_resp.json limitations || fail "learning assistant missing limitations"
+contains_field /tmp/krbrief_resp.json coreSummary || fail "learning assistant missing matched term coreSummary"
+grep -q '차트에서 보는 법' /tmp/krbrief_resp.json || fail "learning assistant missing chart usage section"
 pass "POST /api/learning/assistant"
 
 # 13) Stock chart

@@ -278,6 +278,14 @@ export function LearningPanel({
               <span>{selectedTerm.plainDefinition}</span>
             </div>
             <div className="termInfo">
+              <strong>{copy.longExplanation}</strong>
+              <span>{selectedTerm.longExplanation || `${selectedTerm.plainDefinition} ${selectedTerm.whyItMatters}`}</span>
+            </div>
+            <div className="termInfo">
+              <strong>{copy.chartUsage}</strong>
+              <span>{selectedTerm.chartUsage || selectedTerm.beginnerCheck}</span>
+            </div>
+            <div className="termInfo">
               <strong>{copy.whyItMatters}</strong>
               <span>{selectedTerm.whyItMatters}</span>
             </div>
@@ -287,7 +295,7 @@ export function LearningPanel({
             </div>
             <div className="termInfo caution">
               <strong>{copy.caution}</strong>
-              <span>{selectedTerm.caution}</span>
+              <span>{selectedTerm.commonMisunderstanding || selectedTerm.caution}</span>
             </div>
             <div className="termInfo scenario">
               <strong>{copy.scenarioExample}</strong>

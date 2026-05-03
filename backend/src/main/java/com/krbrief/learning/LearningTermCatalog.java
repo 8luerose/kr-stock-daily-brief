@@ -25,7 +25,9 @@ public class LearningTermCatalog {
     return terms.stream()
         .filter(t -> c.isBlank() || normalize(t.category()).equals(c))
         .filter(t -> q.isBlank() || searchableText(t).contains(q))
-        .sorted(Comparator.comparing(LearningTermDto::category).thenComparing(LearningTermDto::term))
+        .sorted(Comparator.comparingInt((LearningTermDto t) -> relevance(t, q))
+            .thenComparing(LearningTermDto::category)
+            .thenComparing(LearningTermDto::term))
         .limit(safeLimit)
         .toList();
   }
@@ -75,8 +77,32 @@ public class LearningTermCatalog {
             term.whyItMatters(),
             term.beginnerCheck(),
             term.caution(),
+            term.coreSummary(),
+            term.longExplanation(),
+            term.chartUsage(),
+            term.commonMisunderstanding(),
+            term.scenario(),
             String.join(" ", term.relatedTerms()),
             String.join(" ", term.exampleQuestions())));
+  }
+
+  private int relevance(LearningTermDto term, String q) {
+    if (q.isBlank()) {
+      return 5;
+    }
+    if (normalize(term.term()).equals(q) || normalize(term.id()).equals(q)) {
+      return 0;
+    }
+    if (term.relatedTerms().stream().map(this::normalize).anyMatch(related -> related.equals(q))) {
+      return 1;
+    }
+    if (normalize(term.term()).contains(q) || normalize(term.id()).contains(q)) {
+      return 2;
+    }
+    if (term.relatedTerms().stream().map(this::normalize).anyMatch(related -> related.contains(q))) {
+      return 3;
+    }
+    return 4;
   }
 
   private int normalizeLimit(Integer limit) {
@@ -590,7 +616,52 @@ public class LearningTermCatalog {
         whyItMatters,
         beginnerCheck,
         caution,
+        coreSummary(term, plainDefinition, whyItMatters),
+        longExplanation(plainDefinition, whyItMatters, beginnerCheck),
+        chartUsage(term, category, beginnerCheck),
+        caution,
+        scenario(term, category, beginnerCheck),
         List.copyOf(relatedTerms),
         List.copyOf(exampleQuestions));
+  }
+
+  private static String coreSummary(String term, String plainDefinition, String whyItMatters) {
+    return term + "은(는) " + plainDefinition + " " + whyItMatters;
+  }
+
+  private static String longExplanation(String plainDefinition, String whyItMatters, String beginnerCheck) {
+    return plainDefinition + " " + whyItMatters + " 초보자는 " + beginnerCheck;
+  }
+
+  private static String chartUsage(String term, String category, String beginnerCheck) {
+    if ("차트".equals(category)) {
+      return term + " 신호를 차트에서 볼 때는 가격 위치, 거래량, 지지/저항선을 함께 확인하세요. " + beginnerCheck;
+    }
+    if ("매매".equals(category) || "리스크".equals(category)) {
+      return "차트에서는 " + term + "을(를) 단독 신호로 쓰지 말고 진입 구간, 손실 기준, 거래량 변화를 함께 봅니다. " + beginnerCheck;
+    }
+    if ("공시/뉴스".equals(category)) {
+      return "차트 이벤트와 " + term + " 원문 날짜가 같은 방향으로 맞물리는지 확인하세요. " + beginnerCheck;
+    }
+    if ("재무".equals(category)) {
+      return "차트 반응이 " + term + " 개선과 함께 나오는지 보고, 일회성 숫자인지 확인하세요. " + beginnerCheck;
+    }
+    return "차트에서는 " + term + " 관련 뉴스나 지표가 나온 날의 가격 방향과 거래량 변화를 함께 확인하세요.";
+  }
+
+  private static String scenario(String term, String category, String beginnerCheck) {
+    if ("차트".equals(category)) {
+      return "예: " + term + " 신호가 보이면 바로 결론을 내리지 않고 거래량, 전일 흐름, 지지/저항선을 함께 확인합니다.";
+    }
+    if ("매매".equals(category)) {
+      return "예: " + term + "을(를) 사용할 때는 주문 전 목표 가격, 손실 제한, 전체 비중을 먼저 정합니다.";
+    }
+    if ("리스크".equals(category)) {
+      return "예: " + term + " 리스크가 커진 종목은 기대 수익보다 먼저 감당 가능한 손실 금액을 계산합니다.";
+    }
+    if ("공시/뉴스".equals(category)) {
+      return "예: " + term + "이(가) 등장하면 제목보다 원문 날짜, 금액, 조건, 정정 여부를 먼저 확인합니다.";
+    }
+    return "예: " + term + "을(를) 볼 때는 " + beginnerCheck;
   }
 }

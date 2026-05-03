@@ -282,6 +282,11 @@ export function termMatches(term, query, category) {
     term.whyItMatters,
     term.beginnerCheck,
     term.caution,
+    term.coreSummary,
+    term.longExplanation,
+    term.chartUsage,
+    term.commonMisunderstanding,
+    term.scenario,
     ...asArray(term.relatedTerms),
     ...asArray(term.exampleQuestions)
   ]
@@ -292,11 +297,12 @@ export function termMatches(term, query, category) {
 
 export function buildTermCoreSummary(term) {
   if (!term) return "";
-  return `${term.term}은(는) ${term.plainDefinition}`;
+  return term.coreSummary || `${term.term}은(는) ${term.plainDefinition}`;
 }
 
 export function buildTermScenario(term) {
   if (!term) return "";
+  if (term.scenario) return term.scenario;
   const name = term.term;
   const category = term.category;
   if (category === "차트") {

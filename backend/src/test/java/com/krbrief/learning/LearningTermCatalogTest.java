@@ -17,6 +17,11 @@ class LearningTermCatalogTest {
     assertFalse(terms.isEmpty());
     assertTrue(terms.stream().anyMatch(term -> term.id().equals("per")));
     assertTrue(terms.stream().anyMatch(term -> term.plainDefinition().contains("주당순이익")));
+    assertTrue(terms.stream().anyMatch(term -> term.coreSummary().contains("주당순이익")));
+    assertTrue(terms.stream().anyMatch(term -> !term.longExplanation().isBlank()));
+    assertTrue(terms.stream().anyMatch(term -> !term.chartUsage().isBlank()));
+    assertTrue(terms.stream().anyMatch(term -> !term.commonMisunderstanding().isBlank()));
+    assertTrue(terms.stream().anyMatch(term -> !term.scenario().isBlank()));
   }
 
   @Test

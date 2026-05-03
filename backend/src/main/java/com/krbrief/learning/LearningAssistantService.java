@@ -55,13 +55,12 @@ public class LearningAssistantService {
 
     sb.append("핵심 설명\n");
     for (LearningTermDto term : matchedTerms) {
-      sb.append("- ")
-          .append(term.term())
-          .append(": ")
-          .append(term.plainDefinition())
-          .append(" ")
-          .append(term.whyItMatters())
-          .append("\n");
+      sb.append("- ").append(term.term()).append(": ").append(term.coreSummary()).append("\n");
+    }
+
+    sb.append("\n자세히 보면\n");
+    for (LearningTermDto term : matchedTerms) {
+      sb.append("- ").append(term.term()).append(": ").append(term.longExplanation()).append("\n");
     }
 
     sb.append("\n초보자 체크리스트\n");
@@ -69,9 +68,19 @@ public class LearningAssistantService {
       sb.append("- ").append(term.term()).append(": ").append(term.beginnerCheck()).append("\n");
     }
 
+    sb.append("\n차트에서 보는 법\n");
+    for (LearningTermDto term : matchedTerms) {
+      sb.append("- ").append(term.term()).append(": ").append(term.chartUsage()).append("\n");
+    }
+
     sb.append("\n주의할 점\n");
     for (LearningTermDto term : matchedTerms) {
-      sb.append("- ").append(term.term()).append(": ").append(term.caution()).append("\n");
+      sb.append("- ").append(term.term()).append(": ").append(term.commonMisunderstanding()).append("\n");
+    }
+
+    sb.append("\n시나리오 예시\n");
+    for (LearningTermDto term : matchedTerms) {
+      sb.append("- ").append(term.term()).append(": ").append(term.scenario()).append("\n");
     }
 
     sb.append("\n이 답변은 이해를 돕기 위한 설명이며, 특정 종목을 지금 사거나 팔라는 뜻이 아닙니다.");
