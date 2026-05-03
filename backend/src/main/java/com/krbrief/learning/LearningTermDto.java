@@ -16,4 +16,5 @@ public record LearningTermDto(
     String commonMisunderstanding,
     String scenario,
     List<String> relatedTerms,
-    List<String> exampleQuestions) {}
+    List<String> exampleQuestions,
+    List<String> relatedQuestions) {}

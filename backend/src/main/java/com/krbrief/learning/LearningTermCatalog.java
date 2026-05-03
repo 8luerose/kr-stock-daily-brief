@@ -622,6 +622,7 @@ public class LearningTermCatalog {
         caution,
         scenario(term, category, beginnerCheck),
         List.copyOf(relatedTerms),
+        List.copyOf(exampleQuestions),
         List.copyOf(exampleQuestions));
   }
 

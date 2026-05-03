@@ -313,7 +313,10 @@ export function LearningPanel({
             </div>
             <div className="questionList">
               <span>{copy.exampleQuestions}</span>
-              {asArray(selectedTerm.exampleQuestions).slice(0, 3).map((question) => (
+              {(asArray(selectedTerm.exampleQuestions).length > 0
+                ? asArray(selectedTerm.exampleQuestions)
+                : asArray(selectedTerm.relatedQuestions)
+              ).slice(0, 3).map((question) => (
                 <button
                   type="button"
                   key={question}

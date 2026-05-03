@@ -35,6 +35,7 @@ class LearningTermCatalogTest {
     assertTrue(terms.stream().anyMatch(term -> term.id().equals("etf")));
     assertTrue(terms.stream().anyMatch(term -> term.id().equals("bid-ask")));
     assertTrue(terms.stream().anyMatch(term -> term.exampleQuestions().size() >= 3));
+    assertTrue(terms.stream().anyMatch(term -> term.relatedQuestions().equals(term.exampleQuestions())));
   }
 
   @Test

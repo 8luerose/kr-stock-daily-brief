@@ -326,7 +326,8 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
     "commonMisunderstanding": "가격이 낮거나 거래가 적은 종목은 등락률이 과장되어 보일 수 있습니다.",
     "scenario": "예: 등락률을 볼 때는 등락률만 보지 말고 거래량, 공시, 뉴스, 시장 전체 흐름을 같이 확인하세요.",
     "relatedTerms": ["상승률", "하락률", "전일대비", "rate"],
-    "exampleQuestions": ["등락률이 높으면 좋은 종목인가요?", "전일대비 등락률은 어떻게 계산해요?"]
+    "exampleQuestions": ["등락률이 높으면 좋은 종목인가요?", "전일대비 등락률은 어떻게 계산해요?"],
+    "relatedQuestions": ["등락률이 높으면 좋은 종목인가요?", "전일대비 등락률은 어떻게 계산해요?"]
   }
 ]
 ```
@@ -391,7 +392,8 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
       "commonMisunderstanding": "거래량이 갑자기 늘었다고 항상 좋은 신호는 아닙니다.",
       "scenario": "예: 거래량을 볼 때는 급등/급락이 거래량 증가와 함께 나타났는지 확인하세요.",
       "relatedTerms": ["거래 주식 수", "volume", "수급"],
-      "exampleQuestions": ["거래량이 늘면 왜 중요해요?", "거래량 없이 오른 종목은 어떻게 봐야 해요?"]
+      "exampleQuestions": ["거래량이 늘면 왜 중요해요?", "거래량 없이 오른 종목은 어떻게 봐야 해요?"],
+      "relatedQuestions": ["거래량이 늘면 왜 중요해요?", "거래량 없이 오른 종목은 어떻게 봐야 해요?"]
     }
   ],
   "sources": [

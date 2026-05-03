@@ -406,7 +406,7 @@
 - [x] 용어 데이터에 `chartUsage` 제공
 - [x] 용어 데이터에 `commonMisunderstanding` 제공
 - [x] 용어 데이터에 `scenario` 제공
-- [ ] 용어 데이터에 `relatedQuestions` 제공
+- [x] 용어 데이터에 `relatedQuestions` 제공
 - [x] 프론트 임시 생성 학습 콘텐츠를 backend 데이터 기반으로 전환
 - [ ] "이 용어가 지금 차트에서 어디에 보여?" 기능을 AI와 연결
 - [ ] `HomePage` 분리
@@ -916,6 +916,10 @@
 - [x] Assistant/Learning hook split 루프 1차 `make quality`: Docker rebuild, health, investment scan, API smoke까지 통과 후 로컬 `playwright-core/lib/bootstrap.js` 누락으로 E2E 전 실패
 - [x] Assistant/Learning hook split 루프 로컬 Playwright 캐시 복구: `npm cache clean --force && rm -rf node_modules && npm ci --include=dev`, `playwright-core/lib/bootstrap.js` 확인
 - [x] Assistant/Learning hook split 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] LearningTerm `relatedQuestions` alias 루프: `LearningTermDto`에 `relatedQuestions` 추가, 기존 `exampleQuestions`와 동일한 호환 질문 목록 반환
+- [x] LearningTerm `relatedQuestions` alias 루프 `./gradlew test --tests com.krbrief.learning.LearningTermCatalogTest --tests com.krbrief.learning.LearningAssistantServiceTest --tests com.krbrief.search.SearchServiceTest`: 통과
+- [x] LearningTerm `relatedQuestions` alias 루프 `frontend npm run build`: 통과
+- [x] LearningTerm `relatedQuestions` alias 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 
 ### 9.3 최신 viewport 계측
 
@@ -965,8 +969,7 @@
 
 ## 11. 다음 루프 계획
 
-1. 이번 Assistant/Learning hook split 루프 변경분을 의미 있는 단위로 commit/push한다.
+1. 이번 LearningTerm `relatedQuestions` alias 루프 변경분을 의미 있는 단위로 commit/push한다.
 2. live LLM/RAG 검증을 우선하되, secret이 없으면 더 강한 source-grounded answer 품질을 검증 가능한 규칙/테스트로 보강한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
-4. LearningTerm `relatedQuestions` 요구사항을 `exampleQuestions`와 통합할지 별도 필드로 둘지 결정한다.
-5. final visual polish와 원격 CI/배포 증거를 보강한다.
+4. final visual polish와 원격 CI/배포 증거를 보강한다.

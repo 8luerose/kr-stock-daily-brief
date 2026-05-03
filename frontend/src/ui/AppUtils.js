@@ -288,7 +288,8 @@ export function termMatches(term, query, category) {
     term.commonMisunderstanding,
     term.scenario,
     ...asArray(term.relatedTerms),
-    ...asArray(term.exampleQuestions)
+    ...asArray(term.exampleQuestions),
+    ...asArray(term.relatedQuestions)
   ]
     .join(" ")
     .toLowerCase();
@@ -327,7 +328,7 @@ export function buildTermScenario(term) {
 }
 
 export function buildTermQuestion(term) {
-  return asArray(term?.exampleQuestions)[0] || `${term?.term || "이 용어"}가 무슨 뜻이야?`;
+  return asArray(term?.exampleQuestions)[0] || asArray(term?.relatedQuestions)[0] || `${term?.term || "이 용어"}가 무슨 뜻이야?`;
 }
 
 export function pickBriefTerms(terms) {

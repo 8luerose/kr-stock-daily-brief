@@ -171,6 +171,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | DART filing-detail signals | `GET /api/stocks/{code}/events` now follows DART disclosure rows to `dsaf001/main.do` and `report/viewer.do`, extracts filing body snippets, and exposes `dart_filing_detail` in `signalOrigins` | Done |
 | Causal factor scoring | `GET /api/stocks/{code}/events` now classifies text signals into `causalFactors`, `causalDirection`, and `evidenceLevel`; event list and chart tooltip expose the factor/evidence metadata | Done |
 | Learning term expanded schema | `GET /api/learning/terms` now returns `coreSummary`, `longExplanation`, `chartUsage`, `commonMisunderstanding`, and `scenario`; learning UI and assistant use those fields | Done |
+| Learning related questions alias | `GET /api/learning/terms` and `POST /api/learning/assistant` now return `relatedQuestions` alongside preserved `exampleQuestions` | Done |
 | Playwright dependency stability | `@playwright/test` is exact-pinned to `1.59.1`; npm cache was refreshed after a local partial package install omitted `playwright/lib/program.js` | Done |
 | Ops guard | `make ops-check` validates Docker Compose config and fails on tracked env files or obvious secret tokens; CI runs it before stack startup | Done |
 
@@ -283,6 +284,9 @@ Additional live Docker API checks:
 - Assistant/learning hook split `frontend npm ci --include=dev`: passed with 0 vulnerabilities after clearing a local partial Playwright package cache
 - Assistant/learning hook split `frontend npm run build`: passed after reducing `App.jsx` from 657 lines to 511 lines and adding `useLearningTerms`/`useAssistantFlows`
 - Assistant/learning hook split final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- LearningTerm `relatedQuestions` alias loop `./gradlew test --tests com.krbrief.learning.LearningTermCatalogTest --tests com.krbrief.learning.LearningAssistantServiceTest --tests com.krbrief.search.SearchServiceTest`: passed
+- LearningTerm `relatedQuestions` alias loop `frontend npm run build`: passed
+- LearningTerm `relatedQuestions` alias loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -328,11 +332,10 @@ Latest viewport metrics:
 4. Search now has a KRX stock universe, KRX industry taxonomy, and external Naver theme taxonomy; `/api/ai/status` makes live LLM readiness visible, but current live RAG remains blocked by missing non-committed credentials.
 5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event causal scoring now uses news search, news article bodies, DART search rows, DART filing-detail bodies, and rule-based causal factor classification, but still needs broader filing section extraction and live LLM-backed judgment.
 6. More frontend decomposition is still warranted for smaller section-level components and final visual-system polish.
-7. `relatedQuestions` is still represented as `exampleQuestions`; decide whether to add a dedicated alias field for the original checklist wording.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, and the learning term schema commit. The assistant/learning hook split is ready for the next commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, and `Split assistant learning hooks`. The `relatedQuestions` alias loop is ready for the next commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
@@ -344,4 +347,3 @@ Continue with these in order:
 2. If live credentials are not available, expand DART filing section extraction and add stronger LLM-substitute explainability instead of keyword heuristics only.
 3. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
 4. Continue decomposing the remaining large section components after the assistant/learning hook split.
-5. Add a `relatedQuestions` compatibility alias or explicitly close it as `exampleQuestions`.
