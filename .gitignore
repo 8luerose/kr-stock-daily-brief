@@ -16,6 +16,7 @@ logs/
 
 # === Node / frontend ===
 node_modules/
+node_modules.stale.*/
 .pnpm-store/
 .npm/
 .yarn/
