@@ -538,8 +538,8 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 - `causalScores`: 출처 유형별 원인 후보 점수다. `price_history`는 실제 가격/거래량 데이터 근거이고, `news`, `disclosure`, `discussion`은 원문 확인 전 후보 신호로 낮은 확신을 유지한다.
 - `score`: 0~100 범위의 휴리스틱 점수다. 투자 지시가 아니라 이벤트 원인 후보를 정렬하기 위한 설명 보조값이다.
 - `confidence`: `high | medium | low`. 뉴스/공시/토론은 원문 미확인 상태에서는 최대 `medium`으로 제한한다.
-- `signalCount`, `matchedSignals`, `signalSummary`: 뉴스 검색 텍스트, 뉴스 본문 텍스트, DART 검색 텍스트에서 추출한 후보 근거다. 수집 실패 시 `signalCount=0`, `signalSummary="텍스트 근거 미확인"`으로 내려가며 이벤트 API는 실패하지 않는다.
-- `signalOrigins`: `search_result`, `article_body`, `dart_search_row` 같은 텍스트 근거 수집 단계다.
+- `signalCount`, `matchedSignals`, `signalSummary`: 뉴스 검색 텍스트, 뉴스 본문 텍스트, DART 검색 텍스트, DART 공시 본문에서 추출한 후보 근거다. 수집 실패 시 `signalCount=0`, `signalSummary="텍스트 근거 미확인"`으로 내려가며 이벤트 API는 실패하지 않는다.
+- `signalOrigins`: `search_result`, `article_body`, `dart_search_row`, `dart_filing_detail` 같은 텍스트 근거 수집 단계다.
 - `signalUrls`: 텍스트 근거 후보 URL 목록이다. 뉴스/공시 본문 접근 실패 시 빈 배열일 수 있다.
 
 #### 실패 응답

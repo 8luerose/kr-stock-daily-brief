@@ -9,7 +9,7 @@ def _is_normal_ticker(code: str) -> bool:
     """Return True if code is a standard 6-digit Korean stock code."""
     return bool(re.match(r'^[0-9]{6}$', str(code)))
 import urllib.request
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
 from datetime import datetime, timedelta
 from functools import lru_cache
@@ -629,31 +629,118 @@ def _naver_news_text_signals(code: str, name: str) -> tuple[dict, ...]:
 
 @lru_cache(maxsize=4096)
 def _dart_disclosure_text_signals(name: str, from_ymd: str, to_ymd: str) -> tuple[dict, ...]:
-    start = _format_ymd_dot(from_ymd)
-    end = _format_ymd_dot(to_ymd)
-    url = f"https://dart.fss.or.kr/dsab007/search.ax?textCrpNm={quote(name)}&startDate={start}&endDate={end}&maxResults=15"
+    search_url = "https://dart.fss.or.kr/dsab007/detailSearch.ax"
+    params = {
+        "currentPage": "1",
+        "maxResults": "15",
+        "maxLinks": "10",
+        "sort": "date",
+        "series": "desc",
+        "textCrpCik": "",
+        "lateKeyword": "",
+        "keyword": "",
+        "reportNamePopYn": "",
+        "textkeyword": "",
+        "businessCode": "all",
+        "autoSearch": "Y",
+        "option": "corp",
+        "textCrpNm": name,
+        "textCrpNm2": name,
+        "textPresenterNm": "",
+        "startDate": from_ymd,
+        "endDate": to_ymd,
+        "finalReport": "recent",
+        "reportName": "",
+        "reportName2": "",
+        "tocSrch": "",
+        "tocSrch2": "",
+    }
     try:
-        html = _naver_fetch(url, timeout=4)
+        req = urllib.request.Request(
+            search_url,
+            data=urlencode(params).encode(),
+            headers={
+                "User-Agent": NAVER_UA,
+                "Referer": "https://dart.fss.or.kr/dsab007/main.do?option=corp",
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=4) as f:
+            raw = f.read()
+            charset = f.headers.get_content_charset() or "utf-8"
+        html = raw.decode(charset, "ignore")
     except Exception:
         return tuple()
 
     signals: list[dict] = []
+    detail_fetch_count = 0
     for row in re.findall(r"<tr[^>]*>.*?</tr>", html, flags=re.IGNORECASE | re.DOTALL):
         text = _clean_html_text(row)
         if len(text) < 12 or "조회 결과가 없습니다" in text:
             continue
         keywords = _signal_keywords(text)
-        signals.append(
-            {
-                "sourceType": "disclosure",
-                "label": "DART 공시 텍스트",
-                "url": "https://dart.fss.or.kr/",
-                "text": text[:220],
-                "matchedKeywords": keywords[:6],
-                "signalOrigin": "dart_search_row",
-            }
-        )
+        rcp_no_match = re.search(r"rcpNo=([0-9]+)", row)
+        rcp_no = rcp_no_match.group(1) if rcp_no_match else ""
+        if not rcp_no:
+            continue
+        title_match = re.search(r'title="([^"]+)"', row)
+        title = html_lib.unescape(title_match.group(1)).replace(" 공시뷰어 새창", "").strip() if title_match else "DART 공시"
+        detail_url = f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcp_no}"
+        if detail_fetch_count < 5:
+            detail_fetch_count += 1
+            detail_signal = _dart_filing_detail_signal(rcp_no, name, title)
+            if detail_signal:
+                signals.append(detail_signal)
+        if keywords:
+            signals.append(
+                {
+                    "sourceType": "disclosure",
+                    "label": "DART 공시 텍스트",
+                    "url": detail_url,
+                    "text": f"{title}: {text}"[:220],
+                    "matchedKeywords": keywords[:6],
+                    "signalOrigin": "dart_search_row",
+                }
+            )
     return tuple(_dedupe_signals(signals, 5))
+
+
+@lru_cache(maxsize=4096)
+def _dart_filing_detail_signal(rcp_no: str, name: str, title: str) -> dict | None:
+    if not rcp_no:
+        return None
+    main_url = f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcp_no}"
+    try:
+        main_html = _naver_fetch(main_url, timeout=3)
+    except Exception:
+        return None
+
+    m = re.search(r'viewDoc\("([0-9]+)",\s*"([0-9]+)",\s*"([^"]*)",\s*"([^"]*)",\s*"([^"]*)",\s*"([^"]*)"', main_html)
+    if not m:
+        return None
+    _, dcm_no, ele_id, offset, length, dtd = m.groups()
+    viewer_url = (
+        "https://dart.fss.or.kr/report/viewer.do"
+        f"?rcpNo={rcp_no}&dcmNo={dcm_no}&eleId={ele_id}&offset={offset}&length={length}&dtd={dtd}"
+    )
+    try:
+        body = _clean_html_text(_naver_fetch(viewer_url, timeout=3))
+    except Exception:
+        return None
+    if name not in body and title not in body:
+        return None
+    keywords = _signal_keywords(body)
+    if not keywords:
+        return None
+    return {
+        "sourceType": "disclosure",
+        "label": "DART 공시 본문",
+        "url": main_url,
+        "text": _snippet_around_keywords(body, [name, title, *keywords], 260),
+        "matchedKeywords": keywords[:8],
+        "signalOrigin": "dart_filing_detail",
+    }
 
 
 def _event_text_signals(code: str, name: str, from_ymd: str, to_ymd: str) -> list[dict]:
@@ -731,7 +818,7 @@ def _event_causal_scores(
                 18,
                 78,
             )
-            interpretation = "DART 검색 텍스트가 이벤트 원인 후보를 보강합니다." if signal_count else "공식 공시는 강한 원인 후보지만 DART 원문 확인이 필요합니다."
+            interpretation = "DART 검색/공시 본문 텍스트가 이벤트 원인 후보를 보강합니다." if signal_count else "공식 공시는 강한 원인 후보지만 DART 원문 확인이 필요합니다."
         elif source_type == "discussion":
             score = _clamp_score(
                 24 + min(max(volume_rate - 120, 0) / 18, 18) + min(abs_price, 8),
