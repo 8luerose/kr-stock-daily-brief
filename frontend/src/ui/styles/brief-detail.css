@@ -249,6 +249,56 @@
   gap: 8px;
 }
 
+.evidenceDisclosure {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.evidenceDisclosure summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--accent-light);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  list-style: none;
+}
+
+.evidenceDisclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.evidenceDisclosure summary::after {
+  content: "+";
+  margin-left: 8px;
+}
+
+.evidenceDisclosure[open] summary::after {
+  content: "-";
+}
+
+.evidenceDisclosure > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.evidenceDisclosure.compact summary {
+  min-height: 28px;
+  padding: 4px 9px;
+}
+
+.evidenceEmpty {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .leaderLinks a,
 .link {
   color: var(--accent);

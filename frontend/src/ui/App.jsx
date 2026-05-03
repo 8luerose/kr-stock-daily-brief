@@ -431,14 +431,20 @@ function LinkOrDash({ href, label }) {
   );
 }
 
-function EvidenceLinks({ links }) {
-  if (links.length === 0) return <span>-</span>;
-  return links.map((link, idx) => (
-    <React.Fragment key={link.href}>
-      {idx > 0 ? " | " : ""}
-      <a href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
-    </React.Fragment>
-  ));
+function EvidenceDisclosure({ links, compact = false }) {
+  if (links.length === 0) return <span className="evidenceEmpty">근거 없음</span>;
+  return (
+    <details className={`evidenceDisclosure ${compact ? "compact" : ""}`}>
+      <summary>{COPY.evidenceLinks}</summary>
+      <div>
+        {links.map((link) => (
+          <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className={compact ? "linkBadge" : undefined}>
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </details>
+  );
 }
 
 function LeaderMetricCard({ label, value, explanation, links }) {
@@ -450,12 +456,12 @@ function LeaderMetricCard({ label, value, explanation, links }) {
         <div className={`leaderExplanation ${explanation.level}`}>
           <div>{explanation.summary}</div>
           <div className="leaderLinks">
-            {COPY.evidenceLinks}: <EvidenceLinks links={links} />
+            <EvidenceDisclosure links={links} />
           </div>
         </div>
       ) : (
         <div className="leaderLinks">
-          {COPY.evidenceLinks}: <EvidenceLinks links={links} />
+          <EvidenceDisclosure links={links} />
         </div>
       )}
     </div>
@@ -481,11 +487,9 @@ function TopListColumn({ title, items, group, valueType, effectiveDate, onSelect
                   <span className={`itemRate ${Number(item.rate) < 0 ? "loss" : "gain"}`}>{formatRate(item.rate)}</span>
                 )}
               </button>
-              <span className="itemLinks">
-                {buildNaverLinks(item.code, effectiveDate).map((link) => (
-                  <a key={link.href} href={link.href} target="_blank" rel="noreferrer" className="linkBadge">{link.label}</a>
-                ))}
-              </span>
+              <div className="itemLinks">
+                <EvidenceDisclosure links={buildNaverLinks(item.code, effectiveDate)} compact />
+              </div>
             </li>
           );
         })}
