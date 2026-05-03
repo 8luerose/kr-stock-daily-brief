@@ -982,6 +982,7 @@ export default function App() {
       return undefined;
     }
 
+    setServerSearchResults([]);
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setSearchLoading(true);
