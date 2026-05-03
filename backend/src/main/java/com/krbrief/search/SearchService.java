@@ -20,11 +20,17 @@ public class SearchService {
   private final DailySummaryService summaries;
   private final LearningTermCatalog terms;
   private final StockUniverseProvider stockUniverse;
+  private final SearchTaxonomyProvider searchTaxonomy;
 
-  public SearchService(DailySummaryService summaries, LearningTermCatalog terms, StockUniverseProvider stockUniverse) {
+  public SearchService(
+      DailySummaryService summaries,
+      LearningTermCatalog terms,
+      StockUniverseProvider stockUniverse,
+      SearchTaxonomyProvider searchTaxonomy) {
     this.summaries = summaries;
     this.terms = terms;
     this.stockUniverse = stockUniverse;
+    this.searchTaxonomy = searchTaxonomy;
   }
 
   public List<SearchResultDto> search(String query, Integer limit) {
@@ -112,7 +118,7 @@ public class SearchService {
   }
 
   private void addSeedCatalog(Map<String, SearchResultDto> results) {
-    for (SearchResultDto item : SearchTaxonomyCatalog.baseline()) {
+    for (SearchResultDto item : searchTaxonomy.list()) {
       results.putIfAbsent(item.id(), item);
     }
   }

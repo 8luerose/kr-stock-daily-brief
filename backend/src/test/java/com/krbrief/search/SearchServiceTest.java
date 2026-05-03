@@ -15,10 +15,12 @@ import org.junit.jupiter.api.Test;
 
 class SearchServiceTest {
   private final StockUniverseProvider baselineUniverse = StockUniverseCatalog::baseline;
+  private final SearchTaxonomyProvider baselineTaxonomy = SearchTaxonomyCatalog::baseline;
 
   @Test
   void search_returnsThemeAndLearningResults() {
-    SearchService service = new SearchService(mock(DailySummaryService.class), new LearningTermCatalog(), baselineUniverse);
+    SearchService service = new SearchService(
+        mock(DailySummaryService.class), new LearningTermCatalog(), baselineUniverse, baselineTaxonomy);
 
     var themeResults = service.search("반도체", 10);
     var termResults = service.search("PER", 10);
@@ -34,7 +36,7 @@ class SearchServiceTest {
     DailySummaryService summaries = mock(DailySummaryService.class);
     when(summaries.latest()).thenReturn(Optional.of(latest));
 
-    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse);
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse, baselineTaxonomy);
 
     var results = service.search("삼성전자", 10);
 
@@ -46,7 +48,7 @@ class SearchServiceTest {
   void search_includesRepresentativeStocksWithoutLatestSummary() {
     DailySummaryService summaries = mock(DailySummaryService.class);
     when(summaries.latest()).thenReturn(Optional.empty());
-    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse);
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse, baselineTaxonomy);
 
     var byName = service.search("삼성전자", 10);
     var byCode = service.search("005930", 10);
@@ -59,7 +61,7 @@ class SearchServiceTest {
   void search_includesThemeRelatedRepresentativeStocks() {
     DailySummaryService summaries = mock(DailySummaryService.class);
     when(summaries.latest()).thenReturn(Optional.empty());
-    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse);
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse, baselineTaxonomy);
 
     var results = service.search("반도체", 10);
 
@@ -72,7 +74,7 @@ class SearchServiceTest {
   void search_coversRepresentativeIndustryThemeAndCompanyQueries() {
     DailySummaryService summaries = mock(DailySummaryService.class);
     when(summaries.latest()).thenReturn(Optional.empty());
-    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse);
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse, baselineTaxonomy);
 
     assertTrue(service.search("SK하이닉스", 10).stream()
         .anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("000660")));
@@ -120,11 +122,36 @@ class SearchServiceTest {
         "000100",
         "유한양행",
         null));
-    SearchService service = new SearchService(summaries, new LearningTermCatalog(), krxUniverse);
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), krxUniverse, baselineTaxonomy);
 
     assertTrue(service.search("유한양행", 10).stream()
         .anyMatch(item -> item.type().equals("stock")
             && item.stockCode().equals("000100")
             && item.source().equals("krx_stock_universe")));
+  }
+
+  @Test
+  void search_usesKrxSectorTaxonomyProviderOutsideRepresentativeBaseline() {
+    DailySummaryService summaries = mock(DailySummaryService.class);
+    when(summaries.latest()).thenReturn(Optional.empty());
+    SearchTaxonomyProvider krxTaxonomy = () -> List.of(new SearchResultDto(
+        "industry-krx-medical",
+        "industry",
+        "의료·정밀기기",
+        "IND",
+        "KRX",
+        "+0.42%",
+        List.of("KOSDAQ", "KRX 업종", "클래시스, 파마리서치"),
+        "KRX 업종 분류 기준 100개 상장 종목이 포함됩니다.",
+        "krx_sector_classification",
+        null,
+        null,
+        null));
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse, krxTaxonomy);
+
+    assertTrue(service.search("의료·정밀기기", 10).stream()
+        .anyMatch(item -> item.type().equals("industry")
+            && item.title().equals("의료·정밀기기")
+            && item.source().equals("krx_sector_classification")));
   }
 }

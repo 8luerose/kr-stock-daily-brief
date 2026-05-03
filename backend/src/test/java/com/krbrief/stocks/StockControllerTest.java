@@ -120,6 +120,36 @@ class StockControllerTest {
   }
 
   @Test
+  void sectors_returnsGatewayResponse() throws Exception {
+    when(client.sectors(eq("의료"), eq(5)))
+        .thenReturn(
+            new StockSectorUniverseDto(
+                "2026-05-01",
+                "pykrx_market_sector_classifications",
+                20,
+                1,
+                "",
+                List.of(
+                    new StockSectorUniverseDto.StockSectorDto(
+                        "의료·정밀기기",
+                        "industry",
+                        "KRX",
+                        List.of("KOSDAQ"),
+                        120,
+                        0.42,
+                        List.of(
+                            new StockSectorUniverseDto.StockSectorMemberDto(
+                                "214150", "클래시스", "KOSDAQ", 3500000000000L, 1.2)),
+                        "KRX 업종 분류 기준 120개 상장 종목이 포함됩니다."))));
+
+    mvc.perform(get("/api/stocks/sectors").param("query", "의료").param("limit", "5"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.source").value("pykrx_market_sector_classifications"))
+        .andExpect(jsonPath("$.sectors[0].name").value("의료·정밀기기"))
+        .andExpect(jsonPath("$.sectors[0].topStocks[0].code").value("214150"));
+  }
+
+  @Test
   void invalidInputs_return400() throws Exception {
     mvc.perform(get("/api/stocks/abc/chart")).andExpect(status().isBadRequest());
     mvc.perform(get("/api/stocks/005930/chart?range=2Y")).andExpect(status().isBadRequest());

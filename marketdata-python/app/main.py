@@ -145,6 +145,13 @@ def _safe_float(value) -> float:
         return 0.0
 
 
+def _safe_int(value) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return 0
+
+
 def _naver_fetch(url: str, timeout: int = 5) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": NAVER_UA})
     with urllib.request.urlopen(req, timeout=timeout) as f:
@@ -608,6 +615,70 @@ def _stock_universe_for_day(ymd: str) -> tuple[dict, ...]:
     return tuple(items)
 
 
+@lru_cache(maxsize=8)
+def _sector_taxonomy_for_day(ymd: str) -> tuple[dict, ...]:
+    sectors: dict[str, dict] = {}
+    for market in ("KOSPI", "KOSDAQ"):
+        df = stock.get_market_sector_classifications(ymd, market=market)
+        if df is None or len(df.index) == 0:
+            continue
+
+        for ticker, row in df.iterrows():
+            code = str(ticker).strip()
+            if code.isdigit():
+                code = code.zfill(6)
+            if not _is_normal_ticker(code):
+                continue
+
+            sector_name = str(row.get("업종명", "")).strip()
+            stock_name = str(row.get("종목명", "")).strip()
+            if not sector_name or sector_name == "nan":
+                continue
+            if not stock_name or stock_name == "nan":
+                stock_name = _name(code)
+
+            item = {
+                "code": code,
+                "name": stock_name,
+                "market": market,
+                "marketCap": _safe_int(row.get("시가총액", 0)),
+                "rate": round(_safe_float(row.get("등락률", 0)), 2),
+            }
+            bucket = sectors.setdefault(
+                sector_name,
+                {"name": sector_name, "markets": set(), "stocks": [], "rateSum": 0.0},
+            )
+            bucket["markets"].add(market)
+            bucket["stocks"].append(item)
+            bucket["rateSum"] += item["rate"]
+
+    out: list[dict] = []
+    for sector_name, bucket in sectors.items():
+        stocks = sorted(bucket["stocks"], key=lambda item: (item["marketCap"], item["code"]), reverse=True)
+        member_count = len(stocks)
+        top_stocks = stocks[:5]
+        markets = sorted(bucket["markets"])
+        avg_rate = round(bucket["rateSum"] / member_count, 2) if member_count else 0.0
+        out.append(
+            {
+                "name": sector_name,
+                "type": "industry",
+                "market": "KRX",
+                "markets": markets,
+                "memberCount": member_count,
+                "rate": avg_rate,
+                "topStocks": top_stocks,
+                "summary": (
+                    f"KRX 업종 분류 기준 {member_count}개 상장 종목이 포함됩니다. "
+                    f"대표 종목: {', '.join(stock_item['name'] for stock_item in top_stocks[:3])}."
+                ),
+            }
+        )
+
+    out.sort(key=lambda item: (-item["memberCount"], item["name"]))
+    return tuple(out)
+
+
 @app.get("/stocks/universe")
 def stock_universe(query: str | None = None, limit: int = 5000):
     today_ymd = datetime.now().strftime("%Y%m%d")
@@ -637,6 +708,47 @@ def stock_universe(query: str | None = None, limit: int = 5000):
         "count": min(len(filtered), safe_limit),
         "adjustmentNote": adjust_note,
         "stocks": filtered[:safe_limit],
+    }
+
+
+@app.get("/stocks/sectors")
+def stock_sectors(query: str | None = None, limit: int = 200):
+    today_ymd = datetime.now().strftime("%Y%m%d")
+    as_of_ymd, adjust_note = _effective_business_day_or_previous(today_ymd)
+    safe_limit = max(1, min(int(limit or 200), 500))
+    try:
+        sectors = list(_sector_taxonomy_for_day(as_of_ymd))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"pykrx_sector_classification_error: {type(e).__name__}") from e
+
+    q = _normalize_query(query)
+    if q:
+        filtered = []
+        for sector in sectors:
+            top_stock_text = " ".join(
+                f"{item['code']} {item['name']} {item['market']}" for item in sector.get("topStocks", [])
+            )
+            text = " ".join(
+                [
+                    sector.get("name", ""),
+                    sector.get("market", ""),
+                    " ".join(sector.get("markets", [])),
+                    sector.get("summary", ""),
+                    top_stock_text,
+                ]
+            ).lower()
+            if q in text:
+                filtered.append(sector)
+    else:
+        filtered = sectors
+
+    return {
+        "asOf": f"{as_of_ymd[0:4]}-{as_of_ymd[4:6]}-{as_of_ymd[6:8]}",
+        "source": "pykrx_market_sector_classifications",
+        "totalCount": len(sectors),
+        "count": min(len(filtered), safe_limit),
+        "adjustmentNote": adjust_note,
+        "sectors": filtered[:safe_limit],
     }
 
 

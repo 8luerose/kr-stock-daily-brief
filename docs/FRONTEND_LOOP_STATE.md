@@ -158,14 +158,14 @@
 
 ### 3.4 검색 기능
 
-- [ ] 산업 검색 가능
-- [ ] 테마 검색 가능
-- [ ] 기업명 검색 가능
-- [ ] 종목명 검색 가능
-- [ ] 종목 코드 검색 가능
-- [ ] 시장 구분 KOSPI 검색 가능
-- [ ] 시장 구분 KOSDAQ 검색 가능
-- [ ] 용어 검색 가능
+- [x] 산업 검색 가능
+- [x] 테마 검색 가능
+- [x] 기업명 검색 가능
+- [x] 종목명 검색 가능
+- [x] 종목 코드 검색 가능
+- [x] 시장 구분 KOSPI 검색 가능
+- [x] 시장 구분 KOSDAQ 검색 가능
+- [x] 용어 검색 가능
 - [ ] 오늘 움직인 종목 검색 가능
 - [ ] 검색창이 첫 화면 핵심 인터랙션
 - [ ] 검색 결과에 종목명/코드 표시
@@ -344,11 +344,11 @@
 - [ ] 기존 기능 접근 경로 유지
 - [x] 전체 KOSPI/KOSDAQ 종목명 검색 인덱스 구축
 - [x] 전체 KOSPI/KOSDAQ 종목코드 검색 인덱스 구축
-- [ ] 시장 구분 검색 인덱스 구축
-- [ ] 산업/테마 taxonomy 테이블 또는 캐시 추가
+- [x] 시장 구분 검색 인덱스 구축
+- [x] 산업/테마 taxonomy 테이블 또는 캐시 추가
 - [ ] 검색 결과 타입을 stock/company/industry/theme/market/term으로 분리
-- [ ] 종목 검색 결과 클릭 시 종목 상세/차트로 이동
-- [ ] 산업/테마 검색 결과 클릭 시 상세/관련 종목/AI 분석으로 이동
+- [x] 종목 검색 결과 클릭 시 종목 상세/차트로 이동
+- [x] 산업/테마 검색 결과 클릭 시 상세/관련 종목/AI 분석으로 이동
 - [ ] 용어 검색 결과 클릭 시 배우기 상세로 이동
 - [ ] 검색 실패 시 대체 행동 제공
 - [ ] ai-service 실제 LLM adapter 추가
@@ -603,14 +603,16 @@
 - [ ] `source=latest_summary` 지원
 - [ ] `source=learning_terms` 지원
 - [x] `source=krx_stock_universe` 지원
-- [ ] `source=stock_universe_baseline` 지원
-- [ ] `source=search_taxonomy_baseline` 지원
-- [ ] baseline 대표 기업/종목 검색 보장
-- [ ] baseline 주요 테마 검색 보장
-- [ ] baseline 주요 산업 검색 보장
-- [ ] baseline KOSPI/KOSDAQ 검색 보장
+- [x] `source=krx_sector_classification` 지원
+- [x] `source=stock_universe_baseline` 지원
+- [x] `source=search_taxonomy_baseline` 지원
+- [x] baseline 대표 기업/종목 검색 보장
+- [x] baseline 주요 테마 검색 보장
+- [x] baseline 주요 산업 검색 보장
+- [x] baseline KOSPI/KOSDAQ 검색 보장
 - [x] 전체 KRX 종목 universe API/cache 연결
-- [ ] 향후 산업/테마 taxonomy API 교체 지점 명시
+- [x] KRX 업종 taxonomy API/cache 연결
+- [ ] 외부/거래소급 전체 테마 taxonomy API 교체 지점 명시
 
 ### 5.7 DTO와 검증 가이드
 
@@ -783,7 +785,9 @@
 - [x] 전체 KRX 종목 universe API/cache 구현
 - [x] 통합 검색이 `source=krx_stock_universe` 결과를 사용
 - [x] baseline 밖 종목 `유한양행(000100)` 검색 검증
-- [ ] full industry/theme taxonomy는 아직 미구현
+- [x] KRX 업종 taxonomy API/cache 구현
+- [x] 통합 검색이 `source=krx_sector_classification` 결과를 사용
+- [ ] full external theme taxonomy는 아직 미구현
 - [ ] live LLM key/model 환경에서 `rag_llm` 실동작 검증은 아직 미완료
 - [ ] trade zone은 여전히 더 깊은 시장 신호 기반 고도화 필요
 - [ ] Toss-perfect 시각 품질은 아직 객관적 달성 아님
@@ -806,6 +810,11 @@
 - [x] Docker 기준 `GET /api/stocks/universe?query=유한양행&limit=5`: `totalCount=2703`, `000100` 반환
 - [x] Docker 기준 `GET /api/search?query=유한양행&limit=5`: `source=krx_stock_universe`, `000100` 반환
 - [x] KRX universe 루프 `./scripts/test_all_apis.sh`: `GET /api/stocks/universe`, `GET /api/search finds 유한양행` 포함 통과
+- [x] KRX taxonomy 루프 `python3 -m py_compile marketdata-python/app/main.py`: 통과
+- [x] KRX taxonomy 루프 `./gradlew test --tests com.krbrief.search.SearchServiceTest --tests com.krbrief.stocks.StockControllerTest`: 통과
+- [x] Docker 기준 `GET /api/stocks/sectors?query=의료·정밀기기&limit=5`: `source=pykrx_market_sector_classifications`, `totalCount=29`, `memberCount=103` 반환
+- [x] Docker 기준 `GET /api/search?query=의료·정밀기기&limit=8`: `source=krx_sector_classification` 반환
+- [x] KRX taxonomy 루프 `./scripts/test_all_apis.sh`: `GET /api/stocks/sectors`, `GET /api/search finds 의료·정밀기기` 포함 통과
 
 ### 9.3 최신 viewport 계측
 
@@ -832,6 +841,7 @@
 - [x] `PER` -> `"termId":"per"`
 - [x] `DART` -> `"termId":"dart"`
 - [x] `유한양행` -> `"stockCode":"000100"`, `source=krx_stock_universe`
+- [x] `의료·정밀기기` -> `source=krx_sector_classification`
 
 ## 10. 현재 점수
 
@@ -839,16 +849,16 @@
 
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
-| 사용자 | 486/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어와 KRX universe 종목 검색 검증 | Toss급 최종 polish, full industry/theme taxonomy, live AI 체감 부족 |
+| 사용자 | 488/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종 검색 검증 | Toss급 최종 polish, full external theme taxonomy, live AI 체감 부족 |
 | 프론트 개발자 | 470/500 | 홈 차트 구조 개선, App/CSS 일부 분해, E2E 존재 | domain hooks/API client/design token 경계 미완 |
-| 백엔드 개발자 | 478/500 | pykrx KOSPI/KOSDAQ stock universe API/cache와 search provider 연결 | full industry/theme taxonomy, live RAG 검증, richer evidence 부족 |
-| DevOps 개발자 | 487/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
-| VC/투자자 | 444/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목 검색 기반이 더 명확 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| 백엔드 개발자 | 482/500 | pykrx KOSPI/KOSDAQ stock universe와 KRX 업종 taxonomy API/cache/search provider 연결 | full external theme taxonomy, live RAG 검증, richer evidence 부족 |
+| DevOps 개발자 | 488/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
+| VC/투자자 | 446/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목과 KRX 업종 검색 기반이 더 명확 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 KRX universe 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. 다음 구현 루프는 live LLM/RAG 검증 또는 full industry/theme taxonomy 중 하나를 선택한다.
+1. 이번 KRX industry taxonomy 루프 변경분을 의미 있는 단위로 commit/push한다.
+2. 다음 구현 루프는 live LLM/RAG 검증 또는 full external theme taxonomy 중 하나를 선택한다.
 3. chart marker hover에 이벤트 이유/근거/신뢰도/기준일을 더 직접 표시한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.
 5. App state/API 호출을 hooks와 API client로 더 분리한다.
