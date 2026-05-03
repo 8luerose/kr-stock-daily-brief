@@ -1573,11 +1573,12 @@ export default function App() {
           <nav className="appNav" aria-label="주요 화면">
             {navItems.map(([page, label]) => (
               <button
-                key={page}
-                type="button"
-                className={activePage === page ? "active" : ""}
-                onClick={() => navigatePage(page)}
-              >
+	                key={page}
+	                type="button"
+	                className={activePage === page ? "active" : ""}
+	                aria-current={activePage === page ? "page" : undefined}
+	                onClick={() => navigatePage(page)}
+	              >
                 {label}
               </button>
             ))}
