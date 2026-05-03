@@ -24,6 +24,8 @@ node_modules/
 
 # build outputs
 frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
 dist/
 
 # === Java / Gradle / Spring ===
