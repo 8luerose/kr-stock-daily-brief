@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test backend-e2e health generate-today check-month latest qa
+.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-quality quality backend-e2e health generate-today check-month latest qa
 
 DOCKER_SOCK ?= /var/run/docker.sock
 
@@ -47,6 +47,17 @@ latest:
 qa:
 	./scripts/test_all_apis.sh
 	./scripts/qa_public_key.sh
+	./scripts/verify_investment_language.sh
+
+frontend-quality:
+	cd frontend && npm ci && npm run build && npm audit && npm run test:e2e -- --reporter=line
+
+quality:
+	cd backend && ./gradlew test
+	cd frontend && npm ci && npm run build && npm audit
+	./scripts/verify_investment_language.sh
+	./scripts/test_all_apis.sh
+	cd frontend && npm run test:e2e -- --reporter=line
 
 # Runs API tests against a disposable MySQL Testcontainer (inside the Gradle container).
 backend-test:

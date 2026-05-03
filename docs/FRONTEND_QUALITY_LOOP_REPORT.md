@@ -96,6 +96,7 @@ Date: 2026-05-03
 - `npm ci && npm run build`
 - `npm audit`
 - `npm run test:e2e -- --reporter=line`
+- `make quality`
 - `make up`
 - `make health`
 - `./scripts/test_all_apis.sh`
@@ -114,6 +115,7 @@ Date: 2026-05-03
 - Follow-up search work added `GET /api/search` so the first-view search now uses a backend adapter for latest-summary stocks, learning terms, and a seed industry/theme catalog; the frontend only keeps a local fallback for API failure.
 - Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack smoke tests, and Playwright E2E on push/PR.
 - Follow-up safety work added `scripts/verify_investment_language.sh` to fail on direct buy/sell instruction or guarantee wording in source code.
+- Follow-up local workflow work added `make quality` so developers can run backend tests, frontend build/audit, source safety check, API smoke, and E2E with one command.
 
 ## 11. Commit Hash
 
