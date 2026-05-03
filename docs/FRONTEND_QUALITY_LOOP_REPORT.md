@@ -1,141 +1,146 @@
 # Frontend Quality Loop Report
 
-Date: 2026-05-03
+Date: 2026-05-04
 
-## Objective
+## Status
 
-`docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` requires a frontend redesign quality loop that makes the product feel like a launch-ready Korean stock AI web platform. The explicit success criteria are: clear first-view value, fewer confusing buttons, universal search for industry/theme/company/stock/terms, visible AI value, chart-first research UX, conditional buy/sell review zones, strengthened learning content, refined motion/depth, Pretendard typography, responsive 390px mobile quality, full test execution, commit, and push.
+This report is not a completion report. It replaces the previous overly optimistic
+496/500 assessment with the current evidence-based audit.
 
-## 1. Final Scores
+The frontend and supporting APIs are materially improved, tested, committed, and
+pushed, but the project is not yet at the `GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md`
+success bar of 495/500 from every required perspective.
 
-- User perspective: 496/500
-- Developer perspective: 496/500
-- VC / shareholder perspective: 496/500
+## Objective Restatement
 
-## 2. Frontend Redesign Work
+The active goal is to make `kr-stock-daily-brief` feel like a launch-ready Korean
+stock AI web platform:
 
-- The Home view now starts with a clear market brief, the main stock pulse list, a prominent universal search box, and a visible AI interpretation panel.
-- The chart-centered brief is part of the Home flow, so users can move from market summary to chart, events, decision zones, and evidence without discovering a separate operator-style screen first.
-- The Chart view still keeps the deeper research workflow for focused stock analysis.
+- clear first-view product value
+- fewer confusing public buttons
+- first-view industry/theme/company/stock/term search
+- visible AI market and chart interpretation
+- chart-first research UX with conditional trade review zones
+- stronger beginner learning content
+- responsive mobile and desktop quality
+- maintainable frontend structure
+- verifiable backend, AI, and DevOps support
+- commit and push meaningful work
 
-## 3. Button Reduction Method
+## Current Scores
 
-- General users see navigation, latest summary, theme mode, search, and contextual chart/AI actions.
-- Generate, backfill, and archive remain separated in the Admin/Operations area rather than being shown in the primary Home flow.
-- Repeated operational actions are kept out of the market brief and chart-first path.
-- Search and segmented controls replace extra navigation paths where possible.
+| Perspective | Score | Current judgment |
+|---|---:|---|
+| User | 455/500 | Usable and clearer, but still not premium enough to call perfect |
+| Frontend developer | 430/500 | App structure and CSS are improved, but more decomposition and visual system cleanup remain |
+| Backend developer | 430/500 | Search and AI adapter improved, but full taxonomy/RAG depth is incomplete |
+| DevOps developer | 475/500 | Strong local quality gate, Docker health, API smoke, and E2E coverage |
+| VC / shareholder | 410/500 | AI is visible and adapter-ready, but live LLM/RAG moat is not fully proven |
 
-## 4. Search Implementation
+## Work Completed In The Recovery Loop
 
-- Added first-view universal search in `frontend/src/ui/App.jsx` backed by `GET /api/search`.
-- Search targets:
-  - Today-moving stocks from latest summary TOP lists
-  - Stock names and codes
-  - Learning terms and related terms
-  - Backend seed catalog entries for industries/themes/market groups
-- Search result cards show:
-  - Type/market
-  - Name and code
-  - Recent rate/count or learning label
-  - Theme/industry tags
-  - Summary
-  - Entry behavior
-- Stock result selection opens the chart/research flow.
-- Term result selection opens the Learn tab with the selected term.
-- Industry/theme results come from the backend search adapter first; the frontend keeps only an API-failure fallback so the first-view UX does not collapse if the API is temporarily unavailable.
+### Functional recovery
 
-## 5. AI Visibility
+- Restored public history access and admin-key-gated operations.
+- Kept admin-only generation, archive, and backfill out of the general user flow.
+- Added representative stock universe fallback so searches such as `삼성전자` return `005930`.
+- Added backend and frontend tests for stock/theme search and route behavior.
+- Improved today-missing fallback so latest available summary can still populate the user flow.
 
-- Home assistant title changes from a generic helper to `AI 시장 해석`.
-- The first view now shows that AI explains market movement, chart signals, and risk in one flow.
-- Search includes an `AI 인사이트` affordance so the search box itself communicates that the platform is AI-assisted.
-- Existing chart AI action remains in the decision panel for stock-level interpretation.
+### AI and retrieval
 
-## 6. Chart / Buy / Sell UX
+- Added an OpenAI-compatible LLM adapter path in `ai-service`.
+- Added retrieval document construction for search, summary, chart, events, and learning terms.
+- Kept a rule-based RAG fallback when `LLM_API_KEY`/`OPENAI_API_KEY` or `LLM_MODEL` is not configured.
+- Updated API docs and smoke tests to require the `retrieval` response contract.
 
-- The Home flow exposes the same chart research module used by the Chart view.
-- Daily/weekly/monthly chart controls remain available.
-- The chart includes candlesticks, 20-day moving average, volume, event markers, and bounded tooltip logic.
-- Decision zones include buy review, split-buy review, watch, sell review, risk management, opposing signal, evidence, confidence, and data date.
-- Wording stays conditional and education-oriented, avoiding direct buy/sell instruction.
+### Frontend structure
 
-## 7. Reference Research
+- Split major UI sections out of `App.jsx`:
+  - `frontend/src/ui/AppSections.jsx`
+  - `frontend/src/ui/AppPanels.jsx`
+  - `frontend/src/ui/AppConstants.js`
+- Reduced `App.jsx` from 2218 lines to about 1693 lines.
+- Split the old single 2861-line `styles.css` into imported modules:
+  - `styles/foundation.css`
+  - `styles/panels.css`
+  - `styles/brief-detail.css`
+  - `styles/stock-research.css`
+  - `styles/product-refresh.css`
+- Collapsed repeated evidence links and developer/raw detail controls behind native disclosures.
 
-| Reference | What was applied |
-|---|---|
-| Toss Securities / Asia Smart Finance Awards article | Reduced cognitive load, finance-friendly confidence, concise primary flow. |
-| Robinhood Legend | Search/watchlist-to-chart mental model and compact trading-research surface. |
-| TradingView Lightweight Charts docs | Chart markers, crosshair tooltip, compact chart controls. |
-| Koyfin functionality docs | Dashboard composition that connects watchlists, charts, and data panels. |
-| Yahoo Finance chart indicator help | Moving-average/volume indicator visibility as part of chart comprehension. |
-| Finviz reference | Fast market scan pattern for movers before deep research. |
+## Prompt-To-Artifact Checklist
 
-## 8. Feature / Button Test Matrix
+| Requirement | Evidence | Status |
+|---|---|---|
+| Read recovery plan | `docs/FRONTEND_QUALITY_GAP_AUDIT_AND_RECOVERY_PLAN.md` reviewed | Done |
+| Re-check goal prompt | `docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` reviewed against current code | Done |
+| Meaningful commits | `baa571e`, `40f7dc8`, `2ea8098`, `861b9a1`, `9f234bd` | Done |
+| Push to origin | `origin/main` updated through `9f234bd` | Done |
+| Search for representative stock | `scripts/test_all_apis.sh` checks 삼성전자 -> `005930` | Done |
+| Visible AI panel | Home and search flows expose AI market interpretation | Done |
+| AI retrieval contract | `/api/ai/chat` returns `retrieval` and `sourceCount` | Done |
+| Desktop responsive | Playwright desktop/laptop checks pass | Done |
+| Mobile responsive | Playwright tablet/mobile checks pass | Done |
+| Backend tests | `./gradlew test` via `make quality` | Done |
+| Frontend build/audit | `npm ci --include=dev && npm run build && npm audit` via `make quality` | Done |
+| Docker health | `make health` via `make quality` | Done |
+| API smoke | `./scripts/test_all_apis.sh` via `make quality` | Done |
+| E2E | Playwright `13 passed` via `make quality` | Done |
+| 495/500 all perspectives | Current scores remain below 495 | Not done |
+| Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
+| Real live LLM quality | Adapter exists, but no configured live key/model verification | Not done |
+| Full KRX taxonomy | Representative fallback exists, not full stock/sector taxonomy | Not done |
+| Trade-zone backend API | Chart zones exist in UI logic, but no dedicated `trade-zones` API | Not done |
 
-| Area | Feature / Button | Expected | Actual | Score | Evaluation | Needs Improvement |
-|---|---|---|---|---|---|---|
-| First View | Service value recognition | Purpose understood within 5 seconds | Normal | 99/100 | Hero, chart-first brief, search, and AI panel are visible on Home | No |
-| Search | Industry search | Related industry/theme appears | Normal | 100/100 | `반도체` returns a backend `theme` result from `GET /api/search` with tags and summary | No |
-| Search | Company/stock search | Stock result appears | Normal | 99/100 | Existing TOP stock data is indexed by name/code and routes to chart | No |
-| AI | AI analysis panel | AI value clearly visible | Normal | 99/100 | `AI 시장 해석` is visible in Home flow; chart AI remains contextual | No |
-| Navigation | Tab switching | Smooth transition | Normal | 99/100 | Today/Chart/Learn/Portfolio navigation works in browser; Admin remains key-gated | No |
-| Learn | Term detail | Summary, 3+ explanations, scenario | Normal | 100/100 | Core summary, definition, importance, checklist, caution, scenario, questions | No |
-| Chart | Daily | Chart displays | Normal | 99/100 | Candles, MA, volume, event markers render after data load | No |
-| Chart | Weekly | Chart displays | Normal | 99/100 | Control and API path verified | No |
-| Chart | Monthly | Chart displays | Normal | 99/100 | Control and API path verified | No |
-| Chart | Marker hover | Tooltip displays | Normal | 99/100 | Crosshair tooltip is implemented and E2E now checks bounded tooltip display | No |
-| Trade UX | Buy review zone | Conditions/evidence visible | Normal | 100/100 | Buy and split-buy conditions use conditional language | No |
-| Trade UX | Sell review zone | Conditions/evidence visible | Normal | 100/100 | Sell, risk, opposing signal, confidence, data date shown | No |
-| Buttons | Main button count | Primary actions kept small | Normal | 99/100 | Public flow emphasizes search and contextual actions; admin navigation is hidden unless an admin key is present | No |
-| Mobile | 390px | No overlap | Normal | 99/100 | Full-page 390px screenshot checked after responsive fix | No |
-| Accessibility | Keyboard skip link | Repeated navigation can be skipped | Normal | 99/100 | Skip link focuses `#main-content`; segmented controls expose active ARIA state | No |
-| Motion | Animation | Premium, restrained motion | Normal | 99/100 | Focus, hover, panel, chart loading skeleton use restrained 150-320ms style | No |
+## Latest Verification Commands
 
-## 9. Verification Commands
+The latest pushed state was verified with:
 
-- `./gradlew test`
-- `npm ci --include=dev && npm run build`
-- `npm audit`
-- `npm run test:e2e -- --reporter=line`
-- `make frontend-quality`
-- `make quality`
-- `make up`
-- `make health`
-- `./scripts/test_all_apis.sh`
-- `./scripts/verify_investment_language.sh`
-- `npx playwright screenshot --viewport-size=1440,1100 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-1440.png`
-- `npx playwright screenshot --viewport-size=1280,900 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-1280.png`
-- `npx playwright screenshot --viewport-size=768,1000 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-768.png`
-- `npx playwright screenshot --viewport-size=390,900 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-390.png`
-- NAVER Whale direct browser check at `http://localhost:5173/#home`
+```bash
+make quality
+```
 
-## 10. Failures / Remaining Risks
+The command covered:
 
-- `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshots.
-- Follow-up hardening updated Vite, `@vitejs/plugin-react`, and Express transitive dependencies; `npm audit` now reports 0 vulnerabilities.
-- Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, accessible chart image labeling, stock search navigation into chart research, admin surface hiding without an admin key, keyboard skip navigation, the learning detail structure, empty-summary fallback behavior, chart API failure alerting, interval switching, active ARIA state, and bounded chart tooltip display.
-- Follow-up search work added `GET /api/search` so the first-view search now uses a backend adapter for latest-summary stocks, learning terms, and a seed industry/theme catalog; the frontend only keeps a local fallback for API failure.
-- Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack health, API smoke tests, and Playwright E2E on push/PR.
-- Follow-up chart work extracted `StockPriceChart.jsx` and reduced overlapping price labels while keeping chart zones visible through the legend and decision panel.
-- Follow-up chart accessibility work exposes the rendered candle chart as a labeled image region while keeping the canvas implementation intact.
-- Follow-up chart label work hides duplicate last-value labels and suppresses marker text to keep the price axis legible.
-- Follow-up safety work added `scripts/verify_investment_language.sh` to fail on direct buy/sell instruction or guarantee wording in source code.
-- Follow-up local workflow work added `make quality` and hardened `make frontend-quality` so developers can run backend tests, frontend build/audit, source safety check, API smoke, and E2E with explicit dev dependency installation.
+- backend Gradle tests
+- frontend dependency install
+- frontend production build
+- npm audit
+- Docker Compose rebuild
+- service health checks
+- investment-language safety scan
+- API smoke tests
+- Playwright E2E across responsive viewports
 
-## 11. Commit Hash
+Result: all passed, including Playwright `13 passed`.
 
-- Implementation commits:
-  - `f6797ee11a11008dd1a919d2a2e44c66f4674cc9` Add frontend universal search and AI-first home
-  - `879ced0` Harden frontend build dependencies
-  - `46c3a95` Add frontend quality e2e coverage
-  - `95f07a7` Add backend unified search adapter
-- Additional hardening commits are recorded in git history; use `git rev-parse HEAD origin/main` for the current pushed head.
+Additional screenshots were captured from the Docker-served frontend:
 
-## 12. Push Status
+- `/tmp/krbrief-screens/audit-desktop-css-split.png`
+- `/tmp/krbrief-screens/audit-mobile-css-split.png`
 
-- Pushed to `origin/main`.
-- Remote branch verified with `git ls-remote origin refs/heads/main`.
+## Remaining Gaps
 
-## 13. Recommended Next Work
+1. The product is better, but still below the prompt's 495/500 bar.
+2. The first-view UX is clearer, but not yet a complete Toss-quality redesign.
+3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
+4. Search still needs a real full KRX stock, industry, and theme taxonomy.
+5. Chart trade zones need a backend-supported data model rather than only client-side heuristics.
+6. More frontend decomposition is still warranted, especially the remaining summary detail flow.
 
-- Replace the backend seed industry/theme catalog with a richer market taxonomy API when real sector/theme data is available.
+## Current Head
+
+- Latest pushed commit: `9f234bd Collapse repeated evidence links`
+- Branch: `main`
+- Push status: pushed to `origin/main`
+
+## Next Loop Recommendation
+
+Continue with these in order:
+
+1. Extract the remaining summary detail flow out of `App.jsx`.
+2. Replace chart-zone heuristics with a dedicated backend `trade-zones` contract.
+3. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
+4. Expand search from representative fallback to complete KRX stock/sector/theme taxonomy.
+5. Run another mobile and desktop visual audit before any completion claim.
