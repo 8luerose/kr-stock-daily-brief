@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AiInsightPanel, AdminOperationsPanel, BriefHistoryCalendar } from "./AppPanels.jsx";
-import StockPriceChart from "./StockPriceChart.jsx";
+import { COPY, PAGE_LABELS, SEARCH_THEME_FALLBACKS } from "./AppConstants.js";
+import { HistoryOverview, LearningPanel, MarketHero, PortfolioPanel, StockResearchPanel } from "./AppSections.jsx";
 
 function naverMainFromDayUrl(dayUrl) {
   if (!dayUrl) return "";
@@ -33,184 +34,6 @@ function buildEvidenceLinks(naverDayUrl, yahooUrl) {
   
   return links.slice(0, 2); // 총 2개로 제한
 }
-
-const COPY = {
-  brand: "한국 주식 AI 리서치",
-  productTagline: "오늘 시장을 초보자 언어로 읽는 브리프",
-  todayBrief: "오늘의 시장 브리프",
-  marketBrief: "시장 브리프",
-  marketOneLine: "오늘 시장에서 눈에 띄는 종목과 확인할 근거를 먼저 보여줍니다.",
-  noMarketOneLine: "아직 저장된 브리프가 없습니다. 최신 요약을 불러오거나 운영 담당자가 생성한 뒤 확인할 수 있습니다.",
-  universalSearch: "산업, 테마, 기업, 종목 검색",
-  universalSearchPlaceholder: "예: 반도체, 007610, 선도전기, 거래량, DART",
-  searchEmpty: "검색 결과가 없습니다. 종목명, 코드, 산업, 테마, 용어를 바꿔 입력해 보세요.",
-  aiMarketPanel: "AI 시장 해석",
-  aiMarketOneLine: "AI가 오늘 움직인 종목, 차트 신호, 리스크를 한 흐름으로 설명합니다.",
-  aiInsight: "AI 인사이트",
-  dataAsOf: "데이터 기준일",
-  sourceConfidence: "신뢰도",
-  beginnerSignals: "초보자가 지금 확인할 신호",
-  chartLoading: "차트 불러오는 중...",
-  chartFailed: "차트 데이터를 불러오지 못했습니다.",
-  riskMode: "판단 성향",
-  aggressive: "공격형",
-  neutral: "중립형",
-  conservative: "보수형",
-  chartSummary: "현재 차트 상태 요약",
-  buyConditions: "매수 검토 조건",
-  splitBuyConditions: "분할매수 검토 조건",
-  watchConditions: "관망 조건",
-  sellConditions: "매도 검토 조건",
-  stopConditions: "손절/리스크 관리 조건",
-  oppositeSignals: "반대 신호",
-  evidenceData: "근거 데이터",
-  analysisDisclaimer: "교육용 분석 보조 정보이며 매수, 매도 지시나 수익 보장이 아닙니다.",
-  askChartAi: "AI로 차트 설명",
-  aiResearchTitle: "AI 차트 해석",
-  portfolioTitle: "포트폴리오 샌드박스",
-  portfolioSubtitle: "실계좌 연동 없이 관심 종목과 가상 비중으로 리스크를 봅니다.",
-  addToPortfolio: "관심 추가",
-  virtualWeight: "가상 비중",
-  concentration: "집중도",
-  volatility: "변동성",
-  openAdmin: "관리자 영역",
-  closeAdmin: "관리자 영역 닫기",
-  adminTitle: "운영 관리",
-  adminSubtitle: "생성, 보관, 일괄 생성은 접힌 패널에서만 실행합니다.",
-  selectedDate: "조회 기준일",
-  generateToday: "오늘 생성",
-  moveToLatest: "최신 요약",
-  toggleDarkOn: "다크 모드",
-  toggleDarkOff: "라이트 모드",
-  prevMonth: "이전",
-  nextMonth: "다음",
-  generateSelected: "선택일 생성",
-  archiveSelected: "보관",
-  backfillRun: "일괄 생성",
-  loading: "불러오는 중...",
-  noSummary: "이 날짜의 요약이 아직 없습니다.",
-  marketClosed: "휴장일",
-  marketClosedDesc: "이 날짜는 증권시장 휴장일입니다.",
-  generatedAt: "생성 시각",
-  topGainer: "최대 상승",
-  topLoser: "최대 하락",
-  mostMentioned: "최다 언급",
-  kospiPick: "코스피 픽",
-  kosdaqPick: "코스닥 픽",
-  rankingBasis: "랭킹 계산 근거",
-  rawFirstGainer: "처음 계산 1위 (상승)",
-  rawFirstLoser: "처음 계산 1위 (하락)",
-  filteredFirstGainer: "검토 후 1위 (상승, 최종)",
-  filteredFirstLoser: "검토 후 1위 (하락, 최종)",
-  warningNote: "주의 메모",
-  code: "종목코드",
-  name: "종목명",
-  rate: "등락률(%)",
-  signals: "감지 신호",
-  description: "설명",
-  evidenceLinks: "근거 링크",
-  verification: "검증",
-  date: "날짜",
-  result: "결과값",
-  directLink: "바로 확인",
-  notes: "주의사항",
-  showRawNotes: "수집 노트 보기",
-  hideRawNotes: "수집 노트 숨기기",
-  developerDetails: "검증 상세",
-  closeDetails: "상세 닫기",
-  summaryExists: "요약 있음",
-  gatedHint: "이 화면은 비밀키가 필요합니다. URL에 ?k=비밀키 를 추가하세요.",
-  cumulativeSummaries: "누적 요약",
-  latestDate: "최신 날짜",
-  lastUpdated: "최근 갱신",
-  monthlyTotalDays: "월 총 일수",
-  monthlyGenerated: "생성 완료",
-  monthlyMissing: "미생성",
-  monthlyTopMentioned: "월 최다 언급",
-  days: ["일", "월", "화", "수", "목", "금", "토"],
-  verifyField: "항목",
-  verifySource: "출처",
-  krxArtifact: "KRX 검증",
-  krxPortal: "KRX 포털",
-  pykrxRepo: "pykrx 저장소",
-  actualCalcDate: "실제 계산일",
-  topGainersTitle: "상승 TOP3",
-  topLosersTitle: "하락 TOP3",
-  mostMentionedTitle: "언급 TOP3",
-  postCount: "게시물 수",
-  naverDaily: "일별",
-  naverMain: "종합",
-  naverBoard: "토론",
-  learningTitle: "초보자 용어 사전",
-  learningSubtitle: "브리프를 읽을 때 막히는 단어를 바로 풀어봅니다.",
-  learningSearch: "용어 검색",
-  learningSearchPlaceholder: "예: 등락률, PER, 거래량",
-  allCategories: "전체",
-  coreSummary: "핵심요약",
-  whyItMatters: "왜 중요한가",
-  beginnerCheck: "먼저 확인할 것",
-  caution: "주의할 점",
-  scenarioExample: "시나리오 예시",
-  relatedTerms: "관련 용어",
-  exampleQuestions: "바로 물어보기",
-  learningLoadFailed: "용어 사전을 불러오지 못했습니다.",
-  noTerms: "검색 결과가 없습니다.",
-  assistantTitle: "AI 학습 도우미",
-  assistantSubtitle: "오늘 브리프와 용어 사전을 묶어 초보자 관점으로 설명합니다.",
-  assistantQuestionLabel: "AI에게 물어볼 질문",
-  assistantInputPlaceholder: "궁금한 점을 입력하세요. 예: 거래량이 왜 중요해?",
-  assistantAsk: "질문",
-  assistantAnswer: "답변",
-  confidence: "신뢰도",
-  sources: "출처",
-  limitations: "한계",
-  matchedTerms: "연결된 용어",
-  briefTermsTitle: "브리프 읽기 전 확인할 용어",
-  historyTitle: "히스토리",
-  adminKeyRequired: "운영 기능은 관리자 키가 필요합니다. URL에 ?ak=관리자키 를 추가하면 생성, 보관, 일괄 생성을 사용할 수 있습니다."
-};
-
-const PAGE_LABELS = {
-  home: "오늘",
-  research: "차트",
-  history: "기록",
-  learning: "배우기",
-  portfolio: "포트폴리오",
-  admin: "운영"
-};
-
-const SEARCH_THEME_FALLBACKS = [
-  {
-    id: "theme-semiconductor",
-    type: "theme",
-    title: "반도체",
-    code: "THEME",
-    market: "테마",
-    rate: "+2.4%",
-    tags: ["AI 반도체", "장비", "소부장"],
-    summary: "AI 수요, 설비투자, 환율 변화를 함께 보는 대표 성장 테마입니다."
-  },
-  {
-    id: "theme-battery",
-    type: "theme",
-    title: "2차전지",
-    code: "THEME",
-    market: "테마",
-    rate: "-1.1%",
-    tags: ["소재", "전기차", "수급"],
-    summary: "원재료 가격, 전기차 수요, 정책 뉴스가 주가 변동과 자주 연결됩니다."
-  },
-  {
-    id: "industry-finance",
-    type: "industry",
-    title: "증권/금융",
-    code: "IND",
-    market: "산업",
-    rate: "+0.8%",
-    tags: ["금리", "거래대금", "배당"],
-    summary: "금리, 증시 거래대금, 배당 기대가 함께 움직이는 산업군입니다."
-  }
-];
 
 function valueOrDash(v) {
   return v && String(v).trim() ? v : "-";
@@ -1492,124 +1315,31 @@ export default function App() {
       </header>
 
       {activePage === "home" ? (
-      <section className="marketHero">
-        <div className="marketHeroMain">
-          <div className="eyebrow">{COPY.todayBrief}</div>
-          <h1>{getMarketHeadline(summary, selected)}</h1>
-          <p>{summary ? COPY.marketOneLine : COPY.noMarketOneLine}</p>
-          <div className="heroMeta">
-            <span>{COPY.dataAsOf}: {dataAsOf}</span>
-            <span>{COPY.sourceConfidence}: {confidenceLabel}</span>
-            <span>{COPY.selectedDate}: {selected}</span>
-          </div>
-          <div className="heroSearch" role="search">
-            <label htmlFor="universal-search">{COPY.universalSearch}</label>
-            <div className="heroSearchBox">
-              <input
-                id="universal-search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={COPY.universalSearchPlaceholder}
-                autoComplete="off"
-              />
-              <span>{COPY.aiInsight}</span>
-            </div>
-            {searchQuery.trim() ? (
-              <div className="searchResults" aria-live="polite">
-                {searchLoading ? <div className="searchEmpty">{COPY.loading}</div> : null}
-                {!searchLoading && searchResults.length === 0 ? (
-                  <div className="searchEmpty">{COPY.searchEmpty}</div>
-                ) : null}
-                {!searchLoading && searchResults.length > 0 ? (
-                  searchResults.map((item) => (
-                    <button type="button" key={item.id} onClick={() => selectSearchResult(item)}>
-                      <span className="searchType">{item.market}</span>
-                      <strong>{item.title} <small>{item.code}</small></strong>
-                      <p>{item.summary}</p>
-                      <em>{item.rate}</em>
-                      <span className="searchTags">{asArray(item.tags).slice(0, 3).join(" · ")}</span>
-                    </button>
-                  ))
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="marketPulse" aria-label="주요 종목 흐름">
-          {(stockPicks.length > 0 ? stockPicks.slice(0, 5) : [
-            { name: COPY.topGainer, group: "상승", rate: 0 },
-            { name: COPY.topLoser, group: "하락", rate: 0 },
-            { name: COPY.mostMentioned, group: "관심", count: 0 }
-          ]).map((stock, index) => {
-            const rate = Number(stock.rate || 0);
-            const width = stock.count ? Math.min(100, Math.max(18, Number(stock.count))) : Math.min(100, Math.max(18, Math.abs(rate) * 2.2));
-            return (
-              <button
-                type="button"
-                key={`${stock.group}-${stock.code || stock.name}-${index}`}
-                className={`pulseRow ${currentStock?.code && stock.code === currentStock.code ? "active" : ""}`}
-                aria-pressed={Boolean(currentStock?.code && stock.code === currentStock.code)}
-                disabled={!stock.code}
-                onClick={() => stock.code ? selectStock(stock) : null}
-              >
-                <span className="pulseName">{stock.name}</span>
-                <span className="pulseGroup">{stock.group}</span>
-                <span className="pulseTrack">
-                  <span
-                    className={`pulseFill ${rate < 0 ? "down" : stock.count ? "mention" : "up"}`}
-                    style={{ width: `${width}%` }}
-                  />
-                </span>
-                <strong>{stock.count ? `${formatNumber(stock.count)}건` : formatRate(stock.rate)}</strong>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+        <MarketHero
+          copy={COPY}
+          summary={summary}
+          selected={selected}
+          dataAsOf={dataAsOf}
+          confidenceLabel={confidenceLabel}
+          headline={getMarketHeadline(summary, selected)}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          searchLoading={searchLoading}
+          searchResults={searchResults}
+          selectSearchResult={selectSearchResult}
+          stockPicks={stockPicks}
+          currentStock={currentStock}
+          selectStock={selectStock}
+          asArray={asArray}
+          formatNumber={formatNumber}
+          formatRate={formatRate}
+        />
       ) : null}
 
       {(activePage === "home" || activePage === "learning") ? assistantPanel : null}
 
       {activePage === "history" ? (
-      <section className="card overview">
-        <div className="overviewItem">
-          <span className="label">{COPY.cumulativeSummaries}</span>
-          <strong>{stats?.totalCount ?? "-"}</strong>
-        </div>
-        <div className="overviewItem">
-          <span className="label">{COPY.latestDate}</span>
-          <strong>{stats?.latestDate ?? "-"}</strong>
-        </div>
-        <div className="overviewItem">
-          <span className="label">{COPY.lastUpdated}</span>
-          <strong>{stats?.latestUpdatedAt ?? "-"}</strong>
-        </div>
-      </section>
-      ) : null}
-
-      {activePage === "history" ? (
-      <section className="card overview insights">
-        <div className="overviewItem">
-          <span className="label">{COPY.monthlyTotalDays}</span>
-          <strong>{insights?.totalDays ?? "-"}</strong>
-        </div>
-        <div className="overviewItem">
-          <span className="label">{COPY.monthlyGenerated}</span>
-          <strong>{insights?.generatedDays ?? "-"}</strong>
-        </div>
-        <div className="overviewItem">
-          <span className="label">{COPY.monthlyMissing}</span>
-          <strong>{insights?.missingDays ?? "-"}</strong>
-        </div>
-        <div className="overviewItem">
-          <span className="label">{COPY.monthlyTopMentioned}</span>
-          <strong>
-            {insights?.topMostMentioned
-              ? `${insights.topMostMentioned} (${insights.topMostMentionedCount}회)`
-              : "-"}
-          </strong>
-        </div>
-      </section>
+        <HistoryOverview copy={COPY} stats={stats} insights={insights} />
       ) : null}
 
       <main
@@ -1659,165 +1389,35 @@ export default function App() {
         ) : null}
 
         {activePage === "learning" ? (
-        <section className="card learningPanel">
-          <div className="panelHead">
-            <div>
-              <div className="panelTitle">{COPY.learningTitle}</div>
-              <div className="panelSubtitle">{COPY.learningSubtitle}</div>
-            </div>
-          </div>
-
-          {learningError ? <div className="hint">{learningError}</div> : null}
-
-          <label className="fieldLabel" htmlFor="term-search">{COPY.learningSearch}</label>
-          <input
-            id="term-search"
-            className="searchInput"
-            value={termQuery}
-            onChange={(e) => setTermQuery(e.target.value)}
-            placeholder={COPY.learningSearchPlaceholder}
+          <LearningPanel
+            copy={COPY}
+            learningError={learningError}
+            termQuery={termQuery}
+            setTermQuery={setTermQuery}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            categories={categories}
+            visibleTerms={visibleTerms}
+            selectedTerm={selectedTerm}
+            selectTerm={selectTerm}
+            buildTermCoreSummary={buildTermCoreSummary}
+            buildTermScenario={buildTermScenario}
+            askLearningAssistant={askLearningAssistant}
+            assistantLoading={assistantLoading}
+            asArray={asArray}
           />
-
-          <div className="learningFilterRow">
-            <label className="fieldLabel" htmlFor="term-category">분류</label>
-            <select
-              id="term-category"
-              className="categorySelect"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="">{COPY.allCategories}</option>
-              {categories.map((category) => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="learningGrid">
-            {visibleTerms.length === 0 ? (
-              <div className="empty compact">{COPY.noTerms}</div>
-            ) : (
-              <div className="termList">
-                {visibleTerms.map((term) => (
-                  <button
-                    type="button"
-                    key={term.id}
-                    className={`termButton ${selectedTerm?.id === term.id ? "active" : ""}`}
-                    aria-pressed={selectedTerm?.id === term.id}
-                    onClick={() => selectTerm(term)}
-                  >
-                    <span>{term.term}</span>
-                    <small>{term.category}</small>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {selectedTerm ? (
-              <div className="termDetail">
-                <div className="termCategory">{selectedTerm.category}</div>
-                <h3>{selectedTerm.term}</h3>
-                <div className="termLead">
-                  <strong>{COPY.coreSummary}</strong>
-                  <p>{buildTermCoreSummary(selectedTerm)}</p>
-                </div>
-                <div className="termInfo">
-                  <strong>뜻</strong>
-                  <span>{selectedTerm.plainDefinition}</span>
-                </div>
-                <div className="termInfo">
-                  <strong>{COPY.whyItMatters}</strong>
-                  <span>{selectedTerm.whyItMatters}</span>
-                </div>
-                <div className="termInfo">
-                  <strong>{COPY.beginnerCheck}</strong>
-                  <span>{selectedTerm.beginnerCheck}</span>
-                </div>
-                <div className="termInfo caution">
-                  <strong>{COPY.caution}</strong>
-                  <span>{selectedTerm.caution}</span>
-                </div>
-                <div className="termInfo scenario">
-                  <strong>{COPY.scenarioExample}</strong>
-                  <span>{buildTermScenario(selectedTerm)}</span>
-                </div>
-                <div className="relatedTerms">
-                  <span>{COPY.relatedTerms}</span>
-                  <div>
-                    {asArray(selectedTerm.relatedTerms).slice(0, 5).map((term) => (
-                      <button type="button" key={term} onClick={() => setTermQuery(term)}>
-                        {term}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="questionList">
-                  <span>{COPY.exampleQuestions}</span>
-                  {asArray(selectedTerm.exampleQuestions).slice(0, 3).map((question) => (
-                    <button
-                      type="button"
-                      key={question}
-                      onClick={() => askLearningAssistant(question, selectedTerm.id)}
-                      disabled={assistantLoading}
-                    >
-                      {question}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </section>
         ) : null}
 
         {activePage === "portfolio" ? (
-        <section className="card portfolioPanel">
-          <div className="panelHead">
-            <div>
-              <div className="panelTitle">{COPY.portfolioTitle}</div>
-              <div className="panelSubtitle">{COPY.portfolioSubtitle}</div>
-            </div>
-          </div>
-          <button type="button" className="btn primary small fullWidth" onClick={addCurrentStockToPortfolio} disabled={!currentStock?.code}>
-            {currentStock?.name ? `${currentStock.name} ${COPY.addToPortfolio}` : COPY.addToPortfolio}
-          </button>
-          {portfolio.length === 0 ? (
-            <div className="empty compact">관심 종목을 추가하면 비중과 변동성 리스크를 비교합니다.</div>
-          ) : (
-            <div className="portfolioList">
-              {portfolio.map((item) => (
-                <div className="portfolioItem" key={item.code}>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <span>{item.code} · {item.group}</span>
-                  </div>
-                  <label>
-                    {COPY.virtualWeight}
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={item.weight}
-                      onChange={(e) => updatePortfolioWeight(item.code, e.target.value)}
-                    />
-                  </label>
-                  <button type="button" onClick={() => removePortfolioItem(item.code)}>제외</button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="portfolioRisk">
-            <div>
-              <span>{COPY.concentration}</span>
-              <p>{portfolioSummary.concentration}</p>
-            </div>
-            <div>
-              <span>{COPY.volatility}</span>
-              <p>{portfolioSummary.volatility}</p>
-            </div>
-            <small>총 가상 비중 {portfolioSummary.totalWeight}% · 최대 비중 {portfolioSummary.maxItem?.name || "-"} {portfolioSummary.maxItem?.weight || 0}%</small>
-          </div>
-        </section>
+          <PortfolioPanel
+            copy={COPY}
+            currentStock={currentStock}
+            addCurrentStockToPortfolio={addCurrentStockToPortfolio}
+            portfolio={portfolio}
+            updatePortfolioWeight={updatePortfolioWeight}
+            removePortfolioItem={removePortfolioItem}
+            portfolioSummary={portfolioSummary}
+          />
         ) : null}
         </div>
         ) : null}
@@ -1928,151 +1528,30 @@ export default function App() {
                 </div>
               ) : null}
 
-              {currentStock ? (
-                <section id="stock-detail" className="stockResearch">
-                  <div className="stockResearchHead">
-                    <div>
-                      <span className="stockGroup">{currentStock.group}</span>
-                      <h3>{currentStock.name} {currentStock.code ? <small>{currentStock.code}</small> : null}</h3>
-                    </div>
-                    <div className="intervalTabs" aria-label="차트 기간">
-                      {[
-                        ["daily", "일봉"],
-                        ["weekly", "주봉"],
-                        ["monthly", "월봉"]
-                      ].map(([value, label]) => (
-                        <button
-                          type="button"
-                          key={value}
-                          className={stockInterval === value ? "active" : ""}
-                          aria-pressed={stockInterval === value}
-                          onClick={() => setStockInterval(value)}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="stockResearchGrid">
-                    <div className="chartPreview">
-                      <div className="chartBasis">
-                        {stockChart?.name || currentStock.name} · {stockChart?.asOf || dataAsOf} · 20일선/거래량/이벤트
-                      </div>
-                      {stockChartLoading ? <div className="chartState" role="status">{COPY.chartLoading}</div> : null}
-                      {stockChartError ? <div className="chartState errorText" role="alert">{stockChartError}</div> : null}
-                      {!stockChartLoading && !stockChartError && stockChart ? (
-                        <StockPriceChart chart={stockChart} events={stockEvents} darkMode={darkMode} />
-                      ) : null}
-                    </div>
-                    <div className="stockSignalPanel">
-                      <div className="riskTabs" aria-label={COPY.riskMode}>
-                        {[
-                          ["aggressive", COPY.aggressive],
-                          ["neutral", COPY.neutral],
-                          ["conservative", COPY.conservative]
-                        ].map(([value, label]) => (
-                          <button
-                            type="button"
-                            key={value}
-                            className={riskMode === value ? "active" : ""}
-                            aria-pressed={riskMode === value}
-                            onClick={() => setRiskMode(value)}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="stockMetricRow">
-                        <span>랭킹</span>
-                        <strong>{currentStock.group}</strong>
-                      </div>
-                      <div className="stockMetricRow">
-                        <span>등락률</span>
-                        <strong>{formatRate(currentStock.rate)}</strong>
-                      </div>
-                      {currentStock.count !== undefined && currentStock.count !== null ? (
-                        <div className="stockMetricRow">
-                          <span>언급량</span>
-                          <strong>{formatNumber(currentStock.count)}건</strong>
-                        </div>
-                      ) : null}
-                      <div className="beginnerSignalList">
-                        <strong>{COPY.chartSummary}</strong>
-                        <p>{decisionPanel.summary}</p>
-                      </div>
-                      <div className="decisionZones">
-                        <div className="zone buy"><span>{COPY.buyConditions}</span><p>{decisionPanel.buy}</p></div>
-                        <div className="zone split"><span>{COPY.splitBuyConditions}</span><p>{decisionPanel.splitBuy}</p></div>
-                        <div className="zone neutral"><span>{COPY.watchConditions}</span><p>{decisionPanel.watch}</p></div>
-                        <div className="zone watch"><span>{COPY.sellConditions}</span><p>{decisionPanel.sell}</p></div>
-                        <div className="zone risk"><span>{COPY.stopConditions}</span><p>{decisionPanel.stop}</p></div>
-                        <div className="zone opposite"><span>{COPY.oppositeSignals}</span><p>{decisionPanel.opposite}</p></div>
-                      </div>
-                      <div className="beginnerSignalList">
-                        <strong>{COPY.evidenceData}</strong>
-                        <ul>
-                          {decisionPanel.evidence.map((line) => (
-                            <li key={line}>{line}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      {asArray(stockEvents?.events).length > 0 ? (
-                        <div className="eventList">
-                          {asArray(stockEvents.events).slice(0, 4).map((event) => (
-                            <a
-                              key={`${event.date}-${event.type}`}
-                              href={asArray(event.evidenceLinks)[0] || "#"}
-                              target="_blank"
-                              rel="noreferrer"
-                              title={event.explanation}
-                            >
-                              <span>{event.date}</span>
-                              <strong>{event.title}</strong>
-                            </a>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className="analysisDisclaimer">{COPY.analysisDisclaimer} 신뢰도: {decisionPanel.confidence}</div>
-                      <button
-                        type="button"
-                        className="btn ghost small"
-                        onClick={addCurrentStockToPortfolio}
-                        disabled={!currentStock.code}
-                      >
-                        {COPY.addToPortfolio}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn primary small"
-                        onClick={askChartAi}
-                        disabled={aiResearchLoading || !currentStock.code}
-                      >
-                        {aiResearchLoading ? COPY.loading : COPY.askChartAi}
-                      </button>
-                      {aiResearchResponse ? (
-                        <div className="aiResearchAnswer">
-                          <strong>{COPY.aiResearchTitle}</strong>
-                          <pre>{aiResearchResponse.answer}</pre>
-                          <div className="assistantMeta limitations">
-                            <strong>{COPY.limitations}</strong>
-                            <ul>
-                              {asArray(aiResearchResponse.limitations).map((item) => (
-                                <li key={item}>{item}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      ) : null}
-                      <div className="stockLinks">
-                        {buildNaverLinks(currentStock.code, summary.effectiveDate).map((link) => (
-                          <a key={link.href} href={link.href} target="_blank" rel="noreferrer">{link.label}</a>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              ) : null}
+              <StockResearchPanel
+                copy={COPY}
+                currentStock={currentStock}
+                stockInterval={stockInterval}
+                setStockInterval={setStockInterval}
+                stockChart={stockChart}
+                stockEvents={stockEvents}
+                stockChartLoading={stockChartLoading}
+                stockChartError={stockChartError}
+                darkMode={darkMode}
+                dataAsOf={dataAsOf}
+                riskMode={riskMode}
+                setRiskMode={setRiskMode}
+                decisionPanel={decisionPanel}
+                addCurrentStockToPortfolio={addCurrentStockToPortfolio}
+                askChartAi={askChartAi}
+                aiResearchLoading={aiResearchLoading}
+                aiResearchResponse={aiResearchResponse}
+                summary={summary}
+                asArray={asArray}
+                formatNumber={formatNumber}
+                formatRate={formatRate}
+                buildNaverLinks={buildNaverLinks}
+              />
 
               <div className="notesWrap">
                 <h4>{COPY.rankingBasis}</h4>
