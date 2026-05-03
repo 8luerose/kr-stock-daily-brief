@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html as html_lib
 import re
 import time
 
@@ -158,11 +159,18 @@ def _naver_fetch(url: str, timeout: int = 5) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": NAVER_UA})
     with urllib.request.urlopen(req, timeout=timeout) as f:
         raw = f.read()
+        charset = f.headers.get_content_charset()
 
-    try:
-        return raw.decode("euc-kr", "ignore")
-    except Exception:
-        return raw.decode("utf-8", "ignore")
+    candidates = [charset] if charset else []
+    candidates.extend(["utf-8", "euc-kr", "cp949"])
+    for encoding in candidates:
+        if not encoding:
+            continue
+        try:
+            return raw.decode(encoding)
+        except Exception:
+            continue
+    return raw.decode("utf-8", "ignore")
 
 
 _BOARD_DATE_RE = re.compile(r'<span class="tah p10 gray03">(\d{4}\.\d{2}\.\d{2})')
@@ -505,6 +513,117 @@ def _event_evidence_links(sources: list[dict[str, str]]) -> list[str]:
     return [source["url"] for source in sources if source.get("url")]
 
 
+def _clean_html_text(value: str) -> str:
+    text = re.sub(r"<script.*?</script>", " ", value, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<style.*?</style>", " ", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = html_lib.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _signal_keywords(text: str) -> list[str]:
+    keywords = [
+        "공시",
+        "계약",
+        "수주",
+        "공급",
+        "실적",
+        "영업이익",
+        "매출",
+        "자사주",
+        "배당",
+        "증자",
+        "감산",
+        "투자",
+        "반도체",
+        "거래량",
+        "주가",
+        "상승",
+        "하락",
+    ]
+    return [keyword for keyword in keywords if keyword in text]
+
+
+def _dedupe_signals(signals: list[dict], limit: int) -> list[dict]:
+    seen: set[str] = set()
+    out: list[dict] = []
+    for signal in signals:
+        key = re.sub(r"\W+", "", signal.get("text", ""))[:80]
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(signal)
+        if len(out) >= limit:
+            break
+    return out
+
+
+@lru_cache(maxsize=4096)
+def _naver_news_text_signals(code: str, name: str) -> tuple[dict, ...]:
+    query = quote(f"{name} {code} 주가 거래량 공시")
+    url = f"https://search.naver.com/search.naver?where=news&query={query}"
+    try:
+        html = _naver_fetch(url, timeout=4)
+    except Exception:
+        return tuple()
+
+    signals: list[dict] = []
+    for match in re.finditer(r'<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>', html, re.IGNORECASE | re.DOTALL):
+        href = html_lib.unescape(match.group(1))
+        text = _clean_html_text(match.group(2))
+        if len(text) < 24:
+            continue
+        if name not in text and code not in text:
+            continue
+        keywords = _signal_keywords(text)
+        if not keywords:
+            continue
+        signals.append(
+            {
+                "sourceType": "news",
+                "label": "네이버 뉴스 텍스트",
+                "url": href,
+                "text": text[:220],
+                "matchedKeywords": keywords[:6],
+            }
+        )
+    return tuple(_dedupe_signals(signals, 5))
+
+
+@lru_cache(maxsize=4096)
+def _dart_disclosure_text_signals(name: str, from_ymd: str, to_ymd: str) -> tuple[dict, ...]:
+    start = _format_ymd_dot(from_ymd)
+    end = _format_ymd_dot(to_ymd)
+    url = f"https://dart.fss.or.kr/dsab007/search.ax?textCrpNm={quote(name)}&startDate={start}&endDate={end}&maxResults=15"
+    try:
+        html = _naver_fetch(url, timeout=4)
+    except Exception:
+        return tuple()
+
+    signals: list[dict] = []
+    for row in re.findall(r"<tr[^>]*>.*?</tr>", html, flags=re.IGNORECASE | re.DOTALL):
+        text = _clean_html_text(row)
+        if len(text) < 12 or "조회 결과가 없습니다" in text:
+            continue
+        keywords = _signal_keywords(text)
+        signals.append(
+            {
+                "sourceType": "disclosure",
+                "label": "DART 공시 텍스트",
+                "url": "https://dart.fss.or.kr/",
+                "text": text[:220],
+                "matchedKeywords": keywords[:6],
+            }
+        )
+    return tuple(_dedupe_signals(signals, 5))
+
+
+def _event_text_signals(code: str, name: str, from_ymd: str, to_ymd: str) -> list[dict]:
+    signals = list(_naver_news_text_signals(code, name))
+    signals.extend(_dart_disclosure_text_signals(name, from_ymd, to_ymd))
+    return signals
+
+
 def _event_severity(abs_price_rate: float, volume_rate: float) -> str:
     if abs_price_rate >= 12 or volume_rate >= 450:
         return "high"
@@ -534,6 +653,7 @@ def _event_causal_scores(
     event_type: str,
     price_rate: float,
     volume_rate: float,
+    text_signals: list[dict],
 ) -> list[dict]:
     abs_price = abs(price_rate)
     direction = "상승" if price_rate > 0 else "하락" if price_rate < 0 else "변동"
@@ -542,6 +662,11 @@ def _event_causal_scores(
 
     for source in sources:
         source_type = source.get("type", "source")
+        source_signals = [signal for signal in text_signals if signal.get("sourceType") == source_type]
+        signal_count = len(source_signals)
+        signal_keywords = sorted({keyword for signal in source_signals for keyword in signal.get("matchedKeywords", [])})
+        signal_boost = min(signal_count * 5 + len(signal_keywords) * 2, 18)
+        signal_summary = source_signals[0]["text"] if source_signals else "텍스트 근거 미확인"
         if source_type == "price_history":
             score = _clamp_score(
                 58 + min(abs_price * 2.2, 24) + min(max(volume_rate - 100, 0) / 12, 16) + (8 if event_type == "volume_spike" else 0),
@@ -551,18 +676,18 @@ def _event_causal_scores(
             interpretation = "가격/거래량 원자료에서 이벤트 자체가 확인됩니다."
         elif source_type == "news":
             score = _clamp_score(
-                34 + min(abs_price * 1.4, 18) + min(max(volume_rate - 120, 0) / 22, 14),
+                34 + min(abs_price * 1.4, 18) + min(max(volume_rate - 120, 0) / 22, 14) + signal_boost,
                 20,
-                72,
+                82,
             )
-            interpretation = "같은 시점 뉴스가 원인 후보일 수 있으나 원문 확인 전에는 확정하지 않습니다."
+            interpretation = "검색된 뉴스 텍스트가 가격/거래량 이벤트의 원인 후보를 보강합니다." if signal_count else "같은 시점 뉴스가 원인 후보일 수 있으나 원문 확인 전에는 확정하지 않습니다."
         elif source_type == "disclosure":
             score = _clamp_score(
-                30 + min(abs_price * 1.1, 14) + min(max(volume_rate - 180, 0) / 28, 12),
+                30 + min(abs_price * 1.1, 14) + min(max(volume_rate - 180, 0) / 28, 12) + signal_boost,
                 18,
-                68,
+                78,
             )
-            interpretation = "공식 공시는 강한 원인 후보지만 DART 원문 확인이 필요합니다."
+            interpretation = "DART 검색 텍스트가 이벤트 원인 후보를 보강합니다." if signal_count else "공식 공시는 강한 원인 후보지만 DART 원문 확인이 필요합니다."
         elif source_type == "discussion":
             score = _clamp_score(
                 24 + min(max(volume_rate - 120, 0) / 18, 18) + min(abs_price, 8),
@@ -585,6 +710,9 @@ def _event_causal_scores(
                 "confidence": _causal_confidence(score, source_type),
                 "basis": basis,
                 "interpretation": f"{direction} 이벤트 기준. {interpretation}",
+                "signalCount": signal_count,
+                "matchedSignals": signal_keywords[:6],
+                "signalSummary": signal_summary,
             }
         )
 
@@ -604,6 +732,7 @@ def _detect_chart_events(code: str, name: str, df: pd.DataFrame, from_ymd: str, 
     target = daily[(daily.index >= start) & (daily.index <= end)]
     evidence_sources = _event_evidence_sources(code, name)
     evidence_links = _event_evidence_links(evidence_sources)
+    text_signals = _event_text_signals(code, name, from_ymd, to_ymd)
 
     for idx, row in target.iterrows():
         price_rate = round(float(row["price_rate"]), 2)
@@ -649,7 +778,7 @@ def _detect_chart_events(code: str, name: str, df: pd.DataFrame, from_ymd: str, 
                     "explanation": explanation,
                     "evidenceLinks": evidence_links,
                     "evidenceSources": evidence_sources,
-                    "causalScores": _event_causal_scores(evidence_sources, event_type, price_rate, volume_rate),
+                    "causalScores": _event_causal_scores(evidence_sources, event_type, price_rate, volume_rate, text_signals),
                 }
             )
 

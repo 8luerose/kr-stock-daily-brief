@@ -134,6 +134,8 @@ grep -q '"type":"news"' /tmp/krbrief_resp.json || fail "stock events missing new
 grep -q '"type":"disclosure"' /tmp/krbrief_resp.json || fail "stock events missing disclosure evidence source"
 grep -q '"sourceType":"price_history"' /tmp/krbrief_resp.json || fail "stock events missing price_history causal score"
 grep -q '"score":' /tmp/krbrief_resp.json || fail "stock events missing causal score value"
+contains_field /tmp/krbrief_resp.json signalCount || fail "stock events missing causal signalCount"
+contains_field /tmp/krbrief_resp.json signalSummary || fail "stock events missing causal signalSummary"
 pass "GET /api/stocks/{code}/events"
 
 # 15) Stock trade zones

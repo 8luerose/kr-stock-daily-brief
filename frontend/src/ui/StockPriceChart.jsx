@@ -211,6 +211,10 @@ export default function StockPriceChart({ chart, events, darkMode }) {
               `원인 점수: ${topCausal.label} ${topCausal.score}/100 · ${topCausal.confidence}`,
               "tooltipEventText"
             );
+            const textCausal = asArray(event.causalScores).find((score) => Number(score.signalCount || 0) > 0);
+            if (textCausal?.signalSummary) {
+              appendLine(lines, `텍스트 근거: ${textCausal.signalSummary}`, "tooltipEventText");
+            }
           }
         });
       }

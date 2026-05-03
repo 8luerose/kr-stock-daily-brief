@@ -32,5 +32,8 @@ public record StockEventsDto(
       Integer score,
       String confidence,
       String basis,
-      String interpretation) {}
+      String interpretation,
+      Integer signalCount,
+      List<String> matchedSignals,
+      String signalSummary) {}
 }

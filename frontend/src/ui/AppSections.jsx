@@ -487,7 +487,9 @@ export function StockResearchPanel({
           {asArray(stockEvents?.events).length > 0 ? (
             <div className="eventList">
               {asArray(stockEvents.events).slice(0, 4).map((event) => {
-                const topCausal = eventCausalScores(event)[0];
+                const causalScores = eventCausalScores(event);
+                const topCausal = causalScores[0];
+                const textCausal = causalScores.find((score) => Number(score.signalCount || 0) > 0);
                 return (
                   <a
                     key={`${event.date}-${event.type}`}
@@ -504,6 +506,7 @@ export function StockResearchPanel({
                     {topCausal ? (
                       <small>
                         원인 점수 {topCausal.label} {topCausal.score}/100 · {topCausal.confidence}
+                        {textCausal ? ` · 텍스트 근거 ${textCausal.signalCount}건` : ""}
                       </small>
                     ) : null}
                   </a>

@@ -74,7 +74,10 @@ class StockControllerTest {
                                 86,
                                 "high",
                                 "등락률 +3.20%, 20일 평균 대비 거래량 230%",
-                                "가격/거래량 원자료에서 이벤트 자체가 확인됩니다."))))));
+                                "가격/거래량 원자료에서 이벤트 자체가 확인됩니다.",
+                                2,
+                                List.of("공시", "거래량"),
+                                "삼성전자 공시와 거래량 관련 뉴스 텍스트"))))));
 
     mvc.perform(get("/api/stocks/005930/events?from=2026-04-01&to=2026-05-01"))
         .andExpect(status().isOk())
@@ -84,7 +87,9 @@ class StockControllerTest {
         .andExpect(jsonPath("$.events[0].evidenceSources[0].type").value("news"))
         .andExpect(jsonPath("$.events[0].causalScores").isArray())
         .andExpect(jsonPath("$.events[0].causalScores[0].sourceType").value("price_history"))
-        .andExpect(jsonPath("$.events[0].causalScores[0].score").value(86));
+        .andExpect(jsonPath("$.events[0].causalScores[0].score").value(86))
+        .andExpect(jsonPath("$.events[0].causalScores[0].signalCount").value(2))
+        .andExpect(jsonPath("$.events[0].causalScores[0].matchedSignals[0]").value("공시"));
   }
 
   @Test

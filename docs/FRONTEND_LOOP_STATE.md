@@ -874,6 +874,12 @@
 - [x] Event causal scoring 루프 Docker 기준 `GET /api/stocks/005930/events`: `causalScores[0].sourceType=price_history`, `score=71`, `confidence=medium`, 뉴스/공시 후보는 `low`
 - [x] Event causal scoring 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 - [x] Event causal scoring 루프 스크린샷: `/tmp/krbrief-screens/event-causal-score-1440.png`
+- [x] Event text causal scoring 루프 `python3 -m py_compile marketdata-python/app/main.py`: 통과
+- [x] Event text causal scoring 루프 `./gradlew test --tests com.krbrief.stocks.StockControllerTest`: 통과
+- [x] Event text causal scoring 루프 `npm run build`: 통과
+- [x] Event text causal scoring 루프 Docker 기준 `GET /api/stocks/005930/events`: news causal score에 `signalCount=5`, `matchedSignals=거래량/계약/공급/공시/반도체/상승`, `signalSummary` 반환
+- [x] Event text causal scoring 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] Event text causal scoring 루프 스크린샷: `/tmp/krbrief-screens/event-text-causal-score-1440.png`
 
 ### 9.3 최신 viewport 계측
 
@@ -885,6 +891,7 @@
 | 1440x1000 | 2 | yes | yes | no | 0 | `/tmp/krbrief-screens/frontend-decomposition-desktop-1440.png` |
 
 - Event causal scoring screenshot: `/tmp/krbrief-screens/event-causal-score-1440.png`
+- Event text causal scoring screenshot: `/tmp/krbrief-screens/event-text-causal-score-1440.png`
 
 ### 9.4 최신 API 검색 검증
 
@@ -913,14 +920,14 @@
 |---|---:|---|---|
 | 사용자 | 494/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
 | 프론트 개발자 | 488/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, 마커 tooltip/AI structured/event causal score E2E 강화 | assistant/learning 상태 분리와 최종 visual polish 미완 |
-| 백엔드 개발자 | 493/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, 이벤트 source-specific causal score contract 연결 | live RAG 검증 부족, causal score는 아직 원문 NLP가 아닌 휴리스틱 |
+| 백엔드 개발자 | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, 이벤트 source-specific causal score와 뉴스/DART 텍스트 signal contract 연결 | live RAG 검증 부족, causal score는 아직 LLM/NLP 판정이 아닌 휴리스틱 |
 | DevOps 개발자 | 493/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
-| VC/투자자 | 466/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 468/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news text signal, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 event causal scoring 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. live LLM/RAG 검증을 우선하되, secret이 없으면 뉴스/공시 원문 기반 causal scoring 고도화를 진행한다.
+1. 이번 event text causal scoring 루프 변경분을 의미 있는 단위로 commit/push한다.
+2. live LLM/RAG 검증을 우선하되, secret이 없으면 공시 상세/뉴스 본문 URL 파싱 기반 causal scoring 고도화를 진행한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.
 5. assistant/learning 상태와 API 호출을 hooks/API client로 더 분리한다.
