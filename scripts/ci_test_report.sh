@@ -3,40 +3,51 @@ set -euo pipefail
 
 RESULT_DIR="${BACKEND_TEST_RESULTS_DIR:-backend/build/test-results/test}"
 
-escape_annotation() {
-  local value="$1"
-  value="${value//'%'/'%25'}"
-  value="${value//$'\r'/'%0D'}"
-  value="${value//$'\n'/'%0A'}"
-  printf "%s" "$value"
-}
+python3 - "$RESULT_DIR" <<'PY'
+from __future__ import annotations
 
-echo "== Backend test XML failures/errors =="
+import pathlib
+import sys
+import xml.etree.ElementTree as ET
 
-if [[ ! -d "$RESULT_DIR" ]]; then
-  echo "No backend test results directory found: $RESULT_DIR"
-  exit 0
-fi
 
-found=0
-while IFS= read -r -d '' file; do
-  if ! grep -Eq '<(failure|error)( |>)' "$file"; then
-    continue
-  fi
-  found=1
-  summary="$(
-    awk '/<(failure|error)( |>)/,/<\/(failure|error)>/ {print}' "$file" \
-      | head -c 1800 \
-      | tr '\r\n' '  '
-  )"
-  if [[ -z "$summary" ]]; then
-    summary="$(grep -E '<testsuite ' "$file" | head -1 | head -c 1800)"
-  fi
-  echo "$file"
-  echo "$summary"
-  echo "::error file=$file,title=Backend test failure::$(escape_annotation "$summary")"
-done < <(find "$RESULT_DIR" -name '*.xml' -print0)
+def escape_annotation(value: str) -> str:
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
-if [[ "$found" == "0" ]]; then
-  echo "No XML failure/error nodes found."
-fi
+
+result_dir = pathlib.Path(sys.argv[1])
+print("== Backend test XML failures/errors ==")
+
+if not result_dir.is_dir():
+    print(f"No backend test results directory found: {result_dir}")
+    raise SystemExit(0)
+
+found = False
+for file in sorted(result_dir.glob("*.xml")):
+    try:
+        root = ET.parse(file).getroot()
+    except ET.ParseError as exc:
+        found = True
+        message = f"{file}: XML parse error: {exc}"
+        print(message)
+        print(f"::error file={file},title=Backend test report parse error::{escape_annotation(message)}")
+        continue
+
+    for testcase in root.iter("testcase"):
+        case_name = testcase.attrib.get("name", "unknown-test")
+        class_name = testcase.attrib.get("classname", root.attrib.get("name", "unknown-class"))
+        for child in testcase:
+            if child.tag not in {"failure", "error"}:
+                continue
+            found = True
+            kind = child.tag
+            message_attr = child.attrib.get("message", "").strip()
+            text = " ".join((child.text or "").split())
+            summary = f"{class_name}.{case_name} {kind}: {message_attr} {text}"[:1800].strip()
+            print(file)
+            print(summary)
+            print(f"::error file={file},title=Backend test failure::{escape_annotation(summary)}")
+
+if not found:
+    print("No XML failure/error nodes found.")
+PY
