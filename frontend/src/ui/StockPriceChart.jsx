@@ -213,7 +213,8 @@ export default function StockPriceChart({ chart, events, darkMode }) {
             );
             const textCausal = asArray(event.causalScores).find((score) => Number(score.signalCount || 0) > 0);
             if (textCausal?.signalSummary) {
-              appendLine(lines, `텍스트 근거: ${textCausal.signalSummary}`, "tooltipEventText");
+              const origins = asArray(textCausal.signalOrigins).join("/");
+              appendLine(lines, `텍스트 근거${origins ? `(${origins})` : ""}: ${textCausal.signalSummary}`, "tooltipEventText");
             }
           }
         });

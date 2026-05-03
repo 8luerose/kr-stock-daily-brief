@@ -558,6 +558,36 @@ def _dedupe_signals(signals: list[dict], limit: int) -> list[dict]:
     return out
 
 
+def _snippet_around_keywords(text: str, keywords: list[str], width: int = 260) -> str:
+    positions = [text.find(keyword) for keyword in keywords if keyword and text.find(keyword) >= 0]
+    start = max(0, (min(positions) if positions else 0) - 60)
+    snippet = text[start : start + width]
+    return snippet.strip(" .·-_")
+
+
+@lru_cache(maxsize=8192)
+def _news_article_body_signal(url: str, code: str, name: str) -> dict | None:
+    if not url.startswith(("http://", "https://")):
+        return None
+    try:
+        body = _clean_html_text(_naver_fetch(url, timeout=3))
+    except Exception:
+        return None
+    if name not in body and code not in body:
+        return None
+    keywords = _signal_keywords(body)
+    if not keywords:
+        return None
+    return {
+        "sourceType": "news",
+        "label": "뉴스 본문 텍스트",
+        "url": url,
+        "text": _snippet_around_keywords(body, [name, code, *keywords], 260),
+        "matchedKeywords": keywords[:8],
+        "signalOrigin": "article_body",
+    }
+
+
 @lru_cache(maxsize=4096)
 def _naver_news_text_signals(code: str, name: str) -> tuple[dict, ...]:
     query = quote(f"{name} {code} 주가 거래량 공시")
@@ -585,9 +615,16 @@ def _naver_news_text_signals(code: str, name: str) -> tuple[dict, ...]:
                 "url": href,
                 "text": text[:220],
                 "matchedKeywords": keywords[:6],
+                "signalOrigin": "search_result",
             }
         )
-    return tuple(_dedupe_signals(signals, 5))
+    seed_signals = _dedupe_signals(signals, 5)
+    body_signals: list[dict] = []
+    for signal in seed_signals[:3]:
+        body_signal = _news_article_body_signal(signal.get("url", ""), code, name)
+        if body_signal:
+            body_signals.append(body_signal)
+    return tuple(_dedupe_signals([*body_signals, *seed_signals], 8))
 
 
 @lru_cache(maxsize=4096)
@@ -613,6 +650,7 @@ def _dart_disclosure_text_signals(name: str, from_ymd: str, to_ymd: str) -> tupl
                 "url": "https://dart.fss.or.kr/",
                 "text": text[:220],
                 "matchedKeywords": keywords[:6],
+                "signalOrigin": "dart_search_row",
             }
         )
     return tuple(_dedupe_signals(signals, 5))
@@ -665,6 +703,12 @@ def _event_causal_scores(
         source_signals = [signal for signal in text_signals if signal.get("sourceType") == source_type]
         signal_count = len(source_signals)
         signal_keywords = sorted({keyword for signal in source_signals for keyword in signal.get("matchedKeywords", [])})
+        signal_origins = sorted({signal.get("signalOrigin", "unknown") for signal in source_signals})
+        signal_urls = []
+        for signal in source_signals:
+            url = signal.get("url", "")
+            if url and url not in signal_urls:
+                signal_urls.append(url)
         signal_boost = min(signal_count * 5 + len(signal_keywords) * 2, 18)
         signal_summary = source_signals[0]["text"] if source_signals else "텍스트 근거 미확인"
         if source_type == "price_history":
@@ -713,6 +757,8 @@ def _event_causal_scores(
                 "signalCount": signal_count,
                 "matchedSignals": signal_keywords[:6],
                 "signalSummary": signal_summary,
+                "signalOrigins": signal_origins[:4],
+                "signalUrls": signal_urls[:3],
             }
         )
 

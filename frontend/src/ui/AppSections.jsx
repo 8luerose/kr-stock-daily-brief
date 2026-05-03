@@ -507,6 +507,7 @@ export function StockResearchPanel({
                       <small>
                         원인 점수 {topCausal.label} {topCausal.score}/100 · {topCausal.confidence}
                         {textCausal ? ` · 텍스트 근거 ${textCausal.signalCount}건` : ""}
+                        {textCausal?.signalOrigins?.length ? ` · ${textCausal.signalOrigins.join("/")}` : ""}
                       </small>
                     ) : null}
                   </a>

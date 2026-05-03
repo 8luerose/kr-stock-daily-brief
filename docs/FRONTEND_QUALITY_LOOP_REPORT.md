@@ -33,9 +33,9 @@ stock AI web platform:
 |---|---:|---|
 | User | 494/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, and event causal scores now pass, but still not Toss-perfect |
 | Frontend developer | 488/500 | Home chart flow, App/CSS split, summary detail, pure utilities, API client, domain hooks, event list causal scores, and marker tooltip evidence improved; assistant/learning state boundaries and final visual polish remain |
-| Backend developer | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, structured AI answers, event evidence sources, source-specific causal score contract, news/DART text signal fields, and support/resistance/volume-aware trade-zone evidence improved; live RAG depth remains incomplete |
+| Backend developer | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, structured AI answers, event evidence sources, source-specific causal score contract, news search/article-body/DART text signal fields, and support/resistance/volume-aware trade-zone evidence improved; live RAG depth remains incomplete |
 | DevOps developer | 493/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E coverage, investment-language scan, and tracked secret scan |
-| VC / shareholder | 468/500 | AI and chart-first/search-first platform direction plus all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news text signals, structured AI answers, and frontend state boundaries are clearer, but live LLM/RAG moat is not fully proven |
+| VC / shareholder | 469/500 | AI and chart-first/search-first platform direction plus all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body signals, structured AI answers, and frontend state boundaries are clearer, but live LLM/RAG moat is not fully proven |
 
 ## Work Completed In The Recovery Loop
 
@@ -163,7 +163,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Chart marker hover evidence | `StockPriceChart` tooltip now shows marker reason, evidence, confidence, and 기준일 when the hovered date has chart events | Done |
 | AI structured answer | `/api/ai/chat` and the AI panel now expose conclusion, evidence, opposing signals, risks, sources, confidence, basis date, and limitations as first-class fields | Done |
 | Event evidence sources | `GET /api/stocks/{code}/events` now returns structured price, finance, news, DART disclosure, and discussion evidence sources while preserving legacy links | Done |
-| Event causal scoring | `GET /api/stocks/{code}/events` now returns source-specific `causalScores` with score, confidence, basis, interpretation, signal count, matched keywords, and signal summary; event list and chart tooltip render the top causal score and available text evidence | Done |
+| Event causal scoring | `GET /api/stocks/{code}/events` now returns source-specific `causalScores` with score, confidence, basis, interpretation, signal count, matched keywords, signal summary, signal origins, and signal URLs; event list and chart tooltip render the top causal score and available text evidence | Done |
 | Ops guard | `make ops-check` validates Docker Compose config and fails on tracked env files or obvious secret tokens; CI runs it before stack startup | Done |
 
 ## Latest Verification Commands
@@ -249,6 +249,11 @@ Additional live Docker API checks:
 - Event text causal scoring loop `npm run build`: passed
 - Event text causal scoring loop Docker `GET /api/stocks/005930/events`: returned news causal score with `signalCount=5`, matched keywords including `거래량`, `계약`, `공급`, `공시`, `반도체`, and a text `signalSummary`
 - Event text causal scoring loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- Event article-body causal scoring loop `python3 -m py_compile marketdata-python/app/main.py`: passed
+- Event article-body causal scoring loop `./gradlew test --tests com.krbrief.stocks.StockControllerTest`: passed
+- Event article-body causal scoring loop `npm run build`: passed
+- Event article-body causal scoring loop Docker `GET /api/stocks/005930/events`: returned `signalOrigins=["article_body","search_result"]`, 3 `signalUrls`, and 27 article-body-backed causal signals for Samsung Electronics sample range
+- Event article-body causal scoring loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -273,6 +278,7 @@ Additional screenshots were captured from the Docker-served frontend:
 - `/tmp/krbrief-screens/chart-event-evidence-sources-1440.png`
 - `/tmp/krbrief-screens/event-causal-score-1440.png`
 - `/tmp/krbrief-screens/event-text-causal-score-1440.png`
+- `/tmp/krbrief-screens/event-article-body-causal-score-1440.png`
 
 Latest viewport metrics:
 
@@ -289,12 +295,12 @@ Latest viewport metrics:
 2. The first-view UX is clearer and less button-heavy, but still not a complete Toss-quality redesign.
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
 4. Search now has a KRX stock universe, KRX industry taxonomy, and external Naver theme taxonomy; `/api/ai/status` makes live LLM readiness visible, but current live RAG remains blocked by missing non-committed credentials.
-5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event causal scoring now uses news search text signals, but still needs deeper article body and DART filing detail parsing.
+5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event causal scoring now uses news search and article body signals, but still needs deeper DART filing detail parsing and stronger NLP/LLM scoring.
 6. More frontend decomposition is still warranted, especially assistant/learning state hooks and final visual-system polish.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, and this event text signal commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, and this article-body causal signal commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
@@ -303,7 +309,7 @@ Latest viewport metrics:
 Continue with these in order:
 
 1. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
-2. If live credentials are not available, parse article body pages and DART filing details for stronger causal scoring instead of search-result text only.
+2. If live credentials are not available, parse DART filing details and add stronger NLP/LLM scoring instead of keyword heuristics only.
 3. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
 4. Split assistant/learning state flows into smaller hooks/API clients.
 5. Run another mobile and desktop visual audit before any completion claim.

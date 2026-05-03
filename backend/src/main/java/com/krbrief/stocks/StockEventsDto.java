@@ -35,5 +35,7 @@ public record StockEventsDto(
       String interpretation,
       Integer signalCount,
       List<String> matchedSignals,
-      String signalSummary) {}
+      String signalSummary,
+      List<String> signalOrigins,
+      List<String> signalUrls) {}
 }

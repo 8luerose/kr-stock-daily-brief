@@ -136,6 +136,8 @@ grep -q '"sourceType":"price_history"' /tmp/krbrief_resp.json || fail "stock eve
 grep -q '"score":' /tmp/krbrief_resp.json || fail "stock events missing causal score value"
 contains_field /tmp/krbrief_resp.json signalCount || fail "stock events missing causal signalCount"
 contains_field /tmp/krbrief_resp.json signalSummary || fail "stock events missing causal signalSummary"
+contains_field /tmp/krbrief_resp.json signalOrigins || fail "stock events missing causal signalOrigins"
+contains_field /tmp/krbrief_resp.json signalUrls || fail "stock events missing causal signalUrls"
 pass "GET /api/stocks/{code}/events"
 
 # 15) Stock trade zones
