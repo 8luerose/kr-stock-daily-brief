@@ -34,6 +34,7 @@ export default function StockPriceChart({ chart, events, darkMode }) {
     const textColor = rootStyle.getPropertyValue("--text-secondary").trim() || "#4b5563";
     const lineColor = rootStyle.getPropertyValue("--line").trim() || "#e5e7eb";
     const bgColor = rootStyle.getPropertyValue("--bg").trim() || "#f9fafb";
+    const isCompact = containerRef.current.clientWidth < 360;
 
     const instance = createChart(containerRef.current, {
       autoSize: true,
@@ -61,7 +62,8 @@ export default function StockPriceChart({ chart, events, darkMode }) {
       borderDownColor: "#3182f6",
       wickUpColor: "#ef4444",
       wickDownColor: "#3182f6",
-      priceLineVisible: false
+      priceLineVisible: false,
+      lastValueVisible: false
     });
     candles.setData(candleData);
 
@@ -104,13 +106,14 @@ export default function StockPriceChart({ chart, events, darkMode }) {
       });
     }
 
-    const ma20 = instance.addSeries(LineSeries, { color: "#10b981", lineWidth: 2, priceLineVisible: false });
+    const ma20 = instance.addSeries(LineSeries, { color: "#10b981", lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
     ma20.setData(calculateMa(chart.data, 20));
 
     const volume = instance.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" },
       priceScaleId: "",
-      color: "#9ca3af"
+      color: "#9ca3af",
+      lastValueVisible: false
     });
     volume.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     volume.setData(
@@ -123,12 +126,12 @@ export default function StockPriceChart({ chart, events, darkMode }) {
 
     createSeriesMarkers(
       candles,
-      asArray(events?.events).slice(0, 30).map((event) => ({
+      asArray(events?.events).slice(0, isCompact ? 12 : 30).map((event) => ({
         time: event.date,
         position: event.type === "price_drop" ? "belowBar" : "aboveBar",
         color: event.severity === "high" ? "#ef4444" : event.severity === "medium" ? "#f59e0b" : "#3182f6",
         shape: event.type === "price_drop" ? "arrowDown" : "arrowUp",
-        text: event.title
+        text: isCompact ? "" : event.title
       }))
     );
 
