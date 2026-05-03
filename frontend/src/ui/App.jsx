@@ -1399,6 +1399,7 @@ export default function App() {
 
   return (
     <div className="page">
+      <a className="skipLink" href="#main-content">본문으로 건너뛰기</a>
       <header className="top">
         <div>
           <div className="brand">{COPY.brand}</div>
@@ -1552,7 +1553,11 @@ export default function App() {
       </section>
       ) : null}
 
-      <main className={`main ${activePage === "research" || activePage === "home" ? "researchLayout" : "singleLayout"}`}>
+      <main
+        id="main-content"
+        tabIndex="-1"
+        className={`main ${activePage === "research" || activePage === "home" ? "researchLayout" : "singleLayout"}`}
+      >
         {activePage !== "home" ? (
         <div className="sideStack">
         {activePage === "admin" ? (

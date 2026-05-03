@@ -55,6 +55,16 @@ test("learning tab exposes beginner structure and assistant entry points", async
   await expectNoHorizontalOverflow(page);
 });
 
+test("keyboard users can skip repeated navigation", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".skipLink")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeFocused();
+});
+
 test("stock search result opens chart research flow", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
