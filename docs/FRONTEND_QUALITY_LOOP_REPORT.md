@@ -118,7 +118,7 @@ Date: 2026-05-03
 - Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack health, API smoke tests, and Playwright E2E on push/PR.
 - Follow-up chart work extracted `StockPriceChart.jsx` and reduced overlapping price labels while keeping chart zones visible through the legend and decision panel.
 - Follow-up chart accessibility work exposes the rendered candle chart as a labeled image region while keeping the canvas implementation intact.
-- Follow-up mobile chart work hides duplicate last-value labels and suppresses compact-width marker text to keep the price axis legible.
+- Follow-up chart label work hides duplicate last-value labels and suppresses marker text to keep the price axis legible.
 - Follow-up safety work added `scripts/verify_investment_language.sh` to fail on direct buy/sell instruction or guarantee wording in source code.
 - Follow-up local workflow work added `make quality` and hardened `make frontend-quality` so developers can run backend tests, frontend build/audit, source safety check, API smoke, and E2E with explicit dev dependency installation.
 

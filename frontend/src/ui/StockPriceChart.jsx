@@ -34,8 +34,6 @@ export default function StockPriceChart({ chart, events, darkMode }) {
     const textColor = rootStyle.getPropertyValue("--text-secondary").trim() || "#4b5563";
     const lineColor = rootStyle.getPropertyValue("--line").trim() || "#e5e7eb";
     const bgColor = rootStyle.getPropertyValue("--bg").trim() || "#f9fafb";
-    const isCompact = containerRef.current.clientWidth < 360;
-
     const instance = createChart(containerRef.current, {
       autoSize: true,
       height: 360,
@@ -126,12 +124,12 @@ export default function StockPriceChart({ chart, events, darkMode }) {
 
     createSeriesMarkers(
       candles,
-      asArray(events?.events).slice(0, isCompact ? 12 : 30).map((event) => ({
+      asArray(events?.events).slice(0, 30).map((event) => ({
         time: event.date,
         position: event.type === "price_drop" ? "belowBar" : "aboveBar",
         color: event.severity === "high" ? "#ef4444" : event.severity === "medium" ? "#f59e0b" : "#3182f6",
         shape: event.type === "price_drop" ? "arrowDown" : "arrowUp",
-        text: isCompact ? "" : event.title
+        text: ""
       }))
     );
 
