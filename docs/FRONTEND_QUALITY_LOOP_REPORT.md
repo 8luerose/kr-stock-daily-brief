@@ -99,6 +99,7 @@ Date: 2026-05-03
 - `make up`
 - `make health`
 - `./scripts/test_all_apis.sh`
+- `./scripts/verify_investment_language.sh`
 - `npx playwright screenshot --viewport-size=1440,1100 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-1440.png`
 - `npx playwright screenshot --viewport-size=1280,900 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-1280.png`
 - `npx playwright screenshot --viewport-size=768,1000 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-768.png`
@@ -112,6 +113,7 @@ Date: 2026-05-03
 - Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, the learning detail structure, interval switching, and bounded chart tooltip display.
 - Follow-up search work added `GET /api/search` so the first-view search now uses a backend adapter for latest-summary stocks, learning terms, and a seed industry/theme catalog; the frontend only keeps a local fallback for API failure.
 - Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack smoke tests, and Playwright E2E on push/PR.
+- Follow-up safety work added `scripts/verify_investment_language.sh` to fail on direct buy/sell instruction or guarantee wording in source code.
 
 ## 11. Commit Hash
 
@@ -129,5 +131,4 @@ Date: 2026-05-03
 
 ## 13. Recommended Next Work
 
-- Add risk-review automation for AI/chart text to catch direct investment wording.
 - Replace the backend seed industry/theme catalog with a richer market taxonomy API when real sector/theme data is available.

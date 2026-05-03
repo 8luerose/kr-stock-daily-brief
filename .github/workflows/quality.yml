@@ -60,6 +60,8 @@ jobs:
           exit 1
       - name: API smoke tests
         run: ./scripts/test_all_apis.sh
+      - name: Investment language safety check
+        run: ./scripts/verify_investment_language.sh
       - name: Browser E2E tests
         working-directory: frontend
         run: npm run test:e2e -- --reporter=line
