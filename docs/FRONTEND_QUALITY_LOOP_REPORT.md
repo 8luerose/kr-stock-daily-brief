@@ -33,9 +33,9 @@ stock AI web platform:
 |---|---:|---|
 | User | 494/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, and event causal scores now pass, but still not Toss-perfect |
 | Frontend developer | 494/500 | Home chart flow, HomePage split, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, expanded learning-term UI, and existing-feature preservation E2E improved; final visual polish and smaller remaining component boundaries remain |
-| Backend developer | 495/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, source-grounded grounding report, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved; live LLM generation remains unverified |
+| Backend developer | 496/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, OpenAI/Anthropic-compatible AI status/RAG contract, source-grounded grounding report, live `rag_llm` smoke, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved |
 | DevOps developer | 494/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E and preservation coverage, investment-language scan, and tracked secret scan |
-| VC / shareholder | 474/500 | AI and chart-first/search-first platform direction plus source-grounded RAG evidence log, all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but live LLM moat is not fully proven |
+| VC / shareholder | 482/500 | AI and chart-first/search-first platform direction plus Anthropic-compatible live `rag_llm` smoke, source-grounded RAG evidence log, all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but repeatable AI quality and product polish evidence remain incomplete |
 
 ## Work Completed In The Recovery Loop
 
@@ -51,10 +51,11 @@ stock AI web platform:
 ### AI and retrieval
 
 - Added an OpenAI-compatible LLM adapter path in `ai-service`.
+- Added an Anthropic-compatible Messages adapter path in `ai-service`.
 - Added retrieval document construction for search, summary, chart, events, and learning terms.
 - Promoted event `evidenceSources` and `causalScores` into first-class retrieval documents for source-grounded AI answers.
 - Added an AI `grounding` report with retrieval-only policy, source coverage, supported claims, and missing evidence.
-- Kept a rule-based RAG fallback when `LLM_API_KEY`/`OPENAI_API_KEY` or `LLM_MODEL` is not configured.
+- Kept a rule-based RAG fallback when no selected OpenAI-compatible or Anthropic-compatible provider is fully configured.
 - Updated API docs and smoke tests to require the `retrieval` response contract.
 
 ### Frontend structure
@@ -159,7 +160,8 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Reference research | Toss, Robinhood, Revolut, Linear, Stripe reviewed for next-loop UI direction | Done |
 | 495/500 all perspectives | Current scores remain below 495 | Not done |
 | Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
-| Real live LLM quality | Adapter and status endpoint exist, but current container has no configured live key/model | Not done |
+| Live LLM integration smoke | Docker/backend `POST /api/ai/chat` returned `mode=rag_llm`, `provider=anthropic_compatible`, `used=true`, and `grounding.llmUsed=true` with non-committed local credentials | Done |
+| Repeatable live LLM quality benchmark | A single live smoke passed, but no multi-case benchmark or production credential runbook exists yet | Not done |
 | Source-grounded RAG fallback | Current Docker API returns event evidence/causal retrieval docs and a grounding report with supported claims | Done |
 | Search response contract | `scripts/test_all_apis.sh` checks the full `SearchResultDto` field set, `source=learning_terms`, and `termId` for learning-term results | Done |
 | Search service source contract | `SearchServiceTest` checks `source=latest_summary` for stock results and `source=learning_terms` for learning-term results | Done |
@@ -230,8 +232,8 @@ Additional live Docker API checks:
 - `GET /api/search?query=의료·정밀기기&limit=8`: `title=의료·정밀기기`, `source=krx_sector_classification`
 - `GET /api/stocks/themes?query=전선&limit=5`: `totalCount=264`, `themes[0].name=전선`, `source=naver_finance_theme`
 - `GET /api/search?query=전선&limit=8`: `title=전선`, `source=naver_theme_taxonomy`
-- `GET /api/ai/status`: `configured=false`, `apiKeySet=false`, `modelConfigured=false`, secret values not returned
-- `POST /api/ai/chat`: current environment returns `mode=rag_fallback_rule_based`, `retrieval.sourceCount=2`, `retrieval.llm.used=false`
+- `GET /api/ai/status`: `provider=anthropic_compatible`, `configured=true`, `apiKeySet=true`, `modelConfigured=true`, secret values not returned
+- `POST /api/ai/chat`: current local Docker/backend environment returns `mode=rag_llm`, `retrieval.llm.provider=anthropic_compatible`, `retrieval.llm.used=true`, `grounding.llmUsed=true`, `retrieval.sourceCount=5`
 - `GET /api/stocks/005930/trade-zones`: evidence includes recent support, recent resistance, 20-day average close, 20-day average volume, volume strength, and support-resistance range position
 - Frontend decomposition loop `npm run build`: passed after reducing `App.jsx` from 989 lines to 845 lines and adding API client/hooks boundaries
 - Frontend decomposition loop `make quality`: backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
@@ -311,6 +313,12 @@ Additional live Docker API checks:
 - Search contract loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke including `source`/`termId` search checks, and Playwright `14 passed`
 - Preservation E2E loop targeted Playwright `verification and collection notes|portfolio sandbox`: `2 passed` after verifying the summary verification detail disclosure, collection notes disclosure, and portfolio add/weight/reload persistence/removal flow
 - Preservation E2E loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `16 passed`
+- Live LLM provider loop `python3 -m py_compile ai-service/app/main.py`: passed
+- Live LLM provider loop `docker compose config -q`: passed
+- Live LLM provider loop Docker/backend `GET /api/ai/status`: returned `provider=anthropic_compatible`, `configured=true`, `apiKeySet=true`, and `modelConfigured=true` without exposing secret values
+- Live LLM provider loop Docker/backend `POST /api/ai/chat`: returned `mode=rag_llm`, `retrieval.llm.used=true`, `grounding.llmUsed=true`, `retrieval.sourceCount=5`, and a Korean answer citing retrieval document ids
+- Live LLM provider loop API smoke: configured LLM environments now assert `mode=rag_llm` and `used=true`; passed after raising the default LLM timeout to 45 seconds
+- Live LLM provider loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, live LLM API smoke, and Playwright `16 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -352,14 +360,14 @@ Latest viewport metrics:
 
 1. The product is better, but still below the prompt's 495/500 bar.
 2. The first-view UX is clearer and less button-heavy, but still not a complete Toss-quality redesign.
-3. Real live LLM product quality cannot be proven without configured model credentials and live evaluation.
-4. Search now has a KRX stock universe, KRX industry taxonomy, external Naver theme taxonomy, and source-grounded fallback RAG; `/api/ai/status` makes live LLM readiness visible, but live LLM evaluation remains blocked by missing non-committed credentials.
-5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event causal scoring now uses news search, news article bodies, DART search rows, DART filing-detail bodies, and rule-based causal factor classification, but still needs broader filing section extraction and live LLM-backed judgment.
+3. Live LLM integration now has a local Anthropic-compatible smoke pass, but repeatable multi-case quality evaluation and production credential runbook are still missing.
+4. Search now has a KRX stock universe, KRX industry taxonomy, external Naver theme taxonomy, source-grounded fallback RAG, and live LLM readiness visibility; remote deployment evidence is still missing.
+5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event causal scoring now uses news search, news article bodies, DART search rows, DART filing-detail bodies, and rule-based causal factor classification, but still needs broader filing section extraction and LLM-assisted causal review.
 6. More frontend decomposition is still warranted for smaller section-level components and final visual-system polish.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, and `Add source grounded AI evidence`. This report also records the subsequent search contract loop for the next recovery commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, `Add source grounded AI evidence`, `Strengthen search contract coverage`, and `Cover preserved frontend flows`. This report also records the subsequent live LLM provider loop for the next recovery commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
@@ -367,7 +375,7 @@ Latest viewport metrics:
 
 Continue with these in order:
 
-1. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
-2. If live credentials are not available, expand DART filing section extraction and add stronger LLM-substitute explainability instead of keyword heuristics only.
+1. Add a repeatable live LLM quality benchmark with fixed prompts, expected safety constraints, and source-grounding assertions.
+2. Capture remote CI/deploy evidence or configure a deployment smoke gate.
 3. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
 4. Continue decomposing the remaining large section components after the assistant/learning hook split.

@@ -38,7 +38,7 @@
 - [x] 거래량 검색을 보장한다.
 - [x] PER 검색을 보장한다.
 - [x] DART 검색을 보장한다.
-- [ ] 실제 LLM 연동을 검증한다.
+- [x] 실제 LLM 연동을 검증한다.
 - [x] 실제 RAG retrieval과 source-grounded answer를 검증한다.
 - [x] 차트 이벤트 원인 분석을 제공한다.
 - [x] 일봉 차트를 제공한다.
@@ -574,6 +574,7 @@
 - [x] AI request에 `question`, `contextDate`, `stockCode`, `stockName`, `focus`, `events`, `terms` 지원
 - [x] ai-service는 검색/브리프/차트/이벤트/용어를 retrieval 문서로 정리
 - [x] `LLM_API_KEY` 또는 `OPENAI_API_KEY`와 `LLM_MODEL`이 있으면 OpenAI-compatible chat completions adapter 호출
+- [x] `ANTHROPIC_AUTH_TOKEN` 또는 `ANTHROPIC_API_KEY`와 Anthropic-compatible model env가 있으면 Anthropic Messages adapter 호출
 - [x] LLM 설정 없음 또는 실패 시 규칙형 RAG fallback
 - [x] AI 응답 `mode`는 `rag_llm` 또는 `rag_fallback_rule_based`
 - [x] AI 응답에 `answer`, `basisDate`, `confidence`, `sources`, `retrieval`, `limitations`, `oppositeSignals`, `nextQuestions` 포함
@@ -762,7 +763,7 @@
 | First View | 서비스 가치 인지 | 5초 안에 목적 이해 | 정상 | 88/100 | H1, 검색, 차트가 첫 화면에 들어옴. Toss급 최종 polish는 부족 | 예 |
 | Search | 산업 검색 | 관련 산업/테마 표시 | 정상 | 86/100 | 금융, 반도체, 2차전지, 바이오 smoke 통과. full taxonomy는 아님 | 예 |
 | Search | 기업/종목 검색 | 종목 결과 표시 | 정상 | 88/100 | 삼성전자, SK하이닉스, 현대차, 네이버/NAVER, 카카오 smoke 통과 | 예 |
-| AI | AI 분석 패널 | AI 기능이 명확히 보임 | 정상 | 88/100 | structured 결론/근거/반대 신호/리스크/출처/신뢰도/기준일/한계 UI 및 API 검증. live LLM 검증 없음 | 예 |
+| AI | AI 분석 패널 | AI 기능이 명확히 보임 | 정상 | 90/100 | structured 결론/근거/반대 신호/리스크/출처/신뢰도/기준일/한계 UI 및 API 검증. live `rag_llm` smoke 통과, 반복 품질 평가는 남음 | 예 |
 | Navigation | 탭 전환 | 부드럽게 전환 | 정상 | 86/100 | Playwright navigation/skip/admin/history 흐름 통과 | 예 |
 | Learn | 용어 상세 | 핵심요약/3줄 설명/시나리오 표시 | 정상 | 84/100 | backend schema, relatedQuestions alias, home search -> learning detail E2E 통과. 차트 위치 연동은 남음 | 예 |
 | Chart | 일봉 | 차트 표시 | 정상 | 90/100 | Playwright interval test와 viewport screenshot 통과 | 아니오 |
@@ -798,7 +799,7 @@
 - [x] 통합 검색이 `source=krx_sector_classification` 결과를 사용
 - [x] Naver Finance 외부 테마 taxonomy API/cache 구현
 - [x] 통합 검색이 `source=naver_theme_taxonomy` 결과를 사용
-- [ ] live LLM key/model 환경에서 `rag_llm` 실동작 검증은 아직 미완료
+- [x] live LLM key/model 환경에서 `rag_llm` 실동작 검증
 - [x] trade zone은 최근 지지/저항/20일 평균/거래량 강도 기반 evidence로 1차 고도화
 - [x] 이벤트 원인 후보를 `price_history`, `news`, `disclosure`, `discussion` 출처별 causal score로 분리
 - [x] frontend API 호출, 검색 debounce, 종목 리서치 로딩, 포트폴리오 저장을 API client/hooks로 분리
@@ -843,7 +844,7 @@
 - [x] LLM status 루프 `./gradlew test --tests com.krbrief.ai.AiChatControllerTest`: 통과
 - [x] Docker 기준 `GET /api/ai/status`: `configured=false`, `apiKeySet=false`, `modelConfigured=false`, secret 값 미노출
 - [x] Docker 기준 `POST /api/ai/chat`: `mode=rag_fallback_rule_based`, `retrieval.sourceCount=2`, `retrieval.llm.used=false`
-- [ ] live `rag_llm` 검증은 현재 컨테이너에 `LLM_API_KEY`/`OPENAI_API_KEY`와 `LLM_MODEL`이 없어 차단됨
+- [x] live `rag_llm` 검증 차단은 Anthropic-compatible provider 루프에서 해소됨
 - [x] Trade-zone evidence 루프 `./gradlew test --tests com.krbrief.stocks.StockTradeZoneServiceTest --tests com.krbrief.stocks.StockControllerTest`: 통과
 - [x] Docker 기준 `GET /api/stocks/005930/trade-zones`: 최근 지지선, 최근 저항선, 20일 평균 종가, 거래량 강도, 범위 내 위치 evidence 반환
 - [x] Frontend decomposition 루프 `npm run build`: 통과
@@ -940,6 +941,12 @@
 - [x] Search contract 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `14 passed`
 - [x] Preservation E2E 루프 targeted Playwright `verification and collection notes|portfolio sandbox`: 검증 상세, 수집 노트, 포트폴리오 추가/비중/reload 보존/삭제 확인, `2 passed`
 - [x] Preservation E2E 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `16 passed`
+- [x] Live LLM provider 루프 `python3 -m py_compile ai-service/app/main.py`: 통과
+- [x] Live LLM provider 루프 `docker compose config -q`: 통과
+- [x] Docker 기준 `GET /api/ai/status`: `provider=anthropic_compatible`, `configured=true`, `apiKeySet=true`, `modelConfigured=true`, secret 값 미노출
+- [x] Docker/backend 기준 `POST /api/ai/chat`: `mode=rag_llm`, `retrieval.llm.provider=anthropic_compatible`, `retrieval.llm.used=true`, `grounding.llmUsed=true`, `retrieval.sourceCount=5`
+- [x] Live LLM provider 루프 API smoke: configured LLM이면 `mode=rag_llm`, `used=true`를 확인하도록 강화, 통과
+- [x] Live LLM provider 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, live LLM API smoke, Playwright `16 passed`
 
 ### 9.3 최신 viewport 계측
 
@@ -981,15 +988,15 @@
 
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
-| 사용자 | 494/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
+| 사용자 | 495/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시, live `rag_llm` 응답 검증 | Toss급 최종 polish는 아직 완전한 객관 증거 부족 |
 | 프론트 개발자 | 494/500 | 홈 차트 구조 개선, HomePage 분리, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, assistant/learning hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI, 기존 기능 보존 E2E 강화 | 최종 visual polish, 화면별 더 작은 컴포넌트 경계, live LLM/RAG UX 검증 미완 |
-| 백엔드 개발자 | 495/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, source-grounded `grounding` 리포트, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | live LLM 생성 품질 검증 부족, causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
+| 백엔드 개발자 | 496/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, OpenAI/Anthropic-compatible AI status/RAG contract, source-grounded `grounding` 리포트, live `rag_llm` smoke, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
 | DevOps 개발자 | 494/500 | make quality, Docker health, API smoke, E2E, preservation E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
-| VC/투자자 | 474/500 | AI/RAG 구조, source-grounded RAG evidence log, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM moat와 product polish 증거 부족 |
+| VC/투자자 | 482/500 | AI/RAG 구조, Anthropic-compatible live `rag_llm` smoke, source-grounded RAG evidence log, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 반복 평가 가능한 AI 품질 벤치마크, 원격 배포 증거, 최종 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
 1. 이번 Source-grounded RAG 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. live LLM/RAG 검증을 우선하되, secret이 없으면 더 강한 source-grounded answer 품질을 검증 가능한 규칙/테스트로 보강한다.
+2. live LLM/RAG smoke를 반복 평가 가능한 품질 벤치마크와 회귀 테스트로 확장한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. final visual polish와 원격 CI/배포 증거를 보강한다.

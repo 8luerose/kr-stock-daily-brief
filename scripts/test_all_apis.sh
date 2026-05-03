@@ -188,7 +188,12 @@ code=$(status_code GET "$BASE_URL/api/ai/status")
 [[ "$code" == "200" ]] || fail "ai status expected 200, got $code"
 contains_field /tmp/krbrief_resp.json provider || fail "ai status missing provider"
 contains_field /tmp/krbrief_resp.json configured || fail "ai status missing configured"
+contains_field /tmp/krbrief_resp.json availableProviders || fail "ai status missing availableProviders"
 contains_field /tmp/krbrief_resp.json fallbackMode || fail "ai status missing fallbackMode"
+AI_CONFIGURED=false
+if grep -q '"configured":true' /tmp/krbrief_resp.json; then
+  AI_CONFIGURED=true
+fi
 pass "GET /api/ai/status"
 
 # 20) AI chat
@@ -280,6 +285,10 @@ contains_field /tmp/krbrief_resp.json missingEvidence || fail "ai chat missing g
 grep -q '"id":"search-result"' /tmp/krbrief_resp.json || fail "ai chat missing search-result retrieval document"
 grep -q '"event-1-evidence-1"' /tmp/krbrief_resp.json || fail "ai chat missing event evidence retrieval document"
 grep -q '"event-1-causal-1"' /tmp/krbrief_resp.json || fail "ai chat missing causal retrieval document"
+if [[ "$AI_CONFIGURED" == "true" ]]; then
+  grep -q '"mode":"rag_llm"' /tmp/krbrief_resp.json || fail "ai chat configured LLM did not return rag_llm mode"
+  grep -q '"used":true' /tmp/krbrief_resp.json || fail "ai chat configured LLM was not used"
+fi
 pass "POST /api/ai/chat"
 
 # 21) Unified search

@@ -324,11 +324,27 @@ def _build_structured_answer(
     }
 
 
+def _first_env(*keys: str) -> str:
+    for key in keys:
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def _join_api_path(base_url: str, path: str) -> str:
+    base = base_url.rstrip("/")
+    suffix = path.lstrip("/")
+    if base.endswith("/v1") and suffix.startswith("v1/"):
+        suffix = suffix[3:]
+    return f"{base}/{suffix}"
+
+
 def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
-    api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
+    api_key = _first_env("LLM_API_KEY", "OPENAI_API_KEY")
     model = os.getenv("LLM_MODEL", "").strip()
     base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "20"))
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "45"))
 
     if not api_key or not model:
         return None, {
@@ -380,6 +396,175 @@ def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | N
         }
 
 
+def _anthropic_messages(messages: list[dict[str, str]]) -> tuple[str, list[dict[str, str]]]:
+    system_parts: list[str] = []
+    chat_messages: list[dict[str, str]] = []
+    for message in messages:
+        role = _clean(message.get("role"), "user")
+        content = _clean(message.get("content"), "")
+        if role == "system":
+            system_parts.append(content)
+            continue
+        chat_messages.append({
+            "role": "assistant" if role == "assistant" else "user",
+            "content": content,
+        })
+    if not chat_messages:
+        chat_messages.append({"role": "user", "content": "제공된 근거를 바탕으로 한국 주식 분석을 요약해줘."})
+    return "\n\n".join(system_parts), chat_messages
+
+
+def _extract_anthropic_text(data: dict[str, Any]) -> str:
+    content = data.get("content")
+    if isinstance(content, str):
+        return content.strip()
+    if not isinstance(content, list):
+        return ""
+    parts: list[str] = []
+    for block in content:
+        if isinstance(block, dict) and block.get("type") == "text":
+            text = _clean(block.get("text"), "")
+            if text:
+                parts.append(text)
+    return "\n".join(parts).strip()
+
+
+def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
+    api_key = _first_env("ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY")
+    model = _first_env(
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    )
+    base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
+    version = os.getenv("ANTHROPIC_VERSION", "2023-06-01").strip()
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", os.getenv("ANTHROPIC_TIMEOUT_SECONDS", "45")))
+
+    if not api_key or not model:
+        return None, {
+            "enabled": False,
+            "provider": "anthropic_compatible",
+            "model": model or "",
+            "fallbackReason": "ANTHROPIC_AUTH_TOKEN/ANTHROPIC_API_KEY 또는 ANTHROPIC_MODEL이 설정되지 않았습니다.",
+        }
+
+    system, chat_messages = _anthropic_messages(messages)
+    payload_data: dict[str, Any] = {
+        "model": model,
+        "messages": chat_messages,
+        "temperature": 0.2,
+        "max_tokens": 900,
+    }
+    if system:
+        payload_data["system"] = system
+
+    payload = json.dumps(payload_data).encode("utf-8")
+    req = request.Request(
+        _join_api_path(base_url, "/v1/messages"),
+        data=payload,
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": version,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with request.urlopen(req, timeout=timeout) as res:
+            data = json.loads(res.read().decode("utf-8"))
+        content = _extract_anthropic_text(data)
+        if not content:
+            return None, {
+                "enabled": True,
+                "provider": "anthropic_compatible",
+                "model": model,
+                "fallbackReason": "LLM 응답에 text content가 없습니다.",
+            }
+        return content, {
+            "enabled": True,
+            "provider": "anthropic_compatible",
+            "model": model,
+            "fallbackReason": "",
+        }
+    except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
+        return None, {
+            "enabled": True,
+            "provider": "anthropic_compatible",
+            "model": model,
+            "fallbackReason": f"LLM 호출 실패: {type(exc).__name__}",
+        }
+
+
+def _llm_status() -> dict[str, Any]:
+    openai_key_set = bool(_first_env("LLM_API_KEY", "OPENAI_API_KEY"))
+    openai_model = os.getenv("LLM_MODEL", "").strip()
+    openai_base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    anthropic_key_set = bool(_first_env("ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"))
+    anthropic_model = _first_env(
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    )
+    anthropic_base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
+    preferred = os.getenv("LLM_PROVIDER", "").strip().lower()
+
+    openai_configured = openai_key_set and bool(openai_model)
+    anthropic_configured = anthropic_key_set and bool(anthropic_model)
+    if preferred in {"anthropic", "anthropic_compatible"} and anthropic_configured:
+        provider = "anthropic_compatible"
+    elif preferred in {"openai", "openai_compatible"} and openai_configured:
+        provider = "openai_compatible"
+    elif openai_configured:
+        provider = "openai_compatible"
+    elif anthropic_configured:
+        provider = "anthropic_compatible"
+    elif preferred in {"anthropic", "anthropic_compatible"}:
+        provider = "anthropic_compatible"
+    else:
+        provider = "openai_compatible"
+
+    if provider == "anthropic_compatible":
+        api_key_set = anthropic_key_set
+        model = anthropic_model
+        base_url = anthropic_base_url
+    else:
+        api_key_set = openai_key_set
+        model = openai_model
+        base_url = openai_base_url
+
+    return {
+        "provider": provider,
+        "configured": api_key_set and bool(model),
+        "apiKeySet": api_key_set,
+        "modelConfigured": bool(model),
+        "model": model,
+        "baseUrl": base_url,
+        "availableProviders": {
+            "openaiCompatible": {
+                "apiKeySet": openai_key_set,
+                "modelConfigured": bool(openai_model),
+                "configured": openai_configured,
+            },
+            "anthropicCompatible": {
+                "apiKeySet": anthropic_key_set,
+                "modelConfigured": bool(anthropic_model),
+                "configured": anthropic_configured,
+            },
+        },
+        "fallbackMode": "rag_fallback_rule_based",
+    }
+
+
+def _call_configured_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
+    status = _llm_status()
+    if status["provider"] == "anthropic_compatible":
+        return _call_anthropic_compatible_llm(messages)
+    return _call_openai_compatible_llm(messages)
+
+
 @app.get("/health")
 def health():
     return {"status": "UP"}
@@ -387,18 +572,7 @@ def health():
 
 @app.get("/llm/status")
 def llm_status():
-    api_key_set = bool(os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY"))
-    model = os.getenv("LLM_MODEL", "").strip()
-    base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    return {
-        "provider": "openai_compatible",
-        "configured": api_key_set and bool(model),
-        "apiKeySet": api_key_set,
-        "modelConfigured": bool(model),
-        "model": model,
-        "baseUrl": base_url,
-        "fallbackMode": "rag_fallback_rule_based",
-    }
+    return _llm_status()
 
 
 @app.post("/chat")
@@ -460,7 +634,7 @@ def chat(req: ChatRequest):
         sources.insert(1, {"title": "종목 차트 API", "type": "ohlcv", "url": f"/api/stocks/{code}/chart"})
         sources.insert(2, {"title": "종목 이벤트 API", "type": "events", "url": f"/api/stocks/{code}/events"})
 
-    llm_answer, llm_meta = _call_openai_compatible_llm(
+    llm_answer, llm_meta = _call_configured_llm(
         _build_llm_prompt(req, subject, code, topic_type, basis_date, retrieval_documents)
     )
     used_llm = bool(llm_answer)

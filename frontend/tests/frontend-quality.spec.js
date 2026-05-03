@@ -116,8 +116,8 @@ test("theme search result opens visible AI market interpretation", async ({ page
   await page.locator(".searchResults button").first().click();
 
   await expect(page.locator(".heroAssistant")).toBeVisible();
-  await expect(page.locator(".assistantAnswer")).toBeVisible();
-  await expect(page.locator(".assistantAnswer")).toContainText("반도체");
+  await expect(page.locator(".assistantAnswer")).toBeVisible({ timeout: 45000 });
+  await expect(page.locator(".assistantAnswer")).toContainText("반도체", { timeout: 45000 });
   await expect(page.locator(".assistantStructured")).toContainText("결론");
   await expect(page.locator(".assistantStructured")).toContainText("근거");
   await expect(page.locator(".assistantStructured")).toContainText("반대 신호");
@@ -125,7 +125,7 @@ test("theme search result opens visible AI market interpretation", async ({ page
   await expect(page.locator(".assistantStructured")).toContainText("기준/신뢰도");
   await expect(page.locator(".assistantAnswer")).toContainText("출처");
   await expect(page.locator(".assistantAnswer")).toContainText("근거 검증");
-  await expect(page.locator(".assistantAnswer")).toContainText("규칙형 RAG");
+  await expect(page.locator(".assistantAnswer")).toContainText(/LLM 사용|규칙형 RAG/);
   await expectNoHorizontalOverflow(page);
 });
 
