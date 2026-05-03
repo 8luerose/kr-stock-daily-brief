@@ -1522,8 +1522,8 @@ export default function App() {
       </section>
       ) : null}
 
-      {activePage !== "home" ? (
-      <main className={`main ${activePage === "research" ? "researchLayout" : "singleLayout"}`}>
+      <main className={`main ${activePage === "research" || activePage === "home" ? "researchLayout" : "singleLayout"}`}>
+        {activePage !== "home" ? (
         <div className="sideStack">
         {activePage === "admin" ? (
         <section className="card adminPanel">
@@ -1793,12 +1793,13 @@ export default function App() {
         </section>
         ) : null}
         </div>
+        ) : null}
 
-        {activePage === "research" ? (
+        {(activePage === "research" || activePage === "home") ? (
         <section className="card detail">
           <div className="detailHead">
             <div>
-              <div className="detailTitle">{COPY.marketBrief}</div>
+              <div className="detailTitle">{activePage === "home" ? "차트 중심 브리프" : COPY.marketBrief}</div>
               <div className="detailSub">{selected} 기준</div>
             </div>
           </div>
@@ -2182,7 +2183,6 @@ export default function App() {
         </section>
         ) : null}
       </main>
-      ) : null}
     </div>
   );
 }

@@ -343,6 +343,7 @@ textarea {
 
 .main.researchLayout {
   grid-template-columns: minmax(0, 1fr);
+  margin-top: 16px;
 }
 
 .main.singleLayout {
@@ -1061,6 +1062,15 @@ textarea {
   text-align: center;
   padding: 48px;
   font-size: 15px;
+}
+
+.loading {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--bg), var(--bg-secondary), var(--bg));
+  background-size: 220% 100%;
+  animation: skeletonSweep 1.2s ease-in-out infinite;
 }
 
 .empty.compact {
@@ -2343,6 +2353,25 @@ body {
     linear-gradient(180deg, color-mix(in srgb, var(--bg) 72%, var(--card)), var(--bg));
 }
 
+.chartState {
+  border-radius: var(--radius);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--bg) 88%, var(--card)), color-mix(in srgb, var(--bg-secondary) 82%, var(--card)), color-mix(in srgb, var(--bg) 88%, var(--card)));
+  background-size: 220% 100%;
+  animation: skeletonSweep 1.2s ease-in-out infinite;
+}
+
+.stockResearchHead,
+.stockResearchGrid,
+.assistantBox,
+.overviewItem {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.stockResearch:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
+}
+
 .decisionZones {
   gap: 7px;
 }
@@ -2413,6 +2442,10 @@ body {
 }
 
 @media (max-width: 1180px) {
+  .marketHero {
+    grid-template-columns: 1fr;
+  }
+
   .kvGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2453,6 +2486,31 @@ body {
     padding: 18px;
   }
 
+  .marketHero {
+    grid-template-columns: 1fr;
+  }
+
+  .marketHeroMain {
+    width: 100%;
+  }
+
+  .marketHero h1 {
+    font-size: 31px;
+    line-height: 1.16;
+    word-break: keep-all;
+    overflow-wrap: normal;
+  }
+
+  .marketHero p {
+    max-width: none;
+    word-break: keep-all;
+  }
+
+  .overview,
+  .overview.insights {
+    grid-template-columns: 1fr;
+  }
+
   .kvGrid,
   .topListsSection {
     grid-template-columns: 1fr;
@@ -2482,5 +2540,14 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes skeletonSweep {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
   }
 }
