@@ -94,6 +94,23 @@ test("admin surface stays hidden without admin key", async ({ page }) => {
   await expect(page.locator(".appNav button[aria-current='page']")).toHaveText("오늘");
 });
 
+test("empty market pulse fallback rows are not clickable", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.route("**/api/summaries/2026-05-03", (route) => {
+    route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "not_found" })
+    });
+  });
+
+  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+
+  await expect(page.locator(".empty")).toContainText("요약이 아직 없습니다");
+  await expect(page.locator(".pulseRow").first()).toBeDisabled();
+  await expectNoHorizontalOverflow(page);
+});
+
 test("chart tab supports interval switching and bounded tooltip display", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${APP_URL}/#research`, { waitUntil: "networkidle" });
