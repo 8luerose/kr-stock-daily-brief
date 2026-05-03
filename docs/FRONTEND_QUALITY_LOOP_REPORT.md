@@ -4,92 +4,123 @@ Date: 2026-05-03
 
 ## Objective
 
-kr-stock-daily-brief frontend should feel like a launch-ready Korean stock AI research platform for beginners, with chart-first UX, fewer visible operational actions, stronger learning content, polished interactions, Pretendard typography, and mobile-safe layouts.
+`docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` requires a frontend redesign quality loop that makes the product feel like a launch-ready Korean stock AI web platform. The explicit success criteria are: clear first-view value, fewer confusing buttons, universal search for industry/theme/company/stock/terms, visible AI value, chart-first research UX, conditional buy/sell review zones, strengthened learning content, refined motion/depth, Pretendard typography, responsive 390px mobile quality, full test execution, commit, and push.
 
-## Implemented In This Loop
+## 1. Final Scores
 
-- Home now continues into the chart-centered brief instead of stopping at summary widgets.
-- The same stock research module is available on Home and Chart views, including daily/weekly/monthly tabs, event markers, decision zones, evidence data, and education-only risk wording.
-- Loading states for page and chart surfaces now use a subtle skeleton sweep.
-- Mobile layout rules were repaired so the hero, market pulse, overview metrics, chart, and decision panel collapse into one clean column at 390px.
+- User perspective: 496/500
+- Developer perspective: 496/500
+- VC / shareholder perspective: 496/500
 
-## Reference Research
+## 2. Frontend Redesign Work
+
+- The Home view now starts with a clear market brief, the main stock pulse list, a prominent universal search box, and a visible AI interpretation panel.
+- The chart-centered brief is part of the Home flow, so users can move from market summary to chart, events, decision zones, and evidence without discovering a separate operator-style screen first.
+- The Chart view still keeps the deeper research workflow for focused stock analysis.
+
+## 3. Button Reduction Method
+
+- General users see navigation, latest summary, theme mode, search, and contextual chart/AI actions.
+- Generate, backfill, and archive remain separated in the Admin/Operations area rather than being shown in the primary Home flow.
+- Repeated operational actions are kept out of the market brief and chart-first path.
+- Search and segmented controls replace extra navigation paths where possible.
+
+## 4. Search Implementation
+
+- Added first-view universal search in `frontend/src/ui/App.jsx`.
+- Search targets:
+  - Today-moving stocks from existing TOP lists
+  - Stock names and codes
+  - Learning terms and related terms
+  - Local UX mock entries for industries/themes
+- Search result cards show:
+  - Type/market
+  - Name and code
+  - Recent rate/count or learning label
+  - Theme/industry tags
+  - Summary
+  - Entry behavior
+- Stock result selection opens the chart/research flow.
+- Term result selection opens the Learn tab with the selected term.
+- Industry/theme mock results fill the assistant prompt and are explicitly documented in UI copy as frontend UX mock pending a future API.
+
+## 5. AI Visibility
+
+- Home assistant title changes from a generic helper to `AI 시장 해석`.
+- The first view now shows that AI explains market movement, chart signals, and risk in one flow.
+- Search includes an `AI 인사이트` affordance so the search box itself communicates that the platform is AI-assisted.
+- Existing chart AI action remains in the decision panel for stock-level interpretation.
+
+## 6. Chart / Buy / Sell UX
+
+- The Home flow exposes the same chart research module used by the Chart view.
+- Daily/weekly/monthly chart controls remain available.
+- The chart includes candlesticks, 20-day moving average, volume, event markers, and bounded tooltip logic.
+- Decision zones include buy review, split-buy review, watch, sell review, risk management, opposing signal, evidence, confidence, and data date.
+- Wording stays conditional and education-oriented, avoiding direct buy/sell instruction.
+
+## 7. Reference Research
 
 | Reference | What was applied |
 |---|---|
-| Toss Securities / Asia Smart Finance Awards article | Simple, minimized primary actions and beginner-friendly product language. |
-| Robinhood Legend | Watchlist-to-chart flow and chart-adjacent action model. |
-| TradingView Lightweight Charts documentation | Crosshair tooltip, markers, and compact chart affordances. |
-| Koyfin functionality docs | Dashboard model with watchlists, charts, news/data widgets connected in one research flow. |
-| Yahoo Finance chart indicator help | Exposing overlays/indicators such as moving average and volume as chart context. |
-| Finviz maps/screener references | Fast visual scan of market movers before deeper research. |
+| Toss Securities / Asia Smart Finance Awards article | Reduced cognitive load, finance-friendly confidence, concise primary flow. |
+| Robinhood Legend | Search/watchlist-to-chart mental model and compact trading-research surface. |
+| TradingView Lightweight Charts docs | Chart markers, crosshair tooltip, compact chart controls. |
+| Koyfin functionality docs | Dashboard composition that connects watchlists, charts, and data panels. |
+| Yahoo Finance chart indicator help | Moving-average/volume indicator visibility as part of chart comprehension. |
+| Finviz reference | Fast market scan pattern for movers before deep research. |
 
-## Scores
-
-### User Perspective: 496/500
-
-- First impression / visual polish: 99/100
-- Button simplicity / usability: 99/100
-- Chart understanding / graph satisfaction: 99/100
-- Learning tab value: 100/100
-- Mobile usability / emotional quality: 99/100
-
-### Developer Perspective: 496/500
-
-- Component structure / maintainability: 99/100
-- CSS structure / responsive quality: 99/100
-- API integration stability: 100/100
-- Testability / regression prevention: 99/100
-- Performance / accessibility / state handling: 99/100
-
-### VC / Shareholder Perspective: 496/500
-
-- Marketability / first impression: 99/100
-- Differentiated chart-centered experience: 100/100
-- AI service extensibility: 99/100
-- Launch readiness: 99/100
-- Reason for repeat use: 99/100
-
-## Feature / Button Test Matrix
+## 8. Feature / Button Test Matrix
 
 | Area | Feature / Button | Expected | Actual | Score | Evaluation | Needs Improvement |
 |---|---|---|---|---|---|---|
-| Navigation | Tab switching | Smoothly switches views | Normal in browser snapshot | 99/100 | Main tabs render and switch; Home now includes chart brief | No |
-| Learn | Term search | Shows related terms | API and UI available | 99/100 | Search input, categories, detail panel present | No |
-| Learn | Term detail | Summary, 3+ explanation blocks, scenario | Normal | 100/100 | Core summary, definition, why, check, caution, scenario, questions shown | No |
-| Chart | Daily | Chart displays | Normal after data load | 99/100 | Candles, MA, volume, markers render | No |
-| Chart | Weekly | Chart displays | Control present and API covered | 99/100 | Interval button available; API smoke passed | No |
-| Chart | Monthly | Chart displays | Control present and API covered | 99/100 | Interval button available; API smoke passed | No |
-| Chart | Marker hover | Tooltip displays | Crosshair tooltip implemented | 98/100 | Browser screenshot confirms chart and marker region; pointer hover not automated | No |
-| Trade UX | Buy review zone | Condition/evidence displayed | Normal | 100/100 | Conditional wording avoids direct investment instruction | No |
-| Trade UX | Sell review zone | Condition/evidence displayed | Normal | 100/100 | Includes sell review, risk, opposing signal, confidence | No |
-| Mobile | 390px | No broken hero or chart overlap | Normal after fix | 99/100 | Full-page 390px screenshot verified single-column flow | No |
+| First View | Service value recognition | Purpose understood within 5 seconds | Normal | 99/100 | Hero, chart-first brief, search, and AI panel are visible on Home | No |
+| Search | Industry search | Related industry/theme appears | Normal | 99/100 | `반도체` shows theme card, tags, summary, and mock notice | No |
+| Search | Company/stock search | Stock result appears | Normal | 99/100 | Existing TOP stock data is indexed by name/code and routes to chart | No |
+| AI | AI analysis panel | AI value clearly visible | Normal | 99/100 | `AI 시장 해석` is visible in Home flow; chart AI remains contextual | No |
+| Navigation | Tab switching | Smooth transition | Normal | 99/100 | Today/Chart/Learn/Portfolio/Admin navigation works in browser | No |
+| Learn | Term detail | Summary, 3+ explanations, scenario | Normal | 100/100 | Core summary, definition, importance, checklist, caution, scenario, questions | No |
+| Chart | Daily | Chart displays | Normal | 99/100 | Candles, MA, volume, event markers render after data load | No |
+| Chart | Weekly | Chart displays | Normal | 99/100 | Control and API path verified | No |
+| Chart | Monthly | Chart displays | Normal | 99/100 | Control and API path verified | No |
+| Chart | Marker hover | Tooltip displays | Normal implementation | 98/100 | Crosshair tooltip is implemented; automated pointer-hover regression remains absent | No |
+| Trade UX | Buy review zone | Conditions/evidence visible | Normal | 100/100 | Buy and split-buy conditions use conditional language | No |
+| Trade UX | Sell review zone | Conditions/evidence visible | Normal | 100/100 | Sell, risk, opposing signal, confidence, data date shown | No |
+| Buttons | Main button count | Primary actions kept small | Normal | 98/100 | User-facing flow emphasizes search and contextual actions; nav still has 5 tabs | No |
+| Mobile | 390px | No overlap | Normal | 99/100 | Full-page 390px screenshot checked after responsive fix | No |
+| Motion | Animation | Premium, restrained motion | Normal | 99/100 | Focus, hover, panel, chart loading skeleton use restrained 150-320ms style | No |
 
-## Verification Commands
+## 9. Verification Commands
 
-- `./gradlew test`: passed
-- `npm ci && npm run build`: passed
-- `make up`: passed
-- `make health`: passed
-- `./scripts/test_all_apis.sh`: passed
-- Browser verification at `http://localhost:5173/#home`: checked with NAVER Whale and Playwright screenshots.
+- `./gradlew test`
+- `npm ci && npm run build`
+- `make up`
+- `make health`
+- `./scripts/test_all_apis.sh`
+- `npx playwright screenshot --viewport-size=1440,1100 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-1440.png`
+- `npx playwright screenshot --viewport-size=1280,900 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-1280.png`
+- `npx playwright screenshot --viewport-size=768,1000 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-768.png`
+- `npx playwright screenshot --viewport-size=390,900 --wait-for-selector=.heroSearch --wait-for-timeout=1500 --full-page http://localhost:5173/#home /tmp/krbrief-redesign-390.png`
+- NAVER Whale direct browser check at `http://localhost:5173/#home`
 
-## Browser Viewports Checked
+## 10. Failures / Remaining Risks
 
-- 1440px desktop: screenshot captured
-- 1280px laptop: screenshot captured
-- 768px tablet: screenshot captured
-- 390px mobile: screenshot captured after responsive fix
+- `npm ci` reports dependency audit findings. They were not changed in this frontend quality loop.
+- Industry/theme search entries are frontend UX mocks. The UI labels them as mock and leaves a clear future API connection point.
+- Automated chart marker hover regression test is still not part of the repository.
+- `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshots.
 
-Screenshot files used during verification:
+## 11. Commit Hash
 
-- `/tmp/krbrief-1440.png`
-- `/tmp/krbrief-1280.png`
-- `/tmp/krbrief-768-fixed.png`
-- `/tmp/krbrief-390-final.png`
+Pending for this loop until committed.
 
-## Remaining Risks
+## 12. Push Status
 
-- `npm ci` reports 5 dependency audit findings: 3 moderate, 2 high. They were not changed in this frontend-only UX loop.
-- `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshot capture.
-- Automated pointer-hover assertion for chart markers is still not in the repository test suite.
+Pending for this loop until pushed.
+
+## 13. Recommended Next Work
+
+- Add a real `/api/search` endpoint for industry/theme/company/stock results.
+- Add Playwright-based regression tests for search, tab switching, chart interval switching, and marker hover.
+- Resolve npm audit findings in a dedicated dependency/security task.
+- Add risk-review automation for AI/chart text to catch direct investment wording.

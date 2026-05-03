@@ -40,6 +40,13 @@ const COPY = {
   marketBrief: "시장 브리프",
   marketOneLine: "오늘 시장에서 눈에 띄는 종목과 확인할 근거를 먼저 보여줍니다.",
   noMarketOneLine: "아직 저장된 브리프가 없습니다. 최신 요약을 불러오거나 관리자 영역에서 생성할 수 있습니다.",
+  universalSearch: "산업, 테마, 기업, 종목 검색",
+  universalSearchPlaceholder: "예: 반도체, 007610, 선도전기, 거래량, DART",
+  searchEmpty: "검색 결과가 없습니다. 종목명, 코드, 산업, 테마, 용어를 바꿔 입력해 보세요.",
+  searchMockNote: "산업/테마는 프론트 UX 검증용 로컬 mock이며, 추후 전용 API로 교체할 예정입니다.",
+  aiMarketPanel: "AI 시장 해석",
+  aiMarketOneLine: "AI가 오늘 움직인 종목, 차트 신호, 리스크를 한 흐름으로 설명합니다.",
+  aiInsight: "AI 인사이트",
   dataAsOf: "데이터 기준일",
   sourceConfidence: "신뢰도",
   beginnerSignals: "초보자가 지금 확인할 신호",
@@ -159,6 +166,39 @@ const COPY = {
   matchedTerms: "연결된 용어",
   briefTermsTitle: "브리프 읽기 전 확인할 용어"
 };
+
+const SEARCH_THEME_MOCKS = [
+  {
+    id: "theme-semiconductor",
+    type: "theme",
+    title: "반도체",
+    code: "THEME",
+    market: "테마",
+    rate: "+2.4%",
+    tags: ["AI 반도체", "장비", "소부장"],
+    summary: "AI 수요, 설비투자, 환율 변화를 함께 보는 대표 성장 테마입니다."
+  },
+  {
+    id: "theme-battery",
+    type: "theme",
+    title: "2차전지",
+    code: "THEME",
+    market: "테마",
+    rate: "-1.1%",
+    tags: ["소재", "전기차", "수급"],
+    summary: "원재료 가격, 전기차 수요, 정책 뉴스가 주가 변동과 자주 연결됩니다."
+  },
+  {
+    id: "industry-finance",
+    type: "industry",
+    title: "증권/금융",
+    code: "IND",
+    market: "산업",
+    rate: "+0.8%",
+    tags: ["금리", "거래대금", "배당"],
+    summary: "금리, 증시 거래대금, 배당 기대가 함께 움직이는 산업군입니다."
+  }
+];
 
 function valueOrDash(v) {
   return v && String(v).trim() ? v : "-";
@@ -629,6 +669,48 @@ function pickBriefTerms(terms) {
   return ids.map((id) => terms.find((term) => term.id === id)).filter(Boolean);
 }
 
+function buildSearchItems(summary, terms) {
+  const stocks = buildStockPicks(summary).map((stock) => ({
+    id: `stock-${stock.code}`,
+    type: "stock",
+    title: stock.name,
+    code: stock.code,
+    market: stock.group?.includes("언급") ? "관심 종목" : "오늘 움직인 종목",
+    rate: stock.count ? `${formatNumber(stock.count)}건` : formatRate(stock.rate),
+    tags: [stock.group, stock.code].filter(Boolean),
+    summary: getStockSignalLines(stock)[0],
+    stock
+  }));
+  const glossary = asArray(terms).map((term) => ({
+    id: `term-${term.id}`,
+    type: "term",
+    title: term.term,
+    code: term.category,
+    market: "용어",
+    rate: "학습",
+    tags: [term.category, ...asArray(term.relatedTerms).slice(0, 2)].filter(Boolean),
+    summary: buildTermCoreSummary(term),
+    term
+  }));
+  return [...stocks, ...SEARCH_THEME_MOCKS, ...glossary];
+}
+
+function searchMatchesItem(item, query) {
+  const q = normalizeText(query);
+  if (!q) return false;
+  return [
+    item.title,
+    item.code,
+    item.market,
+    item.rate,
+    item.summary,
+    ...asArray(item.tags)
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(q);
+}
+
 // effectiveDate(YYYYMMDD)로부터 page 파라미터 계산
 // 네이버 일별시세는 한 페이지에 약 10일, 토론은 페이지당 게시물 수가 다름
 // 휴리스틱: 오늘부터 해당일까지의 일수 차이를 이용해 근사 페이지 계산
@@ -852,6 +934,7 @@ export default function App() {
   const [termQuery, setTermQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedTermId, setSelectedTermId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [assistantQuestion, setAssistantQuestion] = useState("");
   const [assistantResponse, setAssistantResponse] = useState(null);
   const [assistantLoading, setAssistantLoading] = useState(false);
@@ -896,6 +979,11 @@ export default function App() {
   );
   const briefTerms = useMemo(() => pickBriefTerms(learningTerms), [learningTerms]);
   const stockPicks = useMemo(() => buildStockPicks(summary), [summary]);
+  const searchItems = useMemo(() => buildSearchItems(summary, learningTerms), [learningTerms, summary]);
+  const searchResults = useMemo(
+    () => searchItems.filter((item) => searchMatchesItem(item, searchQuery)).slice(0, 6),
+    [searchItems, searchQuery]
+  );
   const topGainers = useMemo(() => sortTopGainers(summary?.topGainers).slice(0, 3), [summary]);
   const topLosers = useMemo(() => sortTopLosers(summary?.topLosers).slice(0, 3), [summary]);
   const topMentioned = useMemo(() => filterMostMentioned(summary?.mostMentionedTop).slice(0, 3), [summary]);
@@ -1043,6 +1131,23 @@ export default function App() {
     window.setTimeout(() => {
       document.getElementById("stock-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
+  }
+
+  function selectSearchResult(item) {
+    if (!item) return;
+    if (item.type === "stock" && item.stock) {
+      setSearchQuery(item.title);
+      selectStock(item.stock);
+      return;
+    }
+    if (item.type === "term" && item.term) {
+      setSearchQuery(item.title);
+      selectTerm(item.term);
+      navigatePage("learning");
+      return;
+    }
+    setSearchQuery(item.title);
+    setAssistantQuestion(`${item.title} 테마가 오늘 시장에서 왜 중요한지 초보자 관점으로 설명해줘`);
   }
 
   async function askLearningAssistant(questionOverride, termIdOverride) {
@@ -1337,8 +1442,8 @@ export default function App() {
     <div className="assistantBox heroAssistant">
       <div className="assistantHead">
         <div>
-          <div className="assistantTitle">{COPY.assistantTitle}</div>
-          <div className="assistantSubtitle">{COPY.assistantSubtitle}</div>
+          <div className="assistantTitle">{activePage === "home" ? COPY.aiMarketPanel : COPY.assistantTitle}</div>
+          <div className="assistantSubtitle">{activePage === "home" ? COPY.aiMarketOneLine : COPY.assistantSubtitle}</div>
         </div>
         <span className="assistantDate">{selected}</span>
       </div>
@@ -1445,6 +1550,37 @@ export default function App() {
             <span>{COPY.dataAsOf}: {dataAsOf}</span>
             <span>{COPY.sourceConfidence}: {confidenceLabel}</span>
             <span>{COPY.selectedDate}: {selected}</span>
+          </div>
+          <div className="heroSearch" role="search">
+            <label htmlFor="universal-search">{COPY.universalSearch}</label>
+            <div className="heroSearchBox">
+              <input
+                id="universal-search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={COPY.universalSearchPlaceholder}
+                autoComplete="off"
+              />
+              <span>{COPY.aiInsight}</span>
+            </div>
+            {searchQuery.trim() ? (
+              <div className="searchResults" aria-live="polite">
+                {searchResults.length === 0 ? (
+                  <div className="searchEmpty">{COPY.searchEmpty}</div>
+                ) : (
+                  searchResults.map((item) => (
+                    <button type="button" key={item.id} onClick={() => selectSearchResult(item)}>
+                      <span className="searchType">{item.market}</span>
+                      <strong>{item.title} <small>{item.code}</small></strong>
+                      <p>{item.summary}</p>
+                      <em>{item.rate}</em>
+                      <span className="searchTags">{asArray(item.tags).slice(0, 3).join(" · ")}</span>
+                    </button>
+                  ))
+                )}
+                <small>{COPY.searchMockNote}</small>
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="marketPulse" aria-label="주요 종목 흐름">
