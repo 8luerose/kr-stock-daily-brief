@@ -27,11 +27,19 @@ mysql-logs:
 	docker compose logs -f --tail=200 mysql
 
 health:
-	@curl -fsS "http://localhost:$${BACKEND_PORT:-8080}/actuator/health" >/dev/null
-	@curl -fsS "http://localhost:$${FRONTEND_PORT:-5173}/health" >/dev/null
-	@curl -fsS "http://localhost:$${MARKETDATA_PORT:-8000}/health" >/dev/null
-	@curl -fsS "http://localhost:$${AI_SERVICE_PORT:-8100}/health" >/dev/null
-	@echo "Backend, frontend, marketdata, and ai-service health checks passed."
+	@for i in $$(seq 1 60); do \
+		if curl -fsS "http://localhost:$${BACKEND_PORT:-8080}/actuator/health" >/dev/null 2>&1 && \
+		   curl -fsS "http://localhost:$${FRONTEND_PORT:-5173}/health" >/dev/null 2>&1 && \
+		   curl -fsS "http://localhost:$${MARKETDATA_PORT:-8000}/health" >/dev/null 2>&1 && \
+		   curl -fsS "http://localhost:$${AI_SERVICE_PORT:-8100}/health" >/dev/null 2>&1; then \
+			echo "Backend, frontend, marketdata, and ai-service health checks passed."; \
+			exit 0; \
+		fi; \
+		sleep 2; \
+	done; \
+	echo "Health checks failed."; \
+	docker compose ps; \
+	exit 1
 
 # Generates today's summary (Asia/Seoul date inside backend)
 generate-today:
@@ -58,6 +66,7 @@ frontend-quality:
 quality:
 	cd backend && ./gradlew test
 	cd frontend && npm ci && npm run build && npm audit
+	$(MAKE) up
 	$(MAKE) health
 	./scripts/verify_investment_language.sh
 	./scripts/test_all_apis.sh
