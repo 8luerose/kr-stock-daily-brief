@@ -73,13 +73,17 @@ jobs:
       - name: Start full stack
         run: docker compose up -d --build
       - name: Wait for stack health
+        id: stack-health
+        continue-on-error: true
         run: |
           docker compose ps
-          make health || {
-            docker compose ps
-            docker compose logs --tail=120 frontend backend marketdata ai-service
-            exit 1
-          }
+          make health
+      - name: Print stack diagnostics
+        if: steps.stack-health.outcome == 'failure'
+        run: ./scripts/ci_compose_report.sh
+      - name: Fail after stack diagnostics
+        if: steps.stack-health.outcome == 'failure'
+        run: exit 1
       - name: API smoke tests
         run: ./scripts/test_all_apis.sh
       - name: Investment language safety check
