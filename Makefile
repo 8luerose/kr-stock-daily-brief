@@ -61,11 +61,11 @@ qa:
 	./scripts/verify_investment_language.sh
 
 frontend-quality:
-	cd frontend && npm ci && npm run build && npm audit && npm run test:e2e -- --reporter=line
+	cd frontend && npm ci --include=dev && npm run build && npm audit && npm run test:e2e -- --reporter=line
 
 quality:
 	cd backend && ./gradlew test
-	cd frontend && npm ci && npm run build && npm audit
+	cd frontend && npm ci --include=dev && npm run build && npm audit
 	$(MAKE) up
 	$(MAKE) health
 	./scripts/verify_investment_language.sh
