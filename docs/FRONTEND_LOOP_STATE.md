@@ -831,6 +831,8 @@
 - [x] Docker 기준 `GET /api/ai/status`: `configured=false`, `apiKeySet=false`, `modelConfigured=false`, secret 값 미노출
 - [x] Docker 기준 `POST /api/ai/chat`: `mode=rag_fallback_rule_based`, `retrieval.sourceCount=2`, `retrieval.llm.used=false`
 - [ ] live `rag_llm` 검증은 현재 컨테이너에 `LLM_API_KEY`/`OPENAI_API_KEY`와 `LLM_MODEL`이 없어 차단됨
+- [x] Trade-zone evidence 루프 `./gradlew test --tests com.krbrief.stocks.StockTradeZoneServiceTest --tests com.krbrief.stocks.StockControllerTest`: 통과
+- [x] Docker 기준 `GET /api/stocks/005930/trade-zones`: 최근 지지선, 최근 저항선, 20일 평균 종가, 거래량 강도, 범위 내 위치 evidence 반환
 
 ### 9.3 최신 viewport 계측
 
@@ -866,16 +868,16 @@
 
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
-| 사용자 | 490/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색 검증 | Toss급 최종 polish, live AI 체감 부족 |
+| 사용자 | 491/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거 강화 검증 | Toss급 최종 polish, live AI 체감 부족 |
 | 프론트 개발자 | 470/500 | 홈 차트 구조 개선, App/CSS 일부 분해, E2E 존재 | domain hooks/API client/design token 경계 미완 |
-| 백엔드 개발자 | 487/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback contract 연결 | live RAG 검증, richer evidence 부족 |
+| 백엔드 개발자 | 489/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback contract, trade-zone 지지/저항/거래량 근거 연결 | live RAG 검증 부족 |
 | DevOps 개발자 | 490/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
-| VC/투자자 | 449/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성이 더 명확 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 450/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거가 더 명확 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 LLM status 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 trade-zone 근거 고도화 또는 frontend hooks/API client 분리를 진행한다.
+1. 이번 trade-zone evidence 루프 변경분을 의미 있는 단위로 commit/push한다.
+2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 frontend hooks/API client 분리를 진행한다.
 3. chart marker hover에 이벤트 이유/근거/신뢰도/기준일을 더 직접 표시한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.
 5. App state/API 호출을 hooks와 API client로 더 분리한다.

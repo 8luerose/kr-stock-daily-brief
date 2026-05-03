@@ -31,11 +31,11 @@ stock AI web platform:
 
 | Perspective | Score | Current judgment |
 |---|---:|---|
-| User | 490/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, and Naver theme search now pass, but still not Toss-perfect |
+| User | 491/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, and richer trade-zone evidence now pass, but still not Toss-perfect |
 | Frontend developer | 470/500 | Home chart flow, App/CSS split, summary detail, and pure utilities improved; domain hooks and design-system boundary remain |
-| Backend developer | 487/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, and trade-zone contract improved; live RAG depth remains incomplete |
+| Backend developer | 489/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, and support/resistance/volume-aware trade-zone evidence improved; live RAG depth remains incomplete |
 | DevOps developer | 490/500 | Strong local quality gate, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E coverage, investment-language scan, and reduced smoke-test hang risk |
-| VC / shareholder | 449/500 | AI and chart-first/search-first platform direction plus all-stock, KRX industry, Naver theme search, and LLM configuration visibility are clearer, but live LLM/RAG moat is not fully proven |
+| VC / shareholder | 450/500 | AI and chart-first/search-first platform direction plus all-stock, KRX industry, Naver theme search, LLM configuration visibility, and trade-zone evidence are clearer, but live LLM/RAG moat is not fully proven |
 
 ## Work Completed In The Recovery Loop
 
@@ -153,6 +153,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Full KRX stock universe | pykrx-backed KOSPI/KOSDAQ stock universe API/cache exists and is smoke-tested | Done |
 | KRX industry taxonomy | pykrx-backed KOSPI/KOSDAQ sector classification API/cache exists and is smoke-tested | Done |
 | Full external theme taxonomy | Naver Finance-backed theme taxonomy API/cache exists and is smoke-tested | Done |
+| Richer trade-zone evidence | `GET /api/stocks/{code}/trade-zones` now includes support, resistance, moving-average, volume-strength, and range-position evidence | Done |
 | Trade-zone backend API | `GET /api/stocks/{code}/trade-zones` added, documented, smoke-tested, and used by the chart decision panel | Done |
 
 ## Latest Verification Commands
@@ -201,6 +202,7 @@ Additional live Docker API checks:
 - `GET /api/search?query=전선&limit=8`: `title=전선`, `source=naver_theme_taxonomy`
 - `GET /api/ai/status`: `configured=false`, `apiKeySet=false`, `modelConfigured=false`, secret values not returned
 - `POST /api/ai/chat`: current environment returns `mode=rag_fallback_rule_based`, `retrieval.sourceCount=2`, `retrieval.llm.used=false`
+- `GET /api/stocks/005930/trade-zones`: evidence includes recent support, recent resistance, 20-day average close, 20-day average volume, volume strength, and support-resistance range position
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -232,12 +234,12 @@ Latest viewport metrics:
 2. The first-view UX is clearer and less button-heavy, but still not a complete Toss-quality redesign.
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
 4. Search now has a KRX stock universe, KRX industry taxonomy, and external Naver theme taxonomy; `/api/ai/status` makes live LLM readiness visible, but current live RAG remains blocked by missing non-committed credentials.
-5. Trade zones now have an API contract, but the first version is still heuristic and should be upgraded with richer market signals.
+5. Trade zones now use support/resistance, moving average, and volume-strength evidence, but still need deeper event/news integration.
 6. More frontend decomposition is still warranted, especially smaller domain hooks and a clearer visual system boundary.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, and this LLM status visibility commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, and this trade-zone evidence commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 

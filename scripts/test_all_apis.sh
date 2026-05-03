@@ -136,6 +136,8 @@ code=$(status_code GET "$BASE_URL/api/stocks/005930/trade-zones?range=6M&interva
 contains_field /tmp/krbrief_resp.json zones || fail "stock trade-zones missing zones"
 contains_field /tmp/krbrief_resp.json condition || fail "stock trade-zones missing condition"
 contains_field /tmp/krbrief_resp.json beginnerExplanation || fail "stock trade-zones missing beginnerExplanation"
+grep -q '최근 지지선' /tmp/krbrief_resp.json || fail "stock trade-zones missing support evidence"
+grep -q '거래량 강도' /tmp/krbrief_resp.json || fail "stock trade-zones missing volume strength evidence"
 pass "GET /api/stocks/{code}/trade-zones"
 
 # 16) Stock universe
