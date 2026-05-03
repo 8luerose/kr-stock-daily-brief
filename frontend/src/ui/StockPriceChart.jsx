@@ -178,7 +178,7 @@ export default function StockPriceChart({ chart, events, darkMode }) {
         <span className="legendSell">매도 검토</span>
         <span className="legendRisk">리스크 기준</span>
       </div>
-      <div ref={containerRef} className="realChart" aria-label={`${chart?.name || "종목"} 캔들 차트`} />
+      <div ref={containerRef} className="realChart" role="img" aria-label={`${chart?.name || "종목"} 캔들 차트`} />
       <div ref={tooltipRef} className="chartTooltip" aria-hidden="true" />
     </div>
   );

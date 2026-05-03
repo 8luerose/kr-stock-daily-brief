@@ -32,6 +32,7 @@ for (const viewport of viewports) {
     await expect(page.locator(".heroSearch")).toBeVisible();
     await expect(page.getByText("AI 시장 해석")).toBeVisible();
     await expect(page.locator(".realChart canvas").first()).toBeVisible();
+    await expect(page.getByRole("img", { name: /캔들 차트/ }).first()).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     await page.fill("#universal-search", "반도체");
