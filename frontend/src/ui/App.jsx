@@ -1982,8 +1982,8 @@ export default function App() {
                       <div className="chartBasis">
                         {stockChart?.name || currentStock.name} · {stockChart?.asOf || dataAsOf} · 20일선/거래량/이벤트
                       </div>
-                      {stockChartLoading ? <div className="chartState">{COPY.chartLoading}</div> : null}
-                      {stockChartError ? <div className="chartState errorText">{stockChartError}</div> : null}
+                      {stockChartLoading ? <div className="chartState" role="status">{COPY.chartLoading}</div> : null}
+                      {stockChartError ? <div className="chartState errorText" role="alert">{stockChartError}</div> : null}
                       {!stockChartLoading && !stockChartError && stockChart ? (
                         <StockPriceChart chart={stockChart} events={stockEvents} darkMode={darkMode} />
                       ) : null}

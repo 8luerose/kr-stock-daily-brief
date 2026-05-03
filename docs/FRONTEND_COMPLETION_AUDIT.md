@@ -21,6 +21,7 @@ The objective is to execute `docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` for `/Us
 | Daily/weekly/monthly switching | `.intervalTabs` controls `daily`, `weekly`, `monthly`; E2E clicks `주봉` and `월봉` and verifies active visual and `aria-pressed` state. | Verified |
 | Buy/sell/risk judgement is conditional and educational | Decision panel displays buy, split-buy, watch, sell, risk, opposite signal, evidence, confidence, disclaimer; wording uses `검토/조건` not direct investment instruction. | Verified |
 | Tooltip stays in chart bounds | `StockPriceChart` clamps tooltip position; E2E checks tooltip bounding box remains within chart bounds. | Verified |
+| Chart failure state is accessible | Chart loading uses a status region and chart API failure uses an alert region; E2E stubs chart API failure and verifies the visible alert on mobile. | Verified |
 | Learning tab strengthened | Learning detail renders core summary, definition, why it matters, checklist, caution, scenario, related terms, example questions; E2E verifies the major sections on mobile. | Verified |
 | Animation/depth/reduced visual clutter | `styles.css` defines restrained surface, hover, focus, skeleton, panel animations with responsive constraints and no decorative orb background. | Verified by code and screenshots |
 | Pretendard typography | `styles.css` imports Pretendard and uses it as primary font family with fallbacks. | Verified |
@@ -41,7 +42,7 @@ The objective is to execute `docs/GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` for `/Us
 - `make health`: passed backend, frontend, marketdata, and ai-service HTTP health checks.
 - `./scripts/test_all_apis.sh`: passed, including `GET /api/search`.
 - `./scripts/verify_investment_language.sh`: passed.
-- `npm run test:e2e -- --reporter=line`: 10 passed.
+- `npm run test:e2e -- --reporter=line`: 11 passed.
 - `make frontend-quality`: passed end-to-end with dev dependencies explicitly installed.
 - `make quality`: passed end-to-end.
 - `curl http://localhost:8080/api/search?query=반도체&limit=3`: returns `theme-semiconductor` from `backend_seed_catalog`.

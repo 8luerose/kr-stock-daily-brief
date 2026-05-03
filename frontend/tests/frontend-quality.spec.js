@@ -144,3 +144,20 @@ test("chart tab supports interval switching and bounded tooltip display", async 
   expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(box.x + box.width + 1);
   expect(tooltipBox.y + tooltipBox.height).toBeLessThanOrEqual(box.y + box.height + 1);
 });
+
+test("chart API failure exposes an accessible error state", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.route("**/api/stocks/*/chart?**", (route) => {
+    route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "chart_failed" })
+    });
+  });
+
+  await page.goto(`${APP_URL}/#research`, { waitUntil: "networkidle" });
+
+  await expect(page.locator(".stockResearch")).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: /차트 데이터를 불러오지 못했습니다/ })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});

@@ -113,7 +113,7 @@ Date: 2026-05-03
 
 - `agent-browser` CLI was unavailable in PATH, so browser verification used NAVER Whale plus Playwright screenshots.
 - Follow-up hardening updated Vite, `@vitejs/plugin-react`, and Express transitive dependencies; `npm audit` now reports 0 vulnerabilities.
-- Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, accessible chart image labeling, stock search navigation into chart research, admin surface hiding without an admin key, keyboard skip navigation, the learning detail structure, empty-summary fallback behavior, interval switching, active ARIA state, and bounded chart tooltip display.
+- Follow-up E2E coverage now verifies first-view search/AI/chart rendering across 1440, 1280, 768, and 390px, accessible chart image labeling, stock search navigation into chart research, admin surface hiding without an admin key, keyboard skip navigation, the learning detail structure, empty-summary fallback behavior, chart API failure alerting, interval switching, active ARIA state, and bounded chart tooltip display.
 - Follow-up search work added `GET /api/search` so the first-view search now uses a backend adapter for latest-summary stocks, learning terms, and a seed industry/theme catalog; the frontend only keeps a local fallback for API failure.
 - Follow-up CI work added `.github/workflows/quality.yml` for backend tests, frontend build/audit, full-stack health, API smoke tests, and Playwright E2E on push/PR.
 - Follow-up chart work extracted `StockPriceChart.jsx` and reduced overlapping price labels while keeping chart zones visible through the legend and decision panel.
