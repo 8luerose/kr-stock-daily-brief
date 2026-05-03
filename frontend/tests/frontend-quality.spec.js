@@ -98,6 +98,11 @@ test("theme search result opens visible AI market interpretation", async ({ page
   await expect(page.locator(".heroAssistant")).toBeVisible();
   await expect(page.locator(".assistantAnswer")).toBeVisible();
   await expect(page.locator(".assistantAnswer")).toContainText("반도체");
+  await expect(page.locator(".assistantStructured")).toContainText("결론");
+  await expect(page.locator(".assistantStructured")).toContainText("근거");
+  await expect(page.locator(".assistantStructured")).toContainText("반대 신호");
+  await expect(page.locator(".assistantStructured")).toContainText("리스크");
+  await expect(page.locator(".assistantStructured")).toContainText("기준/신뢰도");
   await expect(page.locator(".assistantAnswer")).toContainText("출처");
   await expectNoHorizontalOverflow(page);
 });

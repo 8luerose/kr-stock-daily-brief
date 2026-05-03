@@ -4,6 +4,10 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function hasStructuredAnswer(value) {
+  return value && typeof value === "object" && Boolean(value.conclusion);
+}
+
 export function AiInsightPanel({
   activePage,
   copy,
@@ -42,6 +46,48 @@ export function AiInsightPanel({
             <strong>{copy.assistantAnswer}</strong>
             <span>{copy.confidence}: {assistantResponse.confidence}</span>
           </div>
+          {hasStructuredAnswer(assistantResponse.structured) ? (
+            <div className="assistantStructured">
+              <div className="structuredConclusion">
+                <span>결론</span>
+                <strong>{assistantResponse.structured.conclusion}</strong>
+              </div>
+              <div className="structuredGrid">
+                <div>
+                  <span>근거</span>
+                  <ul>
+                    {asArray(assistantResponse.structured.evidence).slice(0, 4).map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <span>반대 신호</span>
+                  <ul>
+                    {asArray(assistantResponse.structured.opposingSignals).slice(0, 3).map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <span>리스크</span>
+                  <ul>
+                    {asArray(assistantResponse.structured.risks).slice(0, 3).map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <span>기준/신뢰도</span>
+                  <p>
+                    기준일 {assistantResponse.structured.basisDate || assistantResponse.basisDate || selected}
+                    <br />
+                    신뢰도 {assistantResponse.structured.confidence || assistantResponse.confidence}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <pre>{assistantResponse.answer}</pre>
           {asArray(assistantResponse.matchedTerms).length > 0 ? (
             <div className="assistantMeta">

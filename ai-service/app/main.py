@@ -157,6 +157,73 @@ def _build_llm_prompt(req: ChatRequest, subject: str, code: str, topic_type: str
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _build_structured_answer(
+    req: ChatRequest,
+    subject: str,
+    code: str,
+    basis_date: str,
+    confidence: str,
+    sources: list[dict[str, str]],
+    limitations: list[str],
+) -> dict[str, Any]:
+    events = req.events or []
+    evidence: list[str] = []
+
+    if req.searchResult:
+        evidence.append(f"검색 맥락: {_clean(req.searchResult.get('summary'), '검색 결과 요약 없음')}")
+
+    if req.summary:
+        summary_bits = [
+            f"최대 상승 {req.summary.get('topGainer')}" if req.summary.get("topGainer") else "",
+            f"최대 하락 {req.summary.get('topLoser')}" if req.summary.get("topLoser") else "",
+            f"최다 언급 {req.summary.get('mostMentioned')}" if req.summary.get("mostMentioned") else "",
+        ]
+        evidence.append("브리프: " + ", ".join(bit for bit in summary_bits if bit))
+
+    if req.chart and isinstance(req.chart, dict):
+        latest = req.chart.get("latest") or {}
+        latest_close = latest.get("close") if isinstance(latest, dict) else None
+        evidence.append(
+            f"차트: {req.chart.get('interval', 'daily')} {req.chart.get('range', '-')}, "
+            f"기준일 {req.chart.get('asOf') or basis_date}, 최근 종가 {_clean(latest_close)}"
+        )
+
+    for event in events[:3]:
+        evidence.append(
+            f"이벤트: {event.get('date', basis_date)} {event.get('title', '이벤트')} "
+            f"등락률 {_clean(event.get('priceChangeRate'))}%, 거래량 {_clean(event.get('volumeChangeRate'))}%"
+        )
+
+    if not evidence:
+        evidence.append("제공된 검색, 브리프, 차트, 이벤트 근거가 제한적입니다.")
+
+    if code and events:
+        conclusion = f"{subject}({code})은(는) {basis_date} 기준 차트 이벤트가 있어 가격과 거래량을 함께 확인해야 합니다."
+    elif code:
+        conclusion = f"{subject}({code})은(는) {basis_date} 기준 차트/검색 근거로 조건부 검토가 필요합니다."
+    else:
+        conclusion = f"{subject}은(는) {basis_date} 기준 검색/브리프 근거로 시장 맥락을 먼저 확인해야 합니다."
+
+    return {
+        "conclusion": conclusion,
+        "evidence": evidence[:5],
+        "opposingSignals": [
+            "가격은 오르지만 거래량이 줄어드는 경우",
+            "하락일 거래량 급증",
+            "공시, 뉴스, 재무 근거가 부족한 경우",
+        ],
+        "risks": [
+            "개인 보유 비중과 투자 기간을 반영하지 않습니다.",
+            "차트 이벤트는 원인 후보이며 확정 원인이 아닙니다.",
+            "투자 지시가 아니라 교육용 분석 보조입니다.",
+        ],
+        "sources": sources,
+        "confidence": confidence,
+        "basisDate": basis_date,
+        "limitations": limitations,
+    }
+
+
 def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
     api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
     model = os.getenv("LLM_MODEL", "").strip()
@@ -307,12 +374,16 @@ def chat(req: ChatRequest):
     else:
         limitations.insert(0, "LLM 응답은 제공된 retrieval 근거 안에서 생성되도록 제한했습니다.")
 
+    confidence = "medium" if retrieval_documents else "low-medium"
+    structured = _build_structured_answer(req, subject, code, basis_date, confidence, sources, limitations)
+
     return {
         "mode": "rag_llm" if used_llm else "rag_fallback_rule_based",
         "answer": llm_answer or "\n".join(answer_parts),
         "basisDate": basis_date,
-        "confidence": "medium" if retrieval_documents else "low-medium",
+        "confidence": confidence,
         "sources": sources,
+        "structured": structured,
         "retrieval": {
             "documents": retrieval_documents,
             "sourceCount": len(retrieval_documents),

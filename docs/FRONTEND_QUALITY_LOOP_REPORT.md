@@ -158,6 +158,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Frontend API client split | `frontend/src/ui/apiClient.js` owns authenticated API request/error formatting behavior | Done |
 | Frontend hooks split | `useSearchResults`, `useStockResearch`, and `usePortfolio` move search debounce, stock research loading, and portfolio persistence out of `App.jsx` | Done |
 | Chart marker hover evidence | `StockPriceChart` tooltip now shows marker reason, evidence, confidence, and 기준일 when the hovered date has chart events | Done |
+| AI structured answer | `/api/ai/chat` and the AI panel now expose conclusion, evidence, opposing signals, risks, sources, confidence, basis date, and limitations as first-class fields | Done |
 
 ## Latest Verification Commands
 
@@ -211,6 +212,12 @@ Additional live Docker API checks:
 - Chart marker tooltip loop `npm run build`: passed
 - Chart marker tooltip loop targeted Playwright: `chart tab supports interval switching and bounded tooltip display` passed after frontend container rebuild
 - Chart marker tooltip loop final `make quality`: backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- AI structured answer loop `python3 -m py_compile ai-service/app/main.py`: passed
+- AI structured answer loop `npm run build`: passed
+- AI structured answer loop Docker `POST /api/ai/chat`: returned `structured.conclusion`, `evidence`, `opposingSignals`, `risks`, `sources`, `confidence`, `basisDate`, and `limitations`
+- AI structured answer loop `./scripts/test_all_apis.sh`: passed with structured answer field checks
+- AI structured answer loop targeted Playwright: `theme search result opens visible AI market interpretation` passed with structured UI checks
+- AI structured answer loop final `make quality`: backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -231,6 +238,7 @@ Additional screenshots were captured from the Docker-served frontend:
 - `/tmp/krbrief-screens/frontend-decomposition-laptop-1280.png`
 - `/tmp/krbrief-screens/frontend-decomposition-desktop-1440.png`
 - `/tmp/krbrief-screens/chart-marker-tooltip-evidence-1440.png`
+- `/tmp/krbrief-screens/ai-structured-answer-1440.png`
 
 Latest viewport metrics:
 
@@ -248,11 +256,11 @@ Latest viewport metrics:
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
 4. Search now has a KRX stock universe, KRX industry taxonomy, and external Naver theme taxonomy; `/api/ai/status` makes live LLM readiness visible, but current live RAG remains blocked by missing non-committed credentials.
 5. Trade zones now use support/resistance, moving average, and volume-strength evidence, but still need deeper event/news integration.
-6. More frontend decomposition is still warranted, especially assistant/history/summary state hooks and final visual-system polish.
+6. More frontend decomposition is still warranted, especially history/summary state hooks and final visual-system polish.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, and this frontend decomposition commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, and this AI structured answer commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
@@ -261,8 +269,7 @@ Latest viewport metrics:
 Continue with these in order:
 
 1. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
-2. If live credentials are not available, split assistant, history, and summary state flows into smaller domain hooks/API clients.
-3. Enrich chart marker hover with reason, evidence, confidence, date, and source labels.
+2. If live credentials are not available, split history and summary state flows into smaller domain hooks/API clients.
+3. Upgrade chart event evidence from generic Naver links to richer news/disclosure/source-specific references.
 4. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
-5. Upgrade chart event evidence from generic Naver links to richer news/disclosure/source-specific references.
 5. Run another mobile and desktop visual audit before any completion claim.

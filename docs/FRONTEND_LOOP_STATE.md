@@ -54,14 +54,14 @@
 - [ ] 관망 구간을 표시한다.
 - [ ] 매도 검토 구간을 표시한다.
 - [ ] 리스크 관리 구간을 표시한다.
-- [ ] AI 답변에 결론을 포함한다.
-- [ ] AI 답변에 근거를 포함한다.
-- [ ] AI 답변에 반대 신호를 포함한다.
-- [ ] AI 답변에 리스크를 포함한다.
-- [ ] AI 답변에 출처를 포함한다.
-- [ ] AI 답변에 신뢰도를 포함한다.
-- [ ] AI 답변에 데이터 기준일을 포함한다.
-- [ ] AI 답변에 한계를 포함한다.
+- [x] AI 답변에 결론을 포함한다.
+- [x] AI 답변에 근거를 포함한다.
+- [x] AI 답변에 반대 신호를 포함한다.
+- [x] AI 답변에 리스크를 포함한다.
+- [x] AI 답변에 출처를 포함한다.
+- [x] AI 답변에 신뢰도를 포함한다.
+- [x] AI 답변에 데이터 기준일을 포함한다.
+- [x] AI 답변에 한계를 포함한다.
 - [x] App.jsx를 페이지/컴포넌트/hooks/API client 중심으로 더 분해한다.
 - [x] styles.css 또는 스타일 모듈을 디자인 토큰/컴포넌트 책임 기준으로 정리한다.
 - [ ] 기존 기능 100% 무회귀를 확인한다.
@@ -180,20 +180,20 @@
 
 ### 3.5 AI 기능
 
-- [ ] AI 기능이 작은 버튼 하나에 숨지 않음
-- [ ] AI 패널이 제품 핵심 가치처럼 보임
+- [x] AI 기능이 작은 버튼 하나에 숨지 않음
+- [x] AI 패널이 제품 핵심 가치처럼 보임
 - [ ] "AI 시장 해석" 노출
 - [ ] "AI 차트 판단" 노출
 - [ ] "AI 리스크 요약" 노출
 - [ ] "AI에게 이 종목 물어보기" 노출
 - [ ] "왜 올랐는지 AI가 근거로 설명" 흐름 제공
-- [ ] AI 답변에 한 줄 결론 표시
-- [ ] AI 답변에 근거 표시
-- [ ] AI 답변에 반대 신호 표시
-- [ ] AI 답변에 리스크 표시
-- [ ] AI 답변에 출처 표시
-- [ ] AI 답변에 신뢰도 표시
-- [ ] AI 답변에 데이터 기준일 표시
+- [x] AI 답변에 한 줄 결론 표시
+- [x] AI 답변에 근거 표시
+- [x] AI 답변에 반대 신호 표시
+- [x] AI 답변에 리스크 표시
+- [x] AI 답변에 출처 표시
+- [x] AI 답변에 신뢰도 표시
+- [x] AI 답변에 데이터 기준일 표시
 - [ ] AI가 실제로 유용하다는 체감 제공
 
 ### 3.6 차트 중심 UX
@@ -461,7 +461,7 @@
 - [ ] 모든 주요 UI에 empty 상태 존재
 - [ ] 모든 주요 UI에 error 상태 존재
 - [ ] 차트 데이터 없음 상태에서도 다음 행동이 명확
-- [ ] AI 응답은 출처, 기준일, 신뢰도, 한계를 표시
+- [x] AI 응답은 출처, 기준일, 신뢰도, 한계를 표시
 
 ## 5. `API_SPEC.md` 요구사항
 
@@ -705,10 +705,10 @@
 ### 6.7 원칙
 
 - [ ] "지금 사라/팔아라" 형태의 투자 지시 금지
-- [ ] AI 답변에 출처 표시
-- [ ] AI 답변에 신뢰도 표시
-- [ ] AI 답변에 한계 표시
-- [ ] AI 답변에 데이터 기준일 표시
+- [x] AI 답변에 출처 표시
+- [x] AI 답변에 신뢰도 표시
+- [x] AI 답변에 한계 표시
+- [x] AI 답변에 데이터 기준일 표시
 - [ ] 모르면 모른다고 말함
 - [ ] 근거 없는 확정 표현 금지
 - [ ] 초보자가 앱을 열었을 때 운영 도구가 아니라 시장 이해 도구로 느껴짐
@@ -758,7 +758,7 @@
 | First View | 서비스 가치 인지 | 5초 안에 목적 이해 | 정상 | 88/100 | H1, 검색, 차트가 첫 화면에 들어옴. Toss급 최종 polish는 부족 | 예 |
 | Search | 산업 검색 | 관련 산업/테마 표시 | 정상 | 86/100 | 금융, 반도체, 2차전지, 바이오 smoke 통과. full taxonomy는 아님 | 예 |
 | Search | 기업/종목 검색 | 종목 결과 표시 | 정상 | 88/100 | 삼성전자, SK하이닉스, 현대차, 네이버/NAVER, 카카오 smoke 통과 | 예 |
-| AI | AI 분석 패널 | AI 기능이 명확히 보임 | 정상 | 82/100 | UI와 fallback contract는 보이나 live LLM 검증 없음 | 예 |
+| AI | AI 분석 패널 | AI 기능이 명확히 보임 | 정상 | 88/100 | structured 결론/근거/반대 신호/리스크/출처/신뢰도/기준일/한계 UI 및 API 검증. live LLM 검증 없음 | 예 |
 | Navigation | 탭 전환 | 부드럽게 전환 | 정상 | 86/100 | Playwright navigation/skip/admin/history 흐름 통과 | 예 |
 | Learn | 용어 상세 | 핵심요약/3줄 설명/시나리오 표시 | 부분 정상 | 78/100 | UI 보강은 있음. backend schema가 목표 구조 전체를 보장하지 않음 | 예 |
 | Chart | 일봉 | 차트 표시 | 정상 | 90/100 | Playwright interval test와 viewport screenshot 통과 | 아니오 |
@@ -794,6 +794,7 @@
 - [ ] live LLM key/model 환경에서 `rag_llm` 실동작 검증은 아직 미완료
 - [x] trade zone은 최근 지지/저항/20일 평균/거래량 강도 기반 evidence로 1차 고도화
 - [x] frontend API 호출, 검색 debounce, 종목 리서치 로딩, 포트폴리오 저장을 API client/hooks로 분리
+- [x] AI chat 응답에 structured 결론/근거/반대 신호/리스크/출처/신뢰도/기준일/한계 계약 추가
 - [ ] Toss-perfect 시각 품질은 아직 객관적 달성 아님
 
 ### 9.2 직전 검증 로그
@@ -842,6 +843,13 @@
 - [x] Chart marker tooltip 루프 `npm run test:e2e -- --reporter=line -g "chart tab supports interval switching"`: 통과
 - [x] Chart marker tooltip 루프 최종 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 - [x] Chart marker tooltip 루프 스크린샷: `/tmp/krbrief-screens/chart-marker-tooltip-evidence-1440.png`
+- [x] AI structured answer 루프 `python3 -m py_compile ai-service/app/main.py`: 통과
+- [x] AI structured answer 루프 `npm run build`: 통과
+- [x] AI structured answer 루프 Docker 기준 `POST /api/ai/chat`: `structured.conclusion/evidence/opposingSignals/risks/sources/confidence/basisDate/limitations` 반환
+- [x] AI structured answer 루프 `./scripts/test_all_apis.sh`: structured answer 필드 포함 통과
+- [x] AI structured answer 루프 `npm run test:e2e -- --reporter=line -g "theme search result opens visible AI market interpretation"`: 통과
+- [x] AI structured answer 루프 최종 `make quality`: backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] AI structured answer 루프 스크린샷: `/tmp/krbrief-screens/ai-structured-answer-1440.png`
 
 ### 9.3 최신 viewport 계측
 
@@ -877,15 +885,15 @@
 
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
-| 사용자 | 492/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거 강화, 마커 tooltip 근거 검증 | Toss급 최종 polish, live AI 체감 부족 |
-| 프론트 개발자 | 481/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, 마커 tooltip E2E 강화 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
-| 백엔드 개발자 | 489/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback contract, trade-zone 지지/저항/거래량 근거 연결 | live RAG 검증 부족 |
+| 사용자 | 493/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변 검증 | Toss급 최종 polish, live AI 체감 부족 |
+| 프론트 개발자 | 483/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, 마커 tooltip/AI structured E2E 강화 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
+| 백엔드 개발자 | 491/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 지지/저항/거래량 근거 연결 | live RAG 검증 부족 |
 | DevOps 개발자 | 490/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke 통과 | CI/CD와 운영 배포 안정성 자동화 증거 부족 |
-| VC/투자자 | 453/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip 설명 강화 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 458/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip, AI 답변 구조화 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 frontend decomposition 루프 변경분을 의미 있는 단위로 commit/push한다.
+1. 이번 AI structured answer 루프 변경분을 의미 있는 단위로 commit/push한다.
 2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 assistant/history/summary 상태 훅 분리를 진행한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.

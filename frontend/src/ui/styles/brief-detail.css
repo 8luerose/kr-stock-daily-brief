@@ -167,6 +167,67 @@
   line-height: 1.65;
 }
 
+.assistantStructured {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.structuredConclusion,
+.structuredGrid > div {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+}
+
+.structuredConclusion {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.structuredConclusion span,
+.structuredGrid span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.structuredConclusion strong {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.structuredGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.structuredGrid > div {
+  padding: 10px 12px;
+}
+
+.structuredGrid ul,
+.structuredGrid p {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.structuredGrid p {
+  padding-left: 0;
+}
+
+@media (max-width: 720px) {
+  .structuredGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .assistantMeta {
   margin-top: 12px;
   display: grid;

@@ -760,6 +760,18 @@ ai-service의 OpenAI-compatible LLM 설정 상태를 secret 값 없이 확인한
   "answer": "기준일: 2026-04-30\n대상: 삼성전자(005930)...",
   "basisDate": "2026-04-30",
   "confidence": "medium",
+  "structured": {
+    "conclusion": "삼성전자(005930)은(는) 2026-04-30 기준 차트 이벤트가 있어 가격과 거래량을 함께 확인해야 합니다.",
+    "evidence": ["이벤트: 2026-04-30 거래량 급증 등락률 1.2%, 거래량 230.1%"],
+    "opposingSignals": ["가격은 오르지만 거래량이 줄어드는 경우"],
+    "risks": ["차트 이벤트는 원인 후보이며 확정 원인이 아닙니다."],
+    "sources": [
+      { "title": "종목 이벤트 API", "type": "events", "url": "/api/stocks/005930/events" }
+    ],
+    "confidence": "medium",
+    "basisDate": "2026-04-30",
+    "limitations": ["투자 지시가 아니라 교육용 분석 보조입니다."]
+  },
   "sources": [
     { "title": "종목 차트 API", "type": "ohlcv", "url": "/api/stocks/005930/chart" }
   ],
