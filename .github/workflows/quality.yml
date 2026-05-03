@@ -51,16 +51,11 @@ jobs:
         run: docker compose up -d --build
       - name: Wait for stack health
         run: |
-          for i in {1..60}; do
-            if curl -fsS http://localhost:8080/actuator/health >/dev/null && \
-               curl -fsS http://localhost:5173/health >/dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          docker compose ps
-          docker compose logs --tail=120 frontend backend marketdata ai-service
-          exit 1
+          make health || {
+            docker compose ps
+            docker compose logs --tail=120 frontend backend marketdata ai-service
+            exit 1
+          }
       - name: API smoke tests
         run: ./scripts/test_all_apis.sh
       - name: Investment language safety check
