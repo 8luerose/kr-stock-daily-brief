@@ -53,6 +53,22 @@ test("learning tab exposes beginner structure and assistant entry points", async
   await expectNoHorizontalOverflow(page);
 });
 
+test("stock search result opens chart research flow", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+
+  const stockName = (await page.locator(".pulseName").first().textContent())?.trim();
+  expect(stockName).toBeTruthy();
+
+  await page.fill("#universal-search", stockName);
+  await expect(page.locator(".searchResults button").first()).toBeVisible();
+  await page.locator(".searchResults button").first().click();
+
+  await expect(page.locator("#stock-detail")).toBeVisible();
+  await expect(page.locator(".stockResearch")).toBeVisible();
+  await expect(page.locator(".realChart canvas").first()).toBeVisible();
+});
+
 test("chart tab supports interval switching and bounded tooltip display", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${APP_URL}/#research`, { waitUntil: "networkidle" });
