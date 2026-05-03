@@ -102,6 +102,24 @@ class StockControllerTest {
   }
 
   @Test
+  void universe_returnsGatewayResponse() throws Exception {
+    when(client.universe(eq("유한양행"), eq(5)))
+        .thenReturn(
+            new StockUniverseDto(
+                "2026-05-01",
+                "pykrx_market_ticker_list",
+                2800,
+                1,
+                "",
+                List.of(new StockUniverseDto.StockUniverseItemDto("000100", "유한양행", "KOSPI"))));
+
+    mvc.perform(get("/api/stocks/universe").param("query", "유한양행").param("limit", "5"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.source").value("pykrx_market_ticker_list"))
+        .andExpect(jsonPath("$.stocks[0].code").value("000100"));
+  }
+
+  @Test
   void invalidInputs_return400() throws Exception {
     mvc.perform(get("/api/stocks/abc/chart")).andExpect(status().isBadRequest());
     mvc.perform(get("/api/stocks/005930/chart?range=2Y")).andExpect(status().isBadRequest());

@@ -48,6 +48,14 @@ public class StockController {
     return client.chart(safeCode, safeRange, safeInterval);
   }
 
+  @GetMapping("/universe")
+  public StockUniverseDto universe(
+      @RequestParam(value = "query", required = false) String query,
+      @RequestParam(value = "limit", defaultValue = "80") Integer limit) {
+    int safeLimit = limit == null ? 80 : Math.max(1, Math.min(limit, 5000));
+    return client.universe(query, safeLimit);
+  }
+
   @GetMapping("/{code}/trade-zones")
   public StockTradeZonesDto tradeZones(
       @PathVariable String code,

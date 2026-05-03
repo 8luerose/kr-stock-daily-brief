@@ -134,6 +134,10 @@ def _name(ticker: str) -> str:
         return ticker
 
 
+def _normalize_query(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
 def _safe_float(value) -> float:
     try:
         return float(value)
@@ -586,6 +590,54 @@ def _most_mentioned_by_board_posts(
 @app.get("/health")
 def health():
     return {"status": "UP"}
+
+
+@lru_cache(maxsize=8)
+def _stock_universe_for_day(ymd: str) -> tuple[dict, ...]:
+    items: list[dict] = []
+    seen: set[str] = set()
+    for market in ("KOSPI", "KOSDAQ"):
+        tickers = stock.get_market_ticker_list(ymd, market=market)
+        for ticker in tickers:
+            if not _is_normal_ticker(ticker) or ticker in seen:
+                continue
+            seen.add(ticker)
+            name = _name(ticker)
+            items.append({"code": ticker, "name": name, "market": market})
+    items.sort(key=lambda item: (item["market"], item["code"]))
+    return tuple(items)
+
+
+@app.get("/stocks/universe")
+def stock_universe(query: str | None = None, limit: int = 5000):
+    today_ymd = datetime.now().strftime("%Y%m%d")
+    as_of_ymd, adjust_note = _effective_business_day_or_previous(today_ymd)
+    safe_limit = max(1, min(int(limit or 5000), 5000))
+    try:
+        universe = list(_stock_universe_for_day(as_of_ymd))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"pykrx_stock_universe_error: {type(e).__name__}") from e
+
+    q = _normalize_query(query)
+    if q:
+        filtered = [
+            item
+            for item in universe
+            if q in item["code"].lower()
+            or q in item["name"].lower()
+            or q in item["market"].lower()
+        ]
+    else:
+        filtered = universe
+
+    return {
+        "asOf": f"{as_of_ymd[0:4]}-{as_of_ymd[4:6]}-{as_of_ymd[6:8]}",
+        "source": "pykrx_market_ticker_list",
+        "totalCount": len(universe),
+        "count": min(len(filtered), safe_limit),
+        "adjustmentNote": adjust_note,
+        "stocks": filtered[:safe_limit],
+    }
 
 
 @app.get("/market-status")

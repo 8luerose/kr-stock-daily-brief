@@ -9,14 +9,16 @@ import com.krbrief.learning.LearningTermCatalog;
 import com.krbrief.summaries.DailySummary;
 import com.krbrief.summaries.DailySummaryService;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class SearchServiceTest {
+  private final StockUniverseProvider baselineUniverse = StockUniverseCatalog::baseline;
 
   @Test
   void search_returnsThemeAndLearningResults() {
-    SearchService service = new SearchService(mock(DailySummaryService.class), new LearningTermCatalog());
+    SearchService service = new SearchService(mock(DailySummaryService.class), new LearningTermCatalog(), baselineUniverse);
 
     var themeResults = service.search("반도체", 10);
     var termResults = service.search("PER", 10);
@@ -32,7 +34,7 @@ class SearchServiceTest {
     DailySummaryService summaries = mock(DailySummaryService.class);
     when(summaries.latest()).thenReturn(Optional.of(latest));
 
-    SearchService service = new SearchService(summaries, new LearningTermCatalog());
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse);
 
     var results = service.search("삼성전자", 10);
 
@@ -44,7 +46,7 @@ class SearchServiceTest {
   void search_includesRepresentativeStocksWithoutLatestSummary() {
     DailySummaryService summaries = mock(DailySummaryService.class);
     when(summaries.latest()).thenReturn(Optional.empty());
-    SearchService service = new SearchService(summaries, new LearningTermCatalog());
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse);
 
     var byName = service.search("삼성전자", 10);
     var byCode = service.search("005930", 10);
@@ -57,7 +59,7 @@ class SearchServiceTest {
   void search_includesThemeRelatedRepresentativeStocks() {
     DailySummaryService summaries = mock(DailySummaryService.class);
     when(summaries.latest()).thenReturn(Optional.empty());
-    SearchService service = new SearchService(summaries, new LearningTermCatalog());
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse);
 
     var results = service.search("반도체", 10);
 
@@ -70,7 +72,7 @@ class SearchServiceTest {
   void search_coversRepresentativeIndustryThemeAndCompanyQueries() {
     DailySummaryService summaries = mock(DailySummaryService.class);
     when(summaries.latest()).thenReturn(Optional.empty());
-    SearchService service = new SearchService(summaries, new LearningTermCatalog());
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), baselineUniverse);
 
     assertTrue(service.search("SK하이닉스", 10).stream()
         .anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("000660")));
@@ -86,6 +88,9 @@ class SearchServiceTest {
         .anyMatch(item -> item.type().equals("theme") && item.title().equals("2차전지")));
     assertTrue(service.search("금융", 10).stream()
         .anyMatch(item -> item.type().equals("industry") && item.title().equals("증권/금융")));
+    assertTrue(service.search("금융", 8).stream()
+        .limit(3)
+        .anyMatch(item -> item.type().equals("industry") && item.title().equals("증권/금융")));
     assertTrue(service.search("바이오", 10).stream()
         .anyMatch(item -> item.type().equals("theme") && item.title().equals("바이오")));
     assertTrue(service.search("조선", 10).stream()
@@ -96,5 +101,30 @@ class SearchServiceTest {
         .anyMatch(item -> item.type().equals("term") && item.termId().equals("per")));
     assertTrue(service.search("DART", 10).stream()
         .anyMatch(item -> item.type().equals("term") && item.termId().equals("dart")));
+  }
+
+  @Test
+  void search_usesKrxUniverseProviderOutsideRepresentativeBaseline() {
+    DailySummaryService summaries = mock(DailySummaryService.class);
+    when(summaries.latest()).thenReturn(Optional.empty());
+    StockUniverseProvider krxUniverse = () -> List.of(new SearchResultDto(
+        "stock-000100",
+        "stock",
+        "유한양행",
+        "000100",
+        "KOSPI",
+        "상장",
+        List.of("KOSPI", "KRX", "상장 종목"),
+        "KRX 상장 종목 universe에서 조회한 종목입니다.",
+        "krx_stock_universe",
+        "000100",
+        "유한양행",
+        null));
+    SearchService service = new SearchService(summaries, new LearningTermCatalog(), krxUniverse);
+
+    assertTrue(service.search("유한양행", 10).stream()
+        .anyMatch(item -> item.type().equals("stock")
+            && item.stockCode().equals("000100")
+            && item.source().equals("krx_stock_universe")));
   }
 }

@@ -545,7 +545,48 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 ---
 
-## 16) AI/RAG 준비형 채팅
+## 16) 종목 universe 조회
+
+### `GET /api/stocks/universe?query=&limit=`
+
+KRX KOSPI/KOSDAQ 상장 종목 universe를 조회한다. backend는 공개 API 게이트웨이 역할을 하고,
+실제 목록은 `marketdata-python`의 pykrx `get_market_ticker_list` 기반 엔드포인트를 호출한다.
+통합 검색은 이 universe를 캐시해서 대표 baseline 밖의 종목명/종목코드도 찾는다.
+
+#### Query Parameters
+
+- `query` (optional): 종목명, 종목코드, 시장 구분 검색어. 예: `유한양행`, `000100`, `KOSPI`
+- `limit` (optional): 반환 개수. 기본 80, 최대 5000
+
+#### 성공 응답 (200)
+
+```json
+{
+  "asOf": "2026-05-03",
+  "source": "pykrx_market_ticker_list",
+  "totalCount": 2800,
+  "count": 1,
+  "adjustmentNote": "",
+  "stocks": [
+    { "code": "000100", "name": "유한양행", "market": "KOSPI" }
+  ]
+}
+```
+
+#### 응답 정책
+
+- `totalCount`는 pykrx가 반환한 KOSPI/KOSDAQ 전체 universe 개수다.
+- `count`는 필터와 limit 적용 후 실제 반환된 개수다.
+- marketdata 조회 실패 시 backend는 502를 반환한다.
+- 통합 검색은 이 API가 실패하면 `source=stock_universe_baseline` 대표 종목 목록으로 fallback한다.
+
+#### 실패 응답
+
+- 502 Bad Gateway: marketdata/pykrx universe 조회 실패
+
+---
+
+## 17) AI/RAG 준비형 채팅
 
 ### `POST /api/ai/chat`
 
@@ -620,7 +661,7 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 ---
 
-## 16) 통합 검색
+## 18) 통합 검색
 
 ### `GET /api/search?query=&limit=`
 
@@ -656,12 +697,14 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 - `source=latest_summary`: 최신 저장 브리프의 상승/하락/언급 TOP 종목
 - `source=learning_terms`: 내부 초보자 용어 사전
+- `source=krx_stock_universe`: pykrx KOSPI/KOSDAQ 종목 universe 기반 검색 결과
 - `source=stock_universe_baseline`: 대표 KOSPI/KOSDAQ 종목 baseline. 향후 전체 KRX 종목 universe API/cache로 교체 가능
 - `source=search_taxonomy_baseline`: 산업/테마/시장 구분 baseline. 향후 별도 산업/테마 taxonomy 데이터 API로 교체 가능
 
-#### 현재 baseline 검색 보장 범위
+#### 현재 검색 보장 범위
 
 - 대표 기업/종목: 삼성전자, SK하이닉스, 현대차, NAVER(네이버), 카카오, LG에너지솔루션, 에코프로비엠, 삼성바이오로직스, 셀트리온, 한화에어로스페이스 등
+- KRX universe 종목: marketdata/pykrx 연결 가능 시 KOSPI/KOSDAQ 전체 상장 종목명/종목코드
 - 주요 테마: 반도체, 2차전지, AI, 바이오, 방산, 로봇, 원전, 엔터, 조선, 화장품
 - 주요 산업: 자동차, 증권/금융, 인터넷/플랫폼, 철강/소재, 헬스케어, 게임/콘텐츠
 - 시장 구분: KOSPI, KOSDAQ

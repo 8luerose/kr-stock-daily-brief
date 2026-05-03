@@ -68,4 +68,31 @@ public class StockResearchClient {
       throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "marketdata_events_error", e);
     }
   }
+
+  public StockUniverseDto universe(String query, int limit) {
+    try {
+      StockUniverseDto res =
+          http
+              .get()
+              .uri(
+                  uriBuilder -> {
+                    var builder = uriBuilder.path("/stocks/universe").queryParam("limit", limit);
+                    if (query != null && !query.isBlank()) {
+                      builder.queryParam("query", query);
+                    }
+                    return builder.build();
+                  })
+              .accept(MediaType.APPLICATION_JSON)
+              .retrieve()
+              .body(StockUniverseDto.class);
+      if (res == null) {
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "marketdata_empty_universe_response");
+      }
+      return res;
+    } catch (ResponseStatusException e) {
+      throw e;
+    } catch (RestClientException e) {
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "marketdata_universe_error", e);
+    }
+  }
 }

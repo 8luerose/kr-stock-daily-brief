@@ -31,11 +31,11 @@ stock AI web platform:
 
 | Perspective | Score | Current judgment |
 |---|---:|---|
-| User | 482/500 | First-view button count, search, and chart entry now pass 390/768/1280/1440 viewport checks, but still not Toss-perfect |
+| User | 486/500 | First-view button count, search, chart entry, required representative searches, and KRX universe stock search now pass, but still not Toss-perfect |
 | Frontend developer | 470/500 | Home chart flow, App/CSS split, summary detail, and pure utilities improved; domain hooks and design-system boundary remain |
-| Backend developer | 470/500 | Search baseline, taxonomy, AI adapter contract, trade-zone contract, and marketdata timeout behavior improved, but full KRX taxonomy/RAG depth is incomplete |
-| DevOps developer | 486/500 | Strong local quality gate, Docker health, API smoke, E2E coverage, investment-language scan, and reduced smoke-test hang risk |
-| VC / shareholder | 438/500 | AI and chart-first/search-first platform direction is clearer, but live LLM/RAG moat is not fully proven |
+| Backend developer | 478/500 | pykrx KOSPI/KOSDAQ stock universe, search cache/provider, taxonomy baseline, AI adapter contract, and trade-zone contract improved; industry/theme taxonomy and RAG depth remain incomplete |
+| DevOps developer | 487/500 | Strong local quality gate, Docker health, API smoke including KRX universe, E2E coverage, investment-language scan, and reduced smoke-test hang risk |
+| VC / shareholder | 444/500 | AI and chart-first/search-first platform direction plus all-stock search foundation are clearer, but live LLM/RAG moat is not fully proven |
 
 ## Work Completed In The Recovery Loop
 
@@ -90,12 +90,16 @@ stock AI web platform:
 
 - Added `SearchTaxonomyCatalog` for baseline theme, industry, and market results.
 - Expanded `StockUniverseCatalog` to a broader representative KOSPI/KOSDAQ universe.
+- Added pykrx-backed `GET /api/stocks/universe` for KOSPI/KOSDAQ stock universe lookup.
+- Connected unified search to a cached backend KRX stock universe provider with baseline fallback.
+- Verified baseline-outside stock search with `유한양행(000100)` returning `source=krx_stock_universe`.
 - Added Korean `네이버` alias support for `NAVER(035420)`.
 - Extended backend search tests and API smoke tests for:
   - `삼성전자`, `SK하이닉스`, `현대차`, `네이버`, `NAVER`, `카카오`
+  - `유한양행`
   - `반도체`, `2차전지`, `금융`, `바이오`
   - `거래량`, `PER`, `DART`
-- Documented `source=stock_universe_baseline` and `source=search_taxonomy_baseline` in `docs/API_SPEC.md`.
+- Documented `GET /api/stocks/universe`, `source=krx_stock_universe`, `source=stock_universe_baseline`, and `source=search_taxonomy_baseline` in `docs/API_SPEC.md`.
 - Created `docs/FRONTEND_LOOP_STATE.md` as the current prompt-to-artifact checklist and loop state.
 
 ### Reference research notes
@@ -117,6 +121,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Meaningful commits | `baa571e`, `40f7dc8`, `2ea8098`, `861b9a1`, `9f234bd`, `6458f0c`, `1562ba9`, `d60a040`, `f1967ed`, plus this search taxonomy/chart-first commit | Done |
 | Push to origin | `origin/main` updated through the latest recovery-loop commit | Done |
 | Search for representative stock | `scripts/test_all_apis.sh` checks 삼성전자, SK하이닉스, 현대차, 네이버/NAVER, 카카오 | Done |
+| Search for KRX universe stock | `scripts/test_all_apis.sh` checks `/api/stocks/universe?query=유한양행` and `/api/search?query=유한양행` -> `000100` | Done |
 | Search for required themes/terms | `scripts/test_all_apis.sh` checks 반도체, 2차전지, 금융, 바이오, 거래량, PER, DART | Done |
 | Visible AI panel | Home and search flows expose AI market interpretation | Done |
 | AI retrieval contract | `/api/ai/chat` returns `retrieval` and `sourceCount` | Done |
@@ -134,7 +139,8 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | 495/500 all perspectives | Current scores remain below 495 | Not done |
 | Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
 | Real live LLM quality | Adapter exists, but no configured live key/model verification | Not done |
-| Full KRX taxonomy | Representative fallback and taxonomy baseline exist, not full stock/sector taxonomy | Not done |
+| Full KRX stock universe | pykrx-backed KOSPI/KOSDAQ stock universe API/cache exists and is smoke-tested | Done |
+| Full industry/theme taxonomy | Representative taxonomy baseline exists, not full sector/theme taxonomy | Not done |
 | Trade-zone backend API | `GET /api/stocks/{code}/trade-zones` added, documented, smoke-tested, and used by the chart decision panel | Done |
 
 ## Latest Verification Commands
@@ -163,12 +169,19 @@ The latest search/taxonomy and chart-first loop was verified with:
 
 ```bash
 git diff --check
+python3 -m py_compile marketdata-python/app/main.py
 ./gradlew test
 npm run build
+./scripts/test_all_apis.sh
 make quality
 ```
 
-Result: backend tests passed, frontend production build passed, API smoke passed including the expanded search queries, investment-language scan passed, and Playwright `13 passed`.
+Result: backend tests passed, frontend production build passed, API smoke passed including expanded search queries and `유한양행` KRX universe search, investment-language scan passed, and Playwright `13 passed`.
+
+Additional live Docker API checks:
+
+- `GET /api/stocks/universe?query=유한양행&limit=5`: `totalCount=2703`, `stocks[0].code=000100`, `source=pykrx_market_ticker_list`
+- `GET /api/search?query=유한양행&limit=5`: `stockCode=000100`, `source=krx_stock_universe`
 
 Additional screenshots were captured from the Docker-served frontend:
 
@@ -198,7 +211,7 @@ Latest viewport metrics:
 1. The product is better, but still below the prompt's 495/500 bar.
 2. The first-view UX is clearer and less button-heavy, but still not a complete Toss-quality redesign.
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
-4. Search now covers required representative names/themes/terms, but still needs a real full KRX stock, industry, and theme taxonomy.
+4. Search now has a KRX stock universe, but still needs a real full industry and theme taxonomy.
 5. Trade zones now have an API contract, but the first version is still heuristic and should be upgraded with richer market signals.
 6. More frontend decomposition is still warranted, especially smaller domain hooks and a clearer visual system boundary.
 
@@ -212,8 +225,8 @@ Latest viewport metrics:
 
 Continue with these in order:
 
-1. Expand search from representative fallback to complete KRX stock/sector/theme taxonomy.
-2. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
+1. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
+2. Expand industry/theme taxonomy beyond the current representative baseline.
 3. Enrich the new `trade-zones` API with support/resistance, event, and volume-derived market signals.
 4. Split remaining stock research, assistant, and history state flows into smaller domain hooks/API clients.
 5. Run another mobile and desktop visual audit before any completion claim.

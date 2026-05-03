@@ -19,10 +19,12 @@ public class SearchService {
 
   private final DailySummaryService summaries;
   private final LearningTermCatalog terms;
+  private final StockUniverseProvider stockUniverse;
 
-  public SearchService(DailySummaryService summaries, LearningTermCatalog terms) {
+  public SearchService(DailySummaryService summaries, LearningTermCatalog terms, StockUniverseProvider stockUniverse) {
     this.summaries = summaries;
     this.terms = terms;
+    this.stockUniverse = stockUniverse;
   }
 
   public List<SearchResultDto> search(String query, Integer limit) {
@@ -104,7 +106,7 @@ public class SearchService {
   }
 
   private void addBaselineStockUniverse(Map<String, SearchResultDto> results) {
-    for (SearchResultDto item : StockUniverseCatalog.baseline()) {
+    for (SearchResultDto item : stockUniverse.list()) {
       results.putIfAbsent(item.id(), item);
     }
   }
@@ -146,11 +148,24 @@ public class SearchService {
   }
 
   private int score(SearchResultDto item, String q) {
-    if (normalize(item.title()).equals(q) || normalize(item.code()).equals(q)) return 0;
-    if (normalize(item.title()).contains(q) || normalize(item.code()).contains(q)) return 1;
-    if ("stock".equals(item.type())) return 2;
-    if ("theme".equals(item.type()) || "industry".equals(item.type())) return 3;
-    return 4;
+    String type = safe(item.type());
+    String title = normalize(item.title());
+    String code = normalize(item.code());
+    if (title.equals(q) || code.equals(q)) return 0;
+    if (("theme".equals(type) || "industry".equals(type) || "market".equals(type) || "term".equals(type))
+        && title.contains(q)) return 1;
+    if ("stock".equals(type) && "stock_universe_baseline".equals(item.source()) && tagMatches(item.tags(), q)) return 2;
+    if ("stock".equals(type) && (title.contains(q) || code.contains(q))) return 3;
+    if (("theme".equals(type) || "industry".equals(type) || "market".equals(type) || "term".equals(type))
+        && tagMatches(item.tags(), q)) return 4;
+    if ("stock".equals(type) && tagMatches(item.tags(), q)) return 5;
+    if (normalize(item.summary()).contains(q)) return 6;
+    return 7;
+  }
+
+  private boolean tagMatches(List<String> tags, String q) {
+    if (tags == null) return false;
+    return tags.stream().map(this::normalize).anyMatch(tag -> tag.contains(q));
   }
 
   private String searchableText(SearchResultDto item) {
