@@ -38,6 +38,7 @@ for (const viewport of viewports) {
     await page.fill("#universal-search", "반도체");
     await expect(page.locator(".searchResults")).toBeVisible();
     await expect(page.locator(".searchResults button").first()).toBeVisible();
+    await expect(page.getByText(/seed catalog|fallback|어댑터/)).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
 
     expect(errors).toEqual([]);

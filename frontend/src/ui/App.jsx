@@ -43,7 +43,6 @@ const COPY = {
   universalSearch: "산업, 테마, 기업, 종목 검색",
   universalSearchPlaceholder: "예: 반도체, 007610, 선도전기, 거래량, DART",
   searchEmpty: "검색 결과가 없습니다. 종목명, 코드, 산업, 테마, 용어를 바꿔 입력해 보세요.",
-  searchMockNote: "산업/테마는 백엔드 검색 어댑터의 seed catalog를 우선 사용하며, API 장애 시 로컬 fallback으로 유지됩니다.",
   aiMarketPanel: "AI 시장 해석",
   aiMarketOneLine: "AI가 오늘 움직인 종목, 차트 신호, 리스크를 한 흐름으로 설명합니다.",
   aiInsight: "AI 인사이트",
@@ -1485,7 +1484,6 @@ export default function App() {
                     </button>
                   ))
                 ) : null}
-                <small>{COPY.searchMockNote}</small>
               </div>
             ) : null}
           </div>
