@@ -163,4 +163,26 @@ code=$(status_code GET "$BASE_URL/api/search?query=%EC%82%BC%EC%84%B1%EC%A0%84%E
 grep -q '"stockCode":"005930"' /tmp/krbrief_resp.json || fail "search samsung missing 005930"
 pass "GET /api/search finds 삼성전자"
 
+search_expect_contains() {
+  local query="$1"; shift
+  local expected="$1"; shift
+  code=$(status_code GET "$BASE_URL/api/search" --get --data-urlencode "query=$query" --data-urlencode "limit=8")
+  [[ "$code" == "200" ]] || fail "search $query expected 200, got $code"
+  grep -q "$expected" /tmp/krbrief_resp.json || fail "search $query missing $expected"
+  pass "GET /api/search finds $query"
+}
+
+search_expect_contains "SK하이닉스" '"stockCode":"000660"'
+search_expect_contains "현대차" '"stockCode":"005380"'
+search_expect_contains "네이버" '"stockCode":"035420"'
+search_expect_contains "NAVER" '"stockCode":"035420"'
+search_expect_contains "카카오" '"stockCode":"035720"'
+search_expect_contains "반도체" '"title":"반도체"'
+search_expect_contains "2차전지" '"title":"2차전지"'
+search_expect_contains "금융" '"title":"증권/금융"'
+search_expect_contains "바이오" '"title":"바이오"'
+search_expect_contains "거래량" '"termId":"volume"'
+search_expect_contains "PER" '"termId":"per"'
+search_expect_contains "DART" '"termId":"dart"'
+
 echo "== API smoke test done: ALL PASS =="

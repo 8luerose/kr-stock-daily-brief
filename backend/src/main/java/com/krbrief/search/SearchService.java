@@ -110,7 +110,7 @@ public class SearchService {
   }
 
   private void addSeedCatalog(Map<String, SearchResultDto> results) {
-    for (SearchResultDto item : seedCatalog()) {
+    for (SearchResultDto item : SearchTaxonomyCatalog.baseline()) {
       results.putIfAbsent(item.id(), item);
     }
   }
@@ -134,25 +134,6 @@ public class SearchService {
               null,
               term.id()));
     }
-  }
-
-  private List<SearchResultDto> seedCatalog() {
-    return List.of(
-        seed("theme-semiconductor", "theme", "반도체", "THEME", "테마", "+2.4%", List.of("AI 반도체", "장비", "소부장"),
-            "AI 수요, 설비투자, 환율 변화를 함께 보는 대표 성장 테마입니다."),
-        seed("theme-battery", "theme", "2차전지", "THEME", "테마", "-1.1%", List.of("소재", "전기차", "수급"),
-            "원재료 가격, 전기차 수요, 정책 뉴스가 주가 변동과 자주 연결됩니다."),
-        seed("industry-finance", "industry", "증권/금융", "IND", "산업", "+0.8%", List.of("금리", "거래대금", "배당"),
-            "금리, 증시 거래대금, 배당 기대가 함께 움직이는 산업군입니다."),
-        seed("market-kospi", "market", "KOSPI", "KOSPI", "시장", "시장", List.of("대형주", "유가증권", "지수"),
-            "대형주 중심 한국 주식시장 흐름을 확인하는 대표 시장 구분입니다."),
-        seed("market-kosdaq", "market", "KOSDAQ", "KOSDAQ", "시장", "시장", List.of("성장주", "중소형주", "지수"),
-            "기술주와 중소형 성장주 변동성을 확인하는 대표 시장 구분입니다."));
-  }
-
-  private SearchResultDto seed(
-      String id, String type, String title, String code, String market, String rate, List<String> tags, String summary) {
-    return new SearchResultDto(id, type, title, code, market, rate, tags, summary, "backend_seed_catalog", null, null, null);
   }
 
   private List<String> compactTags(String category, List<String> related) {

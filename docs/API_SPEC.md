@@ -644,7 +644,7 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
     "rate": "+2.4%",
     "tags": ["AI 반도체", "장비", "소부장"],
     "summary": "AI 수요, 설비투자, 환율 변화를 함께 보는 대표 성장 테마입니다.",
-    "source": "backend_seed_catalog",
+    "source": "search_taxonomy_baseline",
     "stockCode": null,
     "stockName": null,
     "termId": null
@@ -656,7 +656,15 @@ pykrx 실패 시 기존 소스(naver) 및 내부 fallback을 사용.
 
 - `source=latest_summary`: 최신 저장 브리프의 상승/하락/언급 TOP 종목
 - `source=learning_terms`: 내부 초보자 용어 사전
-- `source=backend_seed_catalog`: 산업/테마/시장 구분 seed catalog. 향후 별도 산업/테마 데이터 API로 교체 가능
+- `source=stock_universe_baseline`: 대표 KOSPI/KOSDAQ 종목 baseline. 향후 전체 KRX 종목 universe API/cache로 교체 가능
+- `source=search_taxonomy_baseline`: 산업/테마/시장 구분 baseline. 향후 별도 산업/테마 taxonomy 데이터 API로 교체 가능
+
+#### 현재 baseline 검색 보장 범위
+
+- 대표 기업/종목: 삼성전자, SK하이닉스, 현대차, NAVER(네이버), 카카오, LG에너지솔루션, 에코프로비엠, 삼성바이오로직스, 셀트리온, 한화에어로스페이스 등
+- 주요 테마: 반도체, 2차전지, AI, 바이오, 방산, 로봇, 원전, 엔터, 조선, 화장품
+- 주요 산업: 자동차, 증권/금융, 인터넷/플랫폼, 철강/소재, 헬스케어, 게임/콘텐츠
+- 시장 구분: KOSPI, KOSDAQ
 
 ---
 

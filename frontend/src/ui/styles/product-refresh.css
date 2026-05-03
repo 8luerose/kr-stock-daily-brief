@@ -228,6 +228,24 @@ body {
   border-color: color-mix(in srgb, var(--accent) 32%, var(--line));
 }
 
+.marketHero + .stockResearch.homeCompact {
+  margin-top: 14px;
+}
+
+.stockResearch.homeCompact .stockResearchHead {
+  padding: 14px 16px;
+}
+
+.stockResearch.homeCompact .chartPreview {
+  min-height: 280px;
+  padding-top: 34px;
+}
+
+.stockResearch.homeCompact .realChartWrap,
+.stockResearch.homeCompact .realChart {
+  min-height: 278px;
+}
+
 .decisionZones {
   gap: 7px;
 }
@@ -349,7 +367,7 @@ body {
   .marketHero,
   .card.detail,
   .learningPanel {
-    padding: 18px;
+    padding: 16px;
   }
 
   .marketHero {
@@ -361,7 +379,8 @@ body {
   }
 
   .marketHero h1 {
-    font-size: 28px;
+    margin: 6px 0;
+    font-size: 25px;
     line-height: 1.14;
     word-break: keep-all;
     overflow-wrap: normal;
@@ -370,17 +389,19 @@ body {
   .marketHero p {
     max-width: none;
     font-size: 14px;
+    line-height: 1.45;
     word-break: keep-all;
   }
 
   .heroMarketLine {
-    margin-top: 10px;
+    margin-top: 8px;
+    padding: 8px 10px;
     font-size: 13px;
   }
 
   .heroMeta {
     gap: 6px;
-    margin-top: 12px;
+    margin-top: 10px;
   }
 
   .heroMeta span {
@@ -395,7 +416,11 @@ body {
 
   .heroSearch {
     max-width: none;
-    margin-top: 14px;
+    margin-top: 10px;
+  }
+
+  .heroSearch label {
+    margin-bottom: 6px;
   }
 
   .heroSearchBox {
@@ -416,8 +441,22 @@ body {
 
   .pulseRow {
     grid-template-columns: minmax(0, 1fr);
-    min-height: 66px;
-    padding: 10px;
+    min-height: 58px;
+    padding: 9px;
+  }
+
+  .stockResearch.homeCompact .stockResearchHead {
+    padding: 10px 14px;
+  }
+
+  .stockResearch.homeCompact .chartPreview {
+    min-height: 240px;
+    padding-top: 32px;
+  }
+
+  .stockResearch.homeCompact .realChartWrap,
+  .stockResearch.homeCompact .realChart {
+    min-height: 250px;
   }
 
   .pulseName {

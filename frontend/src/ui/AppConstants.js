@@ -151,8 +151,8 @@ export const SEARCH_THEME_FALLBACKS = [
     code: "THEME",
     market: "테마",
     rate: "+2.4%",
-    tags: ["AI 반도체", "장비", "소부장"],
-    summary: "AI 수요, 설비투자, 환율 변화를 함께 보는 대표 성장 테마입니다."
+    tags: ["AI 반도체", "HBM", "메모리", "장비"],
+    summary: "AI 서버 투자, 메모리 가격, 장비 수주, 환율을 함께 보는 대표 성장 테마입니다."
   },
   {
     id: "theme-battery",
@@ -161,8 +161,58 @@ export const SEARCH_THEME_FALLBACKS = [
     code: "THEME",
     market: "테마",
     rate: "-1.1%",
-    tags: ["소재", "전기차", "수급"],
+    tags: ["배터리", "양극재", "전기차", "리튬"],
     summary: "원재료 가격, 전기차 수요, 정책 뉴스가 주가 변동과 자주 연결됩니다."
+  },
+  {
+    id: "theme-ai",
+    type: "theme",
+    title: "AI",
+    code: "THEME",
+    market: "테마",
+    rate: "+1.8%",
+    tags: ["반도체", "클라우드", "로봇", "데이터센터"],
+    summary: "AI 인프라 투자와 소프트웨어 기대가 반도체, 인터넷, 로봇 종목으로 확산되는지 확인합니다."
+  },
+  {
+    id: "theme-bio",
+    type: "theme",
+    title: "바이오",
+    code: "THEME",
+    market: "테마",
+    rate: "+0.6%",
+    tags: ["CDMO", "신약", "임상", "바이오시밀러"],
+    summary: "임상, 허가, 기술수출, 실적 가시성이 동시에 투자심리를 흔드는 고변동 테마입니다."
+  },
+  {
+    id: "theme-defense",
+    type: "theme",
+    title: "방산",
+    code: "THEME",
+    market: "테마",
+    rate: "+1.4%",
+    tags: ["수출", "항공우주", "국방", "정책"],
+    summary: "수출 계약, 지정학 이슈, 정부 예산, 환율이 실적 기대와 함께 움직입니다."
+  },
+  {
+    id: "theme-robot",
+    type: "theme",
+    title: "로봇",
+    code: "THEME",
+    market: "테마",
+    rate: "+1.2%",
+    tags: ["자동화", "협동로봇", "AI", "스마트팩토리"],
+    summary: "제조 자동화와 AI 적용 기대가 커질 때 관심이 모이는 성장 테마입니다."
+  },
+  {
+    id: "theme-shipbuilding",
+    type: "theme",
+    title: "조선",
+    code: "THEME",
+    market: "테마",
+    rate: "+0.7%",
+    tags: ["LNG선", "수주", "해양플랜트", "환율"],
+    summary: "선가, 수주잔고, 원가, 환율이 함께 움직이는 경기민감 산업 테마입니다."
   },
   {
     id: "industry-finance",
@@ -171,7 +221,27 @@ export const SEARCH_THEME_FALLBACKS = [
     code: "IND",
     market: "산업",
     rate: "+0.8%",
-    tags: ["금리", "거래대금", "배당"],
-    summary: "금리, 증시 거래대금, 배당 기대가 함께 움직이는 산업군입니다."
+    tags: ["은행", "증권", "금리", "배당"],
+    summary: "금리, 충당금, 배당, 증시 거래대금이 이익과 밸류에이션에 직접 연결됩니다."
+  },
+  {
+    id: "industry-auto",
+    type: "industry",
+    title: "자동차",
+    code: "IND",
+    market: "산업",
+    rate: "+0.8%",
+    tags: ["완성차", "전기차", "부품", "환율"],
+    summary: "판매량, 인센티브, 환율, 전기차 전환 속도를 함께 보는 대표 수출 산업입니다."
+  },
+  {
+    id: "industry-internet",
+    type: "industry",
+    title: "인터넷/플랫폼",
+    code: "IND",
+    market: "산업",
+    rate: "+0.3%",
+    tags: ["AI", "광고", "커머스", "콘텐츠"],
+    summary: "광고 경기, 커머스 성장, AI 서비스, 규제 이슈를 함께 확인합니다."
   }
 ];

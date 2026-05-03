@@ -232,31 +232,32 @@ export function SummaryDetailPanel({
             </div>
           ) : null}
 
-          <StockResearchPanel
-            copy={COPY}
-            homeCompact={activePage === "home"}
-            currentStock={currentStock}
-            stockInterval={stockInterval}
-            setStockInterval={setStockInterval}
-            stockChart={stockChart}
-            stockEvents={stockEvents}
-            stockChartLoading={stockChartLoading}
-            stockChartError={stockChartError}
-            darkMode={darkMode}
-            dataAsOf={dataAsOf}
-            riskMode={riskMode}
-            setRiskMode={setRiskMode}
-            decisionPanel={decisionPanel}
-            addCurrentStockToPortfolio={addCurrentStockToPortfolio}
-            askChartAi={askChartAi}
-            aiResearchLoading={aiResearchLoading}
-            aiResearchResponse={aiResearchResponse}
-            summary={summary}
-            asArray={asArray}
-            formatNumber={formatNumber}
-            formatRate={formatRate}
-            buildNaverLinks={buildNaverLinks}
-          />
+          {activePage === "home" ? null : (
+            <StockResearchPanel
+              copy={COPY}
+              currentStock={currentStock}
+              stockInterval={stockInterval}
+              setStockInterval={setStockInterval}
+              stockChart={stockChart}
+              stockEvents={stockEvents}
+              stockChartLoading={stockChartLoading}
+              stockChartError={stockChartError}
+              darkMode={darkMode}
+              dataAsOf={dataAsOf}
+              riskMode={riskMode}
+              setRiskMode={setRiskMode}
+              decisionPanel={decisionPanel}
+              addCurrentStockToPortfolio={addCurrentStockToPortfolio}
+              askChartAi={askChartAi}
+              aiResearchLoading={aiResearchLoading}
+              aiResearchResponse={aiResearchResponse}
+              summary={summary}
+              asArray={asArray}
+              formatNumber={formatNumber}
+              formatRate={formatRate}
+              buildNaverLinks={buildNaverLinks}
+            />
+          )}
 
           <div className="notesWrap">
             <h4>{COPY.rankingBasis}</h4>

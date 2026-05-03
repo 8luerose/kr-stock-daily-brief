@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AiInsightPanel, AdminOperationsPanel, BriefHistoryCalendar } from "./AppPanels.jsx";
 import { COPY, PAGE_LABELS } from "./AppConstants.js";
-import { HistoryOverview, LearningPanel, MarketHero, PortfolioPanel } from "./AppSections.jsx";
+import { HistoryOverview, LearningPanel, MarketHero, PortfolioPanel, StockResearchPanel } from "./AppSections.jsx";
 import { SummaryDetailPanel } from "./SummaryDetailPanel.jsx";
 import {
   addMonths,
@@ -818,6 +818,34 @@ export default function App() {
           asArray={asArray}
           formatNumber={formatNumber}
           formatRate={formatRate}
+        />
+      ) : null}
+
+      {activePage === "home" && summary && currentStock ? (
+        <StockResearchPanel
+          copy={COPY}
+          homeCompact
+          currentStock={currentStock}
+          stockInterval={stockInterval}
+          setStockInterval={setStockInterval}
+          stockChart={stockChart}
+          stockEvents={stockEvents}
+          stockChartLoading={stockChartLoading}
+          stockChartError={stockChartError}
+          darkMode={darkMode}
+          dataAsOf={dataAsOf}
+          riskMode={riskMode}
+          setRiskMode={setRiskMode}
+          decisionPanel={decisionPanel}
+          addCurrentStockToPortfolio={addCurrentStockToPortfolio}
+          askChartAi={askChartAi}
+          aiResearchLoading={aiResearchLoading}
+          aiResearchResponse={aiResearchResponse}
+          summary={summary}
+          asArray={asArray}
+          formatNumber={formatNumber}
+          formatRate={formatRate}
+          buildNaverLinks={buildNaverLinks}
         />
       ) : null}
 

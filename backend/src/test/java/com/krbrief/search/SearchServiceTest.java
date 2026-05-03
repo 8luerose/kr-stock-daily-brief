@@ -65,4 +65,36 @@ class SearchServiceTest {
     assertTrue(results.stream().anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("005930")));
     assertTrue(results.stream().anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("000660")));
   }
+
+  @Test
+  void search_coversRepresentativeIndustryThemeAndCompanyQueries() {
+    DailySummaryService summaries = mock(DailySummaryService.class);
+    when(summaries.latest()).thenReturn(Optional.empty());
+    SearchService service = new SearchService(summaries, new LearningTermCatalog());
+
+    assertTrue(service.search("SK하이닉스", 10).stream()
+        .anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("000660")));
+    assertTrue(service.search("현대차", 10).stream()
+        .anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("005380")));
+    assertTrue(service.search("NAVER", 10).stream()
+        .anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("035420")));
+    assertTrue(service.search("네이버", 10).stream()
+        .anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("035420")));
+    assertTrue(service.search("카카오", 10).stream()
+        .anyMatch(item -> item.type().equals("stock") && item.stockCode().equals("035720")));
+    assertTrue(service.search("2차전지", 10).stream()
+        .anyMatch(item -> item.type().equals("theme") && item.title().equals("2차전지")));
+    assertTrue(service.search("금융", 10).stream()
+        .anyMatch(item -> item.type().equals("industry") && item.title().equals("증권/금융")));
+    assertTrue(service.search("바이오", 10).stream()
+        .anyMatch(item -> item.type().equals("theme") && item.title().equals("바이오")));
+    assertTrue(service.search("조선", 10).stream()
+        .anyMatch(item -> item.type().equals("theme") && item.title().equals("조선")));
+    assertTrue(service.search("거래량", 10).stream()
+        .anyMatch(item -> item.type().equals("term") && item.termId().equals("volume")));
+    assertTrue(service.search("PER", 10).stream()
+        .anyMatch(item -> item.type().equals("term") && item.termId().equals("per")));
+    assertTrue(service.search("DART", 10).stream()
+        .anyMatch(item -> item.type().equals("term") && item.termId().equals("dart")));
+  }
 }
