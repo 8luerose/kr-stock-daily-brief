@@ -4,13 +4,13 @@ import { COPY, PAGE_LABELS } from "./AppConstants.js";
 import { HistoryOverview, LearningPanel, MarketHero, PortfolioPanel, StockResearchPanel } from "./AppSections.jsx";
 import { SummaryDetailPanel } from "./SummaryDetailPanel.jsx";
 import { createApiClient, formatApiError } from "./apiClient.js";
+import { useBriefData } from "./hooks/useBriefData.js";
 import { usePortfolio } from "./hooks/usePortfolio.js";
 import { useSearchResults } from "./hooks/useSearchResults.js";
 import { useStockResearch } from "./hooks/useStockResearch.js";
 import {
   addMonths,
   asArray,
-  buildCalendarDays,
   buildDecisionPanel,
   buildEvidenceLinks,
   buildNaverLinks,
@@ -19,7 +19,6 @@ import {
   buildTermCoreSummary,
   buildTermQuestion,
   buildTermScenario,
-  endOfMonth,
   filterMostMentioned,
   formatEffectiveDate,
   formatNumber,
@@ -33,7 +32,6 @@ import {
   pageFromHash,
   pickBriefTerms,
   resolveApiLink,
-  startOfMonth,
   sortTopGainers,
   sortTopLosers,
   stockFromEntry,
@@ -70,26 +68,33 @@ export default function App() {
     }
   }, [darkMode]);
 
-  const [month, setMonth] = useState(() => new Date());
-  const [selected, setSelected] = useState(() => isoDate(new Date()));
-
-  // Current day detail
-  const [summary, setSummary] = useState(null);
-  const [krxArtifact, setKrxArtifact] = useState(null);
-  const [krxArtifactError, setKrxArtifactError] = useState("");
-
-  // Dashboard stats
-  const [stats, setStats] = useState(null);
-  const [insights, setInsights] = useState(null);
-
-  // Month overview (used to mark days with existing summaries)
-  const [monthHasSummary, setMonthHasSummary] = useState(() => new Set());
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [backfillFrom, setBackfillFrom] = useState("2026-02-01");
-  const [backfillTo, setBackfillTo] = useState("2026-02-05");
-  const [backfillResult, setBackfillResult] = useState(null);
+  const {
+    month,
+    setMonth,
+    selected,
+    setSelected,
+    summary,
+    krxArtifact,
+    krxArtifactError,
+    stats,
+    insights,
+    monthHasSummary,
+    loading,
+    error,
+    setError,
+    backfillFrom,
+    setBackfillFrom,
+    backfillTo,
+    setBackfillTo,
+    backfillResult,
+    days,
+    monthLabel,
+    todayStr,
+    generate,
+    archiveSelected,
+    runBackfill,
+    jumpToLatest
+  } = useBriefData({ apiClient, gateEnabled: cfg.gateEnabled, accessKey: k });
   const [learningTerms, setLearningTerms] = useState([]);
   const [learningError, setLearningError] = useState("");
   const [termQuery, setTermQuery] = useState("");
@@ -107,15 +112,6 @@ export default function App() {
   const [aiResearchResponse, setAiResearchResponse] = useState(null);
   const { portfolio, portfolioSummary, addStockToPortfolio, updatePortfolioWeight, removePortfolioItem } = usePortfolio();
 
-  const days = useMemo(() => buildCalendarDays(month), [month]);
-  const monthLabel = useMemo(
-    () =>
-      month.toLocaleString("ko-KR", {
-        year: "numeric",
-        month: "long"
-      }),
-    [month]
-  );
   const categories = useMemo(
     () => Array.from(new Set(learningTerms.map((term) => term.category).filter(Boolean))),
     [learningTerms]
@@ -154,103 +150,6 @@ export default function App() {
     () => buildDecisionPanel(stockChart, stockEvents, riskMode, tradeZones),
     [riskMode, stockChart, stockEvents, tradeZones]
   );
-
-  async function load(dateStr) {
-    setLoading(true);
-    setError("");
-    setKrxArtifact(null);
-    setKrxArtifactError("");
-    try {
-      const s = await apiClient.request(`/api/summaries/${dateStr}`);
-      setSummary(s);
-      setLoading(false);
-
-      try {
-        const artifact = await apiClient.request(`/api/summaries/${dateStr}/verification/krx`);
-        setKrxArtifact(artifact);
-      } catch (artifactErr) {
-        setKrxArtifact(null);
-        setKrxArtifactError(artifactErr.message || String(artifactErr));
-      }
-    } catch (e) {
-      // 404 = no summary yet
-      if (String(e.message).includes("404")) {
-        if (dateStr === isoDate(new Date())) {
-          try {
-            const latest = await apiClient.request("/api/summaries/latest");
-            setSummary(latest);
-            if (latest?.date && latest.date !== dateStr) {
-              setSelected(latest.date);
-              const [y, m, d] = latest.date.split("-").map(Number);
-              setMonth(new Date(y, m - 1, d));
-            }
-            return;
-          } catch {
-            // fall through to the empty state when there is no stored summary.
-          }
-        }
-        setSummary(null);
-      }
-      else setError(e.message || String(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function loadStats() {
-    // If gated and no key, skip stats call.
-    if (cfg.gateEnabled && !k) {
-      setStats(null);
-      return;
-    }
-
-    try {
-      const s = await apiClient.request("/api/summaries/stats");
-      setStats(s);
-    } catch (e) {
-      console.warn("Failed to load stats", e);
-      setStats(null);
-    }
-  }
-
-  async function loadInsights(monthDate) {
-    if (cfg.gateEnabled && !k) {
-      setInsights(null);
-      return;
-    }
-
-    const from = isoDate(startOfMonth(monthDate));
-    const to = isoDate(endOfMonth(monthDate));
-
-    try {
-      const data = await apiClient.request(`/api/summaries/insights?from=${from}&to=${to}`);
-      setInsights(data);
-    } catch (e) {
-      console.warn("Failed to load insights", e);
-      setInsights(null);
-    }
-  }
-
-  async function loadMonthOverview(monthDate) {
-    // If gated and no key, don't spam the API.
-    if (cfg.gateEnabled && !k) {
-      setMonthHasSummary(new Set());
-      return;
-    }
-
-    const from = isoDate(startOfMonth(monthDate));
-    const to = isoDate(endOfMonth(monthDate));
-
-    try {
-      const list = await apiClient.request(`/api/summaries?from=${from}&to=${to}`);
-      const set = new Set(list.map((x) => x.date));
-      setMonthHasSummary(set);
-    } catch (e) {
-      // Month overview is non-critical; show error only if we have nothing else.
-      console.warn("Failed to load month overview", e);
-      setMonthHasSummary(new Set());
-    }
-  }
 
   async function loadLearningTerms() {
     if (cfg.gateEnabled && !k) {
@@ -450,92 +349,6 @@ export default function App() {
     addStockToPortfolio(currentStock);
   }
 
-  async function generate(dateStr) {
-    setLoading(true);
-    setError("");
-    try {
-      const s = await apiClient.request(`/api/summaries/${dateStr}/generate`, { method: "POST" });
-      setSummary(s);
-
-      // Refresh month overview so the dot appears immediately.
-      await loadMonthOverview(month);
-      await loadStats();
-      await loadInsights(month);
-    } catch (e) {
-      setError(formatApiError(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function archiveSelected() {
-    setLoading(true);
-    setError("");
-    try {
-      await apiClient.request(`/api/summaries/${selected}/archive`, { method: "PUT" });
-      setSummary(null);
-      await loadMonthOverview(month);
-      await loadStats();
-      await loadInsights(month);
-    } catch (e) {
-      setError(formatApiError(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function runBackfill() {
-    setLoading(true);
-    setError("");
-    try {
-      const r = await apiClient.request(`/api/summaries/backfill?from=${backfillFrom}&to=${backfillTo}`, {
-        method: "POST"
-      });
-      setBackfillResult(r);
-      await loadMonthOverview(month);
-      await loadStats();
-      await loadInsights(month);
-    } catch (e) {
-      setError(formatApiError(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function jumpToLatest() {
-    setLoading(true);
-    setError("");
-    try {
-      const s = await apiClient.request("/api/summaries/latest");
-      setSummary(s);
-      await loadStats();
-      setSelected(s.date);
-      const [y, m, d] = s.date.split("-").map(Number);
-      setMonth(new Date(y, m - 1, d));
-    } catch (e) {
-      if (String(e.message).includes("404")) setError("아직 생성된 요약이 없습니다.");
-      else setError(e.message || String(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load(selected);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
-
-  useEffect(() => {
-    loadMonthOverview(month);
-    loadInsights(month);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [month]);
-
-  useEffect(() => {
-    loadStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   useEffect(() => {
     loadLearningTerms();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -564,7 +377,6 @@ export default function App() {
     setAiResearchResponse(null);
   }, [currentStock?.code, stockInterval, riskMode]);
 
-  const todayStr = useMemo(() => isoDate(new Date()), []);
   const primaryNavItems = [
     ["home", PAGE_LABELS.home],
     ["research", PAGE_LABELS.research]

@@ -31,11 +31,11 @@ stock AI web platform:
 
 | Perspective | Score | Current judgment |
 |---|---:|---|
-| User | 491/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, and richer trade-zone evidence now pass, but still not Toss-perfect |
-| Frontend developer | 470/500 | Home chart flow, App/CSS split, summary detail, and pure utilities improved; domain hooks and design-system boundary remain |
-| Backend developer | 489/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, and support/resistance/volume-aware trade-zone evidence improved; live RAG depth remains incomplete |
-| DevOps developer | 490/500 | Strong local quality gate, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E coverage, investment-language scan, and reduced smoke-test hang risk |
-| VC / shareholder | 450/500 | AI and chart-first/search-first platform direction plus all-stock, KRX industry, Naver theme search, LLM configuration visibility, and trade-zone evidence are clearer, but live LLM/RAG moat is not fully proven |
+| User | 493/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, and structured AI answers now pass, but still not Toss-perfect |
+| Frontend developer | 487/500 | Home chart flow, App/CSS split, summary detail, pure utilities, API client, and domain hooks improved; assistant/learning state boundaries and final visual polish remain |
+| Backend developer | 492/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, search cache/providers, AI status/RAG fallback contract, structured AI answers, event evidence sources, and support/resistance/volume-aware trade-zone evidence improved; live RAG depth remains incomplete |
+| DevOps developer | 493/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E coverage, investment-language scan, and tracked secret scan |
+| VC / shareholder | 463/500 | AI and chart-first/search-first platform direction plus all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, structured AI answers, and frontend state boundaries are clearer, but live LLM/RAG moat is not fully proven |
 
 ## Work Completed In The Recovery Loop
 
@@ -64,6 +64,8 @@ stock AI web platform:
 - Extracted the summary detail flow into `frontend/src/ui/SummaryDetailPanel.jsx`.
 - Extracted pure formatting, search, date, chart, and decision helper functions into `frontend/src/ui/AppUtils.js`.
 - Reduced `App.jsx` from 2218 lines to 959 lines.
+- Added `frontend/src/ui/apiClient.js` plus search, stock research, portfolio, and brief data hooks.
+- Reduced `App.jsx` again from 845 lines to 657 lines by moving summary/history data loading into `useBriefData`.
 - Split the old single 2861-line `styles.css` into imported modules:
   - `styles/foundation.css`
   - `styles/panels.css`
@@ -157,6 +159,7 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Trade-zone backend API | `GET /api/stocks/{code}/trade-zones` added, documented, smoke-tested, and used by the chart decision panel | Done |
 | Frontend API client split | `frontend/src/ui/apiClient.js` owns authenticated API request/error formatting behavior | Done |
 | Frontend hooks split | `useSearchResults`, `useStockResearch`, and `usePortfolio` move search debounce, stock research loading, and portfolio persistence out of `App.jsx` | Done |
+| Brief data hook split | `useBriefData` moves selected date, month overview, stats, insights, KRX artifact loading, latest, generate, archive, and backfill flows out of `App.jsx` | Done |
 | Chart marker hover evidence | `StockPriceChart` tooltip now shows marker reason, evidence, confidence, and 기준일 when the hovered date has chart events | Done |
 | AI structured answer | `/api/ai/chat` and the AI panel now expose conclusion, evidence, opposing signals, risks, sources, confidence, basis date, and limitations as first-class fields | Done |
 | Event evidence sources | `GET /api/stocks/{code}/events` now returns structured price, finance, news, DART disclosure, and discussion evidence sources while preserving legacy links | Done |
@@ -231,6 +234,10 @@ Additional live Docker API checks:
 - Ops guard loop `.github/workflows/quality.yml`: now runs `make ops-check` before starting the Docker stack
 - Ops guard loop `make quality`: now starts with `ops-check`
 - Ops guard loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- Brief data hook loop `npm run build`: passed
+- Brief data hook loop `npm run test:e2e -- --reporter=line -g "history page|admin direct route"`: `2 passed`
+- Brief data hook loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `13 passed`
+- Brief data hook loop `App.jsx`: reduced from 845 lines to 657 lines; `useBriefData.js` added with 236 lines
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -270,11 +277,11 @@ Latest viewport metrics:
 3. Real LLM/RAG product quality cannot be proven without configured model credentials and live evaluation.
 4. Search now has a KRX stock universe, KRX industry taxonomy, and external Naver theme taxonomy; `/api/ai/status` makes live LLM readiness visible, but current live RAG remains blocked by missing non-committed credentials.
 5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event evidence has source categories, but source-specific causal scoring is still shallow.
-6. More frontend decomposition is still warranted, especially history/summary state hooks and final visual-system polish.
+6. More frontend decomposition is still warranted, especially assistant/learning state hooks and final visual-system polish.
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, and this ops guard commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, and this brief data hook commit.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
@@ -283,7 +290,7 @@ Latest viewport metrics:
 Continue with these in order:
 
 1. Add live LLM verification using configured `LLM_MODEL` and a non-committed API key.
-2. If live credentials are not available, split history and summary state flows into smaller domain hooks/API clients.
-3. Add source-specific causal scoring for news/disclosure/event evidence instead of only linking source categories.
-4. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
+2. If live credentials are not available, add source-specific causal scoring for news/disclosure/event evidence instead of only linking source categories.
+3. Continue visual polish on mobile/desktop spacing, motion, and data hierarchy.
+4. Split assistant/learning state flows into smaller hooks/API clients.
 5. Run another mobile and desktop visual audit before any completion claim.

@@ -41,19 +41,19 @@
 - [ ] 실제 LLM 연동을 검증한다.
 - [ ] 실제 RAG retrieval과 source-grounded answer를 검증한다.
 - [x] 차트 이벤트 원인 분석을 제공한다.
-- [ ] 일봉 차트를 제공한다.
-- [ ] 주봉 차트를 제공한다.
-- [ ] 월봉 차트를 제공한다.
+- [x] 일봉 차트를 제공한다.
+- [x] 주봉 차트를 제공한다.
+- [x] 월봉 차트를 제공한다.
 - [x] 차트가 빈 화면처럼 보이지 않게 한다.
 - [x] 마커 hover에 이유를 표시한다.
 - [x] 마커 hover에 근거를 표시한다.
 - [x] 마커 hover에 신뢰도를 표시한다.
 - [x] 마커 hover에 기준일을 표시한다.
-- [ ] 매수 검토 구간을 표시한다.
-- [ ] 분할매수 검토 구간을 표시한다.
-- [ ] 관망 구간을 표시한다.
-- [ ] 매도 검토 구간을 표시한다.
-- [ ] 리스크 관리 구간을 표시한다.
+- [x] 매수 검토 구간을 표시한다.
+- [x] 분할매수 검토 구간을 표시한다.
+- [x] 관망 구간을 표시한다.
+- [x] 매도 검토 구간을 표시한다.
+- [x] 리스크 관리 구간을 표시한다.
 - [x] AI 답변에 결론을 포함한다.
 - [x] AI 답변에 근거를 포함한다.
 - [x] AI 답변에 반대 신호를 포함한다.
@@ -67,25 +67,25 @@
 - [ ] 기존 기능 100% 무회귀를 확인한다.
 - [x] Docker/health/API smoke를 유지한다.
 - [x] CI/CD 또는 운영 배포 안정성 체크를 강화한다.
-- [ ] 투자자문 리스크 방지 문구와 검토를 유지한다.
+- [x] 투자자문 리스크 방지 문구와 검토를 유지한다.
 - [ ] 실사용자 만족도 수준 UX를 목표로 검증한다.
 - [ ] 유지보수성, 재사용성, 가독성을 계속 개선한다.
 
 ## 2. 반드시 보존할 기존 기능
 
-- [ ] 최신 브리프 조회 보존
-- [ ] 날짜별 브리프 조회 보존
-- [ ] 브리프 히스토리 보존
-- [ ] 달력 UI/달력 조회 보존
-- [ ] 요약 생성 기능 보존
-- [ ] 과거 백필 기능 보존
-- [ ] 보관/soft delete 기능 보존
+- [x] 최신 브리프 조회 보존
+- [x] 날짜별 브리프 조회 보존
+- [x] 브리프 히스토리 보존
+- [x] 달력 UI/달력 조회 보존
+- [x] 요약 생성 기능 보존
+- [x] 과거 백필 기능 보존
+- [x] 보관/soft delete 기능 보존
 - [ ] 검증 상세 보존
 - [ ] 수집 노트 보존
 - [ ] 용어 학습 보존
-- [ ] AI 질문 보존
-- [ ] 종목 검색 보존
-- [ ] 차트 보존
+- [x] AI 질문 보존
+- [x] 종목 검색 보존
+- [x] 차트 보존
 - [ ] 일봉 전환 보존
 - [ ] 주봉 전환 보존
 - [ ] 월봉 전환 보존
@@ -94,9 +94,9 @@
 - [ ] Docker Compose 실행 보존
 - [x] health check 보존
 - [x] API smoke 보존
-- [ ] 관리자 기능은 삭제하지 않고 일반 사용자와 분리
+- [x] 관리자 기능은 삭제하지 않고 일반 사용자와 분리
 - [x] `.env`, `.env.*`, secret, key, password, webhook은 commit 금지
-- [ ] 기존 사용자 변경은 되돌리지 않음
+- [x] 기존 사용자 변경은 되돌리지 않음
 
 ## 3. `GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md` 요구사항
 
@@ -794,6 +794,7 @@
 - [ ] live LLM key/model 환경에서 `rag_llm` 실동작 검증은 아직 미완료
 - [x] trade zone은 최근 지지/저항/20일 평균/거래량 강도 기반 evidence로 1차 고도화
 - [x] frontend API 호출, 검색 debounce, 종목 리서치 로딩, 포트폴리오 저장을 API client/hooks로 분리
+- [x] summary/history 날짜 상태, 월간 overview, stats, insights, generate/archive/backfill/latest 이동을 `useBriefData` hook으로 분리
 - [x] AI chat 응답에 structured 결론/근거/반대 신호/리스크/출처/신뢰도/기준일/한계 계약 추가
 - [ ] Toss-perfect 시각 품질은 아직 객관적 달성 아님
 
@@ -862,6 +863,10 @@
 - [x] Ops guard 루프 `.github/workflows/quality.yml`: push/PR에서 `make ops-check` 실행하도록 강화
 - [x] Ops guard 루프 `make quality`: `ops-check`를 첫 단계로 포함
 - [x] Ops guard 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
+- [x] Brief data hook 루프 `npm run build`: 통과
+- [x] Brief data hook 루프 `App.jsx`: 845줄 -> 657줄, `useBriefData.js` 236줄 신규 분리
+- [x] Brief data hook 루프 targeted Playwright `history page|admin direct route`: `2 passed`
+- [x] Brief data hook 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 
 ### 9.3 최신 viewport 계측
 
@@ -898,15 +903,15 @@
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
 | 사용자 | 493/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
-| 프론트 개발자 | 484/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오 hooks, 마커 tooltip/AI structured/event source E2E 강화 | assistant/history/summary 상태 훅 분리와 최종 visual polish 미완 |
+| 프론트 개발자 | 487/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, 마커 tooltip/AI structured/event source E2E 강화 | assistant/learning 상태 분리와 최종 visual polish 미완 |
 | 백엔드 개발자 | 492/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, 이벤트 source contract 연결 | live RAG 검증 부족 |
 | DevOps 개발자 | 493/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
-| VC/투자자 | 462/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source, AI 답변 구조화 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 463/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 ops guard 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. 다음 구현 루프는 live LLM/RAG 검증을 우선하되, secret이 없으면 assistant/history/summary 상태 훅 분리를 진행한다.
+1. 이번 brief data hook 루프 변경분을 의미 있는 단위로 commit/push한다.
+2. live LLM/RAG 검증을 우선하되, secret이 없으면 source-specific causal scoring을 진행한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. LearningTerm schema를 목표 문서의 `coreSummary/longExplanation/chartUsage/commonMisunderstanding/scenario` 구조로 확장한다.
-5. App state/API 호출을 hooks와 API client로 더 분리한다.
+5. assistant/learning 상태와 API 호출을 hooks/API client로 더 분리한다.
