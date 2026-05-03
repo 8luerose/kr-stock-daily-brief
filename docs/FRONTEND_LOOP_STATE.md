@@ -797,6 +797,8 @@
 - [x] 이벤트 원인 후보를 `price_history`, `news`, `disclosure`, `discussion` 출처별 causal score로 분리
 - [x] frontend API 호출, 검색 debounce, 종목 리서치 로딩, 포트폴리오 저장을 API client/hooks로 분리
 - [x] summary/history 날짜 상태, 월간 overview, stats, insights, generate/archive/backfill/latest 이동을 `useBriefData` hook으로 분리
+- [x] learning term 로딩/필터/선택 상태를 `useLearningTerms` hook으로 분리
+- [x] market AI, learning assistant, chart AI 요청/응답 상태를 `useAssistantFlows` hook으로 분리
 - [x] AI chat 응답에 structured 결론/근거/반대 신호/리스크/출처/신뢰도/기준일/한계 계약 추가
 - [ ] Toss-perfect 시각 품질은 아직 객관적 달성 아님
 
@@ -907,6 +909,13 @@
 - [x] LearningTerm schema 루프 Docker 기준 `POST /api/learning/assistant`: `matchedTerms[0].coreSummary/chartUsage/scenario`, 답변 내 `차트에서 보는 법`, `시나리오 예시` 확인
 - [x] LearningTerm schema 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 - [x] LearningTerm schema 루프 스크린샷: `/tmp/krbrief-screens/learning-term-expanded-schema-1440.png`
+- [x] Assistant/Learning hook split 루프 `frontend npm ci --include=dev`: 통과, 취약점 0개
+- [x] Assistant/Learning hook split 루프 `frontend npm run build`: 통과
+- [x] Assistant/Learning hook split 루프 `App.jsx`: 657줄 -> 511줄, `useAssistantFlows.js` 196줄, `useLearningTerms.js` 77줄로 분리
+- [x] Assistant/Learning hook split 루프 `make health`: 통과
+- [x] Assistant/Learning hook split 루프 1차 `make quality`: Docker rebuild, health, investment scan, API smoke까지 통과 후 로컬 `playwright-core/lib/bootstrap.js` 누락으로 E2E 전 실패
+- [x] Assistant/Learning hook split 루프 로컬 Playwright 캐시 복구: `npm cache clean --force && rm -rf node_modules && npm ci --include=dev`, `playwright-core/lib/bootstrap.js` 확인
+- [x] Assistant/Learning hook split 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `13 passed`
 
 ### 9.3 최신 viewport 계측
 
@@ -949,15 +958,15 @@
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
 | 사용자 | 494/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시 검증 | Toss급 최종 polish, live AI 체감 부족 |
-| 프론트 개발자 | 490/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI 강화 | assistant/learning 상태 hook 분리와 최종 visual polish 미완 |
+| 프론트 개발자 | 492/500 | 홈 차트 구조 개선, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, assistant/learning hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI 강화 | 최종 visual polish, 화면별 더 작은 컴포넌트 경계, live LLM/RAG UX 검증 미완 |
 | 백엔드 개발자 | 494/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, AI status/RAG fallback structured contract, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | live RAG 검증 부족, causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
 | DevOps 개발자 | 493/500 | make quality, Docker health, API smoke, E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
-| VC/투자자 | 472/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM/RAG moat와 product polish 증거 부족 |
+| VC/투자자 | 473/500 | AI/RAG 구조, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 실제 LLM/RAG moat와 product polish 증거 부족 |
 
 ## 11. 다음 루프 계획
 
-1. 이번 LearningTerm schema 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. live LLM/RAG 검증을 우선하되, secret이 없으면 assistant/learning 상태와 API 호출을 hooks/API client로 더 분리한다.
+1. 이번 Assistant/Learning hook split 루프 변경분을 의미 있는 단위로 commit/push한다.
+2. live LLM/RAG 검증을 우선하되, secret이 없으면 더 강한 source-grounded answer 품질을 검증 가능한 규칙/테스트로 보강한다.
 3. chart marker hover의 뉴스/공시 원문 근거 연결을 더 고도화한다.
 4. LearningTerm `relatedQuestions` 요구사항을 `exampleQuestions`와 통합할지 별도 필드로 둘지 결정한다.
 5. final visual polish와 원격 CI/배포 증거를 보강한다.

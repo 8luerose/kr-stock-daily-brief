@@ -3,8 +3,10 @@ import { AiInsightPanel, AdminOperationsPanel, BriefHistoryCalendar } from "./Ap
 import { COPY, PAGE_LABELS } from "./AppConstants.js";
 import { HistoryOverview, LearningPanel, MarketHero, PortfolioPanel, StockResearchPanel } from "./AppSections.jsx";
 import { SummaryDetailPanel } from "./SummaryDetailPanel.jsx";
-import { createApiClient, formatApiError } from "./apiClient.js";
+import { createApiClient } from "./apiClient.js";
 import { useBriefData } from "./hooks/useBriefData.js";
+import { useAssistantFlows } from "./hooks/useAssistantFlows.js";
+import { useLearningTerms } from "./hooks/useLearningTerms.js";
 import { usePortfolio } from "./hooks/usePortfolio.js";
 import { useSearchResults } from "./hooks/useSearchResults.js";
 import { useStockResearch } from "./hooks/useStockResearch.js";
@@ -17,7 +19,6 @@ import {
   buildSearchItems,
   buildStockPicks,
   buildTermCoreSummary,
-  buildTermQuestion,
   buildTermScenario,
   filterMostMentioned,
   formatEffectiveDate,
@@ -30,13 +31,11 @@ import {
   getMarketHeadline,
   isoDate,
   pageFromHash,
-  pickBriefTerms,
   resolveApiLink,
   sortTopGainers,
   sortTopLosers,
   stockFromEntry,
   stockRouteHash,
-  termMatches,
   valueOrDash
 } from "./AppUtils.js";
 
@@ -95,36 +94,30 @@ export default function App() {
     runBackfill,
     jumpToLatest
   } = useBriefData({ apiClient, gateEnabled: cfg.gateEnabled, accessKey: k });
-  const [learningTerms, setLearningTerms] = useState([]);
-  const [learningError, setLearningError] = useState("");
-  const [termQuery, setTermQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedTermId, setSelectedTermId] = useState("");
+  const {
+    learningTerms,
+    learningError,
+    termQuery,
+    setTermQuery,
+    selectedCategory,
+    setSelectedCategory,
+    categories,
+    visibleTerms,
+    selectedTerm,
+    selectTerm: selectLearningTerm,
+    briefTerms
+  } = useLearningTerms({
+    apiClient,
+    enabled: !(cfg.gateEnabled && !k),
+    loadFailedMessage: COPY.learningLoadFailed
+  });
   const [searchQuery, setSearchQuery] = useState("");
-  const [assistantQuestion, setAssistantQuestion] = useState("");
-  const [assistantResponse, setAssistantResponse] = useState(null);
-  const [assistantLoading, setAssistantLoading] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
   const [stockInterval, setStockInterval] = useState("daily");
   const [riskMode, setRiskMode] = useState("neutral");
-  const [aiResearchLoading, setAiResearchLoading] = useState(false);
-  const [aiResearchResponse, setAiResearchResponse] = useState(null);
   const { portfolio, portfolioSummary, addStockToPortfolio, updatePortfolioWeight, removePortfolioItem } = usePortfolio();
 
-  const categories = useMemo(
-    () => Array.from(new Set(learningTerms.map((term) => term.category).filter(Boolean))),
-    [learningTerms]
-  );
-  const visibleTerms = useMemo(
-    () => learningTerms.filter((term) => termMatches(term, termQuery, selectedCategory)).slice(0, 80),
-    [learningTerms, termQuery, selectedCategory]
-  );
-  const selectedTerm = useMemo(
-    () => visibleTerms.find((term) => term.id === selectedTermId) || visibleTerms[0] || learningTerms.find((term) => term.id === selectedTermId) || learningTerms[0] || null,
-    [learningTerms, selectedTermId, visibleTerms]
-  );
-  const briefTerms = useMemo(() => pickBriefTerms(learningTerms), [learningTerms]);
   const stockPicks = useMemo(() => buildStockPicks(summary), [summary]);
   const searchItems = useMemo(() => buildSearchItems(summary, learningTerms), [learningTerms, summary]);
   const { searchResults, searchLoading } = useSearchResults({
@@ -150,32 +143,39 @@ export default function App() {
     () => buildDecisionPanel(stockChart, stockEvents, riskMode, tradeZones),
     [riskMode, stockChart, stockEvents, tradeZones]
   );
-
-  async function loadLearningTerms() {
-    if (cfg.gateEnabled && !k) {
-      setLearningTerms([]);
-      return;
-    }
-
-    setLearningError("");
-    try {
-      const data = await apiClient.request("/api/learning/terms?limit=80");
-      setLearningTerms(data);
-      if (!selectedTermId && data.length > 0) {
-        setSelectedTermId(data[0].id);
-        setAssistantQuestion(buildTermQuestion(data[0]));
-      }
-    } catch (e) {
-      console.warn("Failed to load learning terms", e);
-      setLearningTerms([]);
-      setLearningError(COPY.learningLoadFailed);
-    }
-  }
+  const {
+    assistantQuestion,
+    setAssistantQuestion,
+    assistantResponse,
+    assistantLoading,
+    askAssistant,
+    askMarketAssistant,
+    askLearningAssistant,
+    primeLearningAssistant,
+    aiResearchLoading,
+    aiResearchResponse,
+    askChartAi
+  } = useAssistantFlows({
+    apiClient,
+    activePage,
+    selected,
+    summary,
+    briefTerms,
+    selectedTerm,
+    currentStock,
+    stockInterval,
+    stockChart,
+    stockEvents,
+    tradeZones,
+    dataAsOf,
+    riskMode,
+    setError
+  });
 
   function selectTerm(term) {
-    setSelectedTermId(term.id);
-    setAssistantQuestion(buildTermQuestion(term));
-    setAssistantResponse(null);
+    if (!term) return;
+    selectLearningTerm(term);
+    primeLearningAssistant(term);
   }
 
   function selectStock(stock) {
@@ -188,70 +188,6 @@ export default function App() {
     window.setTimeout(() => {
       document.getElementById("stock-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
-  }
-
-  async function askMarketAssistant(questionOverride, itemOverride) {
-    const question = (questionOverride || assistantQuestion || "오늘 시장을 초보자 관점으로 설명해줘").trim();
-    if (!question) return;
-
-    setAssistantLoading(true);
-    setAssistantResponse(null);
-    setError("");
-    try {
-      const data = await apiClient.request("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          contextDate: selected,
-          topicType: itemOverride?.type || "market",
-          topicTitle: itemOverride?.title || "오늘 시장",
-          searchResult: itemOverride
-            ? {
-                type: itemOverride.type,
-                title: itemOverride.title,
-                code: itemOverride.code,
-                market: itemOverride.market,
-                tags: asArray(itemOverride.tags),
-                summary: itemOverride.summary,
-                source: itemOverride.source
-              }
-            : null,
-          summary: summary
-            ? {
-                date: summary.date,
-                topGainer: summary.topGainer,
-                topLoser: summary.topLoser,
-                mostMentioned: summary.mostMentioned
-              }
-            : null,
-          terms: briefTerms
-        })
-      });
-      setAssistantQuestion(question);
-      setAssistantResponse(data);
-    } catch (e) {
-      setAssistantQuestion(question);
-      setAssistantResponse({
-        answer: formatApiError(e),
-        confidence: "low",
-        sources: [],
-        limitations: ["AI 서비스 응답을 받지 못했습니다."]
-      });
-    } finally {
-      setAssistantLoading(false);
-      window.setTimeout(() => {
-        document.querySelector(".heroAssistant")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 0);
-    }
-  }
-
-  function askAssistant() {
-    if (activePage === "home") {
-      askMarketAssistant();
-      return;
-    }
-    askLearningAssistant();
   }
 
   async function selectSearchResult(item) {
@@ -272,87 +208,9 @@ export default function App() {
     await askMarketAssistant(`${item.title}이(가) 오늘 시장에서 왜 중요한지 초보자 관점으로 설명해줘`, item);
   }
 
-  async function askLearningAssistant(questionOverride, termIdOverride) {
-    const question = (questionOverride || assistantQuestion || buildTermQuestion(selectedTerm)).trim();
-    if (!question) return;
-
-    setAssistantLoading(true);
-    setError("");
-    try {
-      const data = await apiClient.request("/api/learning/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          contextDate: selected,
-          termId: termIdOverride || selectedTerm?.id || ""
-        })
-      });
-      setAssistantQuestion(question);
-      setAssistantResponse(data);
-    } catch (e) {
-      setError(formatApiError(e));
-    } finally {
-      setAssistantLoading(false);
-    }
-  }
-
-  async function askChartAi() {
-    if (!currentStock?.code) return;
-    setAiResearchLoading(true);
-    setAiResearchResponse(null);
-    try {
-      const data = await apiClient.request("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: `${currentStock.name} 차트와 이벤트를 초보자 관점으로 설명해줘`,
-          contextDate: stockChart?.asOf || dataAsOf,
-          stockCode: currentStock.code,
-          stockName: currentStock.name,
-          focus: riskMode,
-          summary: summary
-            ? {
-                date: summary.date,
-                topGainer: summary.topGainer,
-                topLoser: summary.topLoser,
-                mostMentioned: summary.mostMentioned
-              }
-            : null,
-          chart: stockChart
-            ? {
-                interval: stockChart.interval,
-                range: stockChart.range,
-                asOf: stockChart.asOf,
-                latest: asArray(stockChart.data).at(-1),
-                tradeZones
-              }
-            : null,
-          events: asArray(stockEvents?.events).slice(0, 8),
-          terms: briefTerms
-        })
-      });
-      setAiResearchResponse(data);
-    } catch (e) {
-      setAiResearchResponse({
-        answer: formatApiError(e),
-        confidence: "low",
-        sources: [],
-        limitations: ["AI 서비스 응답을 받지 못했습니다."]
-      });
-    } finally {
-      setAiResearchLoading(false);
-    }
-  }
-
   function addCurrentStockToPortfolio() {
     addStockToPortfolio(currentStock);
   }
-
-  useEffect(() => {
-    loadLearningTerms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (stockPicks.length === 0) {
@@ -372,10 +230,6 @@ export default function App() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
-
-  useEffect(() => {
-    setAiResearchResponse(null);
-  }, [currentStock?.code, stockInterval, riskMode]);
 
   const primaryNavItems = [
     ["home", PAGE_LABELS.home],
