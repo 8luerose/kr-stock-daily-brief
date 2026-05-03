@@ -203,6 +203,7 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 - `make down`: stop services
 - `make logs`: tail logs
 - `make quality`: backend tests + frontend build/audit + investment-language safety check + API smoke + Playwright E2E
+- `make frontend-quality`: install frontend dev dependencies, build, audit, and run Playwright E2E
 - `make qa`: API smoke + public-key gate QA + investment-language safety check
 - `make generate-today`: generate today summary (Asia/Seoul date)
 - `make latest`: get latest saved summary
