@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { CandlestickSeries, HistogramSeries, LineSeries, createChart, createSeriesMarkers } from "lightweight-charts";
 
 function asArray(value) {
@@ -36,10 +36,11 @@ function causalScoreMeta(score) {
   return [factors ? `요인 ${factors}` : "", evidenceLabel ? `근거 수준 ${evidenceLabel}` : ""].filter(Boolean).join(" · ");
 }
 
-function markerText(event) {
-  if (event.type === "price_drop") return "급락";
-  if (event.type === "volume_spike") return "거래";
-  return "급등";
+function markerText(event, compact = false) {
+  if (compact) return "";
+  if (event.type === "price_drop") return "AI 급락";
+  if (event.type === "volume_spike") return "AI 거래";
+  return "AI 급등";
 }
 
 function appendLine(parent, text, className = "") {
@@ -60,9 +61,92 @@ function calculateMa(data, period) {
     .filter(Boolean);
 }
 
-export default function StockPriceChart({ chart, events, darkMode }) {
+function calculateIndicators(data) {
+  const rows = asArray(data);
+  let obv = 0;
+  let avgGain = 0;
+  let avgLoss = 0;
+  let ema12 = null;
+  let ema26 = null;
+  let signal = null;
+  const out = [];
+
+  rows.forEach((row, index) => {
+    const close = Number(row.close || 0);
+    const prevClose = Number(rows[index - 1]?.close || close);
+    const change = close - prevClose;
+    obv += change > 0 ? Number(row.volume || 0) : change < 0 ? -Number(row.volume || 0) : 0;
+
+    const gain = Math.max(change, 0);
+    const loss = Math.max(-change, 0);
+    if (index === 1) {
+      avgGain = gain;
+      avgLoss = loss;
+    } else if (index > 1) {
+      avgGain = (avgGain * 13 + gain) / 14;
+      avgLoss = (avgLoss * 13 + loss) / 14;
+    }
+    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    const rsi = index < 14 ? null : 100 - 100 / (1 + rs);
+
+    ema12 = ema12 === null ? close : close * (2 / 13) + ema12 * (1 - 2 / 13);
+    ema26 = ema26 === null ? close : close * (2 / 27) + ema26 * (1 - 2 / 27);
+    const macd = ema12 - ema26;
+    signal = signal === null ? macd : macd * (2 / 10) + signal * (1 - 2 / 10);
+
+    out.push({
+      time: row.date,
+      obv,
+      rsi: rsi === null ? null : Number(rsi.toFixed(1)),
+      macd: Number(macd.toFixed(2)),
+      signal: Number((signal || 0).toFixed(2))
+    });
+  });
+  return out;
+}
+
+function latestIndicatorSummary(indicators) {
+  const latest = indicators.at(-1);
+  if (!latest) return [];
+  const rsiState = latest.rsi === null
+    ? "RSI 대기"
+    : latest.rsi >= 70
+      ? "RSI 과열"
+      : latest.rsi <= 30
+        ? "RSI 침체"
+        : "RSI 중립";
+  const macdState = latest.macd >= latest.signal ? "MACD 상향" : "MACD 둔화";
+  const obvState = latest.obv >= 0 ? "OBV 매수 우위" : "OBV 매도 우위";
+  return [
+    { label: "OBV", value: obvState },
+    { label: "RSI", value: `${latest.rsi ?? "-"} · ${rsiState}` },
+    { label: "MACD", value: `${latest.macd} / ${latest.signal} · ${macdState}` }
+  ];
+}
+
+function zoneColor(type) {
+  if (type === "buy_review") return "#10b981";
+  if (type === "split_buy") return "#14b8a6";
+  if (type === "watch") return "#3182f6";
+  if (type === "sell_review") return "#f59e0b";
+  if (type === "risk_management") return "#ef4444";
+  return "#9ca3af";
+}
+
+function zoneShortLabel(zone) {
+  if (zone.type === "buy_review") return "매수 검토";
+  if (zone.type === "split_buy") return "분할매수";
+  if (zone.type === "watch") return "관망";
+  if (zone.type === "sell_review") return "매도 검토";
+  if (zone.type === "risk_management") return "리스크";
+  return zone.label || "구간";
+}
+
+export default function StockPriceChart({ chart, events, tradeZones, decisionPanel, darkMode }) {
   const containerRef = useRef(null);
   const tooltipRef = useRef(null);
+  const indicators = useMemo(() => calculateIndicators(chart?.data), [chart?.data]);
+  const indicatorSummary = latestIndicatorSummary(indicators);
 
   useEffect(() => {
     if (!containerRef.current || !chart || asArray(chart.data).length === 0) return undefined;
@@ -71,14 +155,24 @@ export default function StockPriceChart({ chart, events, darkMode }) {
     const textColor = rootStyle.getPropertyValue("--text-secondary").trim() || "#4b5563";
     const lineColor = rootStyle.getPropertyValue("--line").trim() || "#e5e7eb";
     const bgColor = rootStyle.getPropertyValue("--bg").trim() || "#f9fafb";
+    const initialWidth = Math.max(320, containerRef.current.clientWidth || 720);
+    const initialHeight = Math.max(300, containerRef.current.clientHeight || 360);
     const instance = createChart(containerRef.current, {
-      autoSize: true,
-      height: 360,
+      width: initialWidth,
+      height: initialHeight,
       layout: { background: { color: bgColor }, textColor },
       grid: { vertLines: { color: lineColor }, horzLines: { color: lineColor } },
       rightPriceScale: { borderColor: lineColor },
       timeScale: { borderColor: lineColor, timeVisible: false }
     });
+    const resizeChart = () => {
+      if (!containerRef.current) return;
+      instance.applyOptions({
+        width: Math.max(320, containerRef.current.clientWidth || initialWidth),
+        height: Math.max(300, containerRef.current.clientHeight || initialHeight)
+      });
+    };
+    window.addEventListener("resize", resizeChart);
 
     const candleData = asArray(chart.data).map((row) => ({
       time: row.date,
@@ -89,6 +183,7 @@ export default function StockPriceChart({ chart, events, darkMode }) {
       volume: Number(row.volume || 0)
     }));
     const candleByTime = new Map(candleData.map((row) => [row.time, row]));
+    const indicatorByTime = new Map(indicators.map((row) => [row.time, row]));
     const eventsByTime = new Map();
     asArray(events?.events).forEach((event) => {
       if (!event?.date) return;
@@ -120,21 +215,17 @@ export default function StockPriceChart({ chart, events, darkMode }) {
         axisLabelVisible: true,
         title: "현재가"
       });
-      candles.createPriceLine({
-        price: latest.close * 1.05,
-        color: "#f59e0b",
-        lineWidth: 1,
-        lineStyle: 1,
-        axisLabelVisible: false,
-        title: "매도 검토"
-      });
-      candles.createPriceLine({
-        price: latest.close * 0.97,
-        color: "#10b981",
-        lineWidth: 1,
-        lineStyle: 1,
-        axisLabelVisible: false,
-        title: "분할매수 검토"
+      asArray(tradeZones?.zones).forEach((zone) => {
+        const price = Number(zone.toPrice || zone.fromPrice || 0);
+        if (!Number.isFinite(price) || price <= 0) return;
+        candles.createPriceLine({
+          price,
+          color: zoneColor(zone.type),
+          lineWidth: 1,
+          lineStyle: zone.type === "watch" ? 2 : 1,
+          axisLabelVisible: false,
+          title: zoneShortLabel(zone)
+        });
       });
     }
     if (Number.isFinite(recentLow)) {
@@ -166,14 +257,16 @@ export default function StockPriceChart({ chart, events, darkMode }) {
       }))
     );
 
+    const compactMarkers = containerRef.current.clientWidth < 560;
+    const markerLimit = compactMarkers ? 4 : 10;
     createSeriesMarkers(
       candles,
-      asArray(events?.events).slice(0, 30).map((event) => ({
+      asArray(events?.events).slice(-markerLimit).map((event) => ({
         time: event.date,
         position: event.type === "price_drop" ? "belowBar" : "aboveBar",
         color: event.severity === "high" ? "#ef4444" : event.severity === "medium" ? "#f59e0b" : "#3182f6",
         shape: event.type === "price_drop" ? "arrowDown" : "arrowUp",
-        text: markerText(event)
+        text: markerText(event, compactMarkers)
       }))
     );
 
@@ -199,6 +292,10 @@ export default function StockPriceChart({ chart, events, darkMode }) {
       appendLine(lines, `시가 ${formatNumber(row.open)} · 고가 ${formatNumber(row.high)}`);
       appendLine(lines, `저가 ${formatNumber(row.low)} · 종가 ${formatNumber(row.close)}`);
       appendLine(lines, `거래량 ${formatNumber(row.volume)}`);
+      const indicator = indicatorByTime.get(row.time);
+      if (indicator) {
+        appendLine(lines, `관련 지표: OBV ${formatNumber(indicator.obv)} · RSI ${indicator.rsi ?? "-"} · MACD ${indicator.macd}/${indicator.signal}`, "tooltipEventText");
+      }
 
       const dayEvents = asArray(eventsByTime.get(row.time));
       if (dayEvents.length > 0) {
@@ -231,6 +328,9 @@ export default function StockPriceChart({ chart, events, darkMode }) {
               if (meta) appendLine(lines, meta, "tooltipEventText");
             }
           }
+          appendLine(lines, `반대 신호: ${decisionPanel?.opposite || "가격과 거래량 방향이 엇갈리면 신뢰도를 낮춥니다."}`, "tooltipEventText");
+          appendLine(lines, `리스크: 전저점 이탈, 거래량 급증, 공시 근거 부족 여부를 확인`, "tooltipEventText");
+          appendLine(lines, "관련 용어: 거래량 · 이동평균선 · RSI · MACD", "tooltipEventText");
         });
       }
 
@@ -245,19 +345,29 @@ export default function StockPriceChart({ chart, events, darkMode }) {
     instance.subscribeCrosshairMove(handleCrosshairMove);
     instance.timeScale().fitContent();
     return () => {
+      window.removeEventListener("resize", resizeChart);
       instance.unsubscribeCrosshairMove(handleCrosshairMove);
       instance.remove();
     };
-  }, [chart, events, darkMode]);
+  }, [chart, events, tradeZones, decisionPanel, darkMode, indicators]);
 
   return (
     <div className="realChartWrap">
       <div className="chartZoneLegend" aria-hidden="true">
-        <span className="legendBuy">분할매수 검토</span>
+        <span className="legendBuy">매수/분할매수</span>
+        <span className="legendWatch">관망</span>
         <span className="legendSell">매도 검토</span>
         <span className="legendRisk">리스크 기준</span>
       </div>
       <div ref={containerRef} className="realChart" role="img" aria-label={`${chart?.name || "종목"} 캔들 차트`} />
+      <div className="indicatorStrip" aria-label="차트 보조지표">
+        {indicatorSummary.map((item) => (
+          <span key={item.label}>
+            <strong>{item.label}</strong>
+            {item.value}
+          </span>
+        ))}
+      </div>
       <div ref={tooltipRef} className="chartTooltip" aria-hidden="true" />
     </div>
   );

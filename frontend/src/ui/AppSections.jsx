@@ -47,6 +47,7 @@ export function MarketHero({
   searchLoading,
   searchResults,
   selectSearchResult,
+  askMarketAssistant,
   stockPicks,
   currentStock,
   selectStock,
@@ -59,6 +60,10 @@ export function MarketHero({
     { name: copy.topLoser, group: "하락", rate: 0 },
     { name: copy.mostMentioned, group: "관심", count: 0 }
   ];
+  const quickTerms = ["등락률", "거래량", "손절"];
+  const emptySuggestions = stockPicks.length > 0
+    ? stockPicks.slice(0, 3).map((stock) => stock.name)
+    : ["반도체", "거래량", "DART"];
 
   return (
     <section className="marketHero">
@@ -88,7 +93,31 @@ export function MarketHero({
             <div className="searchResults" aria-live="polite">
               {searchLoading ? <div className="searchEmpty">{copy.loading}</div> : null}
               {!searchLoading && searchResults.length === 0 ? (
-                <div className="searchEmpty">{copy.searchEmpty}</div>
+                <div className="searchEmpty">
+                  <p>{copy.searchEmpty}</p>
+                  <div className="searchSuggestionRow" aria-label="추천 검색어">
+                    {emptySuggestions.map((keyword) => (
+                      <button type="button" key={keyword} onClick={() => setSearchQuery(keyword)}>
+                        {keyword}
+                      </button>
+                    ))}
+                    {searchQuery.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => askMarketAssistant?.(`${searchQuery.trim()}을 초보자 관점에서 설명해줘`, {
+                          id: `empty-${searchQuery.trim()}`,
+                          type: "search-empty",
+                          title: searchQuery.trim(),
+                          market: "검색",
+                          summary: "검색 결과가 없어서 AI가 시장/용어 맥락으로 설명합니다.",
+                          tags: [searchQuery.trim()]
+                        })}
+                      >
+                        AI에게 질문
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
               {searchResults.length > 0 ? (
                 searchResults.map((item) => (
@@ -98,11 +127,21 @@ export function MarketHero({
                     <p>{item.summary}</p>
                     <em>{item.rate}</em>
                     <span className="searchTags">{asArray(item.tags).slice(0, 3).join(" · ")}</span>
+                    <span className="searchActions">
+                      {item.type === "stock" ? "차트 보기 · AI 설명 · 초보자 한 줄" : item.type === "term" ? "용어 학습 · AI 질문" : "테마 해석 · AI 질문"}
+                    </span>
                   </button>
                 ))
               ) : null}
             </div>
           ) : null}
+        </div>
+        <div className="heroLearningEntrypoints" aria-label="학습 바로가기">
+          {quickTerms.map((term) => (
+            <a href="#learning" key={term} onClick={() => setSearchQuery(term)}>
+              {term} 배우기
+            </a>
+          ))}
         </div>
       </div>
       <div className="marketPulse" role="list" aria-label="주요 종목 흐름">
@@ -343,8 +382,11 @@ export function PortfolioPanel({
   portfolio,
   updatePortfolioWeight,
   removePortfolioItem,
-  portfolioSummary
+  portfolioSummary,
+  portfolioSource
 }) {
+  const maxWeightName = portfolioSummary.maxItem?.name || portfolioSummary.maxWeightStock || "-";
+  const maxWeightValue = portfolioSummary.maxItem?.weight ?? portfolioSummary.maxWeight ?? 0;
   return (
     <section className="card portfolioPanel">
       <div className="panelHead">
@@ -365,6 +407,12 @@ export function PortfolioPanel({
               <div>
                 <strong>{item.name}</strong>
                 <span>{item.code} · {item.group}</span>
+                {Array.isArray(item.riskNotes) && item.riskNotes.length > 0 ? (
+                  <small>{item.riskNotes[0]}</small>
+                ) : null}
+                {Array.isArray(item.nextChecklist) && item.nextChecklist.length > 0 ? (
+                  <small>다음 확인: {item.nextChecklist.slice(0, 2).join(" · ")}</small>
+                ) : null}
               </div>
               <label>
                 {copy.virtualWeight}
@@ -382,6 +430,12 @@ export function PortfolioPanel({
         </div>
       )}
       <div className="portfolioRisk">
+        <div className="portfolioAiCheck">
+          <span>AI 포트폴리오 점검</span>
+          <p>
+            현재 관심 종목은 비중, 변동성, 최근 이벤트를 기준으로 조건형 리스크 시나리오를 먼저 세워야 합니다.
+          </p>
+        </div>
         <div>
           <span>{copy.concentration}</span>
           <p>{portfolioSummary.concentration}</p>
@@ -390,7 +444,11 @@ export function PortfolioPanel({
           <span>{copy.volatility}</span>
           <p>{portfolioSummary.volatility}</p>
         </div>
-        <small>총 가상 비중 {portfolioSummary.totalWeight}% · 최대 비중 {portfolioSummary.maxItem?.name || "-"} {portfolioSummary.maxItem?.weight || 0}%</small>
+        <small>총 가상 비중 {portfolioSummary.totalWeight}% · 최대 비중 {maxWeightName} {maxWeightValue}%</small>
+        {Array.isArray(portfolioSummary.nextChecklist) && portfolioSummary.nextChecklist.length > 0 ? (
+          <small>다음 체크리스트: {portfolioSummary.nextChecklist.join(" · ")}</small>
+        ) : null}
+        <small>저장 방식: {portfolioSource === "server_mysql_portfolio_sandbox" ? "서버 샌드박스" : "브라우저 임시 저장"}</small>
       </div>
     </section>
   );
@@ -404,6 +462,7 @@ export function StockResearchPanel({
   setStockInterval,
   stockChart,
   stockEvents,
+  tradeZones,
   stockChartLoading,
   stockChartError,
   darkMode,
@@ -452,12 +511,12 @@ export function StockResearchPanel({
       <div className="stockResearchGrid">
         <div className="chartPreview">
           <div className="chartBasis">
-            {stockChart?.name || currentStock.name} · {stockChart?.asOf || dataAsOf} · 20일선/거래량/이벤트
+            {stockChart?.name || currentStock.name} · {stockChart?.asOf || dataAsOf} · MA/거래량/OBV/RSI/MACD/이벤트
           </div>
           {stockChartLoading ? <div className="chartState" role="status">{copy.chartLoading}</div> : null}
           {stockChartError ? <div className="chartState errorText" role="alert">{stockChartError}</div> : null}
-          {!stockChartLoading && !stockChartError && stockChart ? (
-            <StockPriceChart chart={stockChart} events={stockEvents} darkMode={darkMode} />
+          {stockChart ? (
+            <StockPriceChart chart={stockChart} events={stockEvents} tradeZones={tradeZones} decisionPanel={decisionPanel} darkMode={darkMode} />
           ) : null}
         </div>
         <div className="stockSignalPanel">

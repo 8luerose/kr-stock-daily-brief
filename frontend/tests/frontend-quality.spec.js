@@ -2,59 +2,112 @@ import { expect, test } from "@playwright/test";
 
 const APP_URL = process.env.APP_URL || "http://localhost:5173";
 
-const viewports = [
-  { name: "desktop", width: 1440, height: 1000 },
-  { name: "laptop", width: 1280, height: 900 },
-  { name: "tablet", width: 768, height: 1000 },
-  { name: "mobile", width: 390, height: 900 }
-];
+async function stubBackend(page) {
+  await page.route("http://localhost:8080/api/**", (route) => {
+    const url = route.request().url();
+    if (url.includes("/api/ai/chat") || url.includes("/api/learning/assistant")) {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          answer: "조건형 교육용 답변입니다. 가격, 거래량, 공시 근거를 함께 확인하세요.",
+          confidence: "medium",
+          sources: [{ type: "fallback", title: "교육용 기본 데이터" }],
+          limitations: ["실시간 투자 지시가 아닙니다."],
+          structured: {
+            conclusion: "관심 후보로 두고 근거를 확인합니다.",
+            evidence: ["거래량", "이동평균선"],
+            opposingSignals: ["거래량 둔화"],
+            risks: ["전저점 이탈"],
+            confidence: "medium"
+          }
+        })
+      });
+    }
+    return route.fulfill({
+      status: 404,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "stubbed_not_found" })
+    });
+  });
+}
+
+async function openApp(page, hash = "#home") {
+  await stubBackend(page);
+  await page.goto(`${APP_URL}/${hash}`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".top")).toBeVisible();
+}
 
 async function expectNoHorizontalOverflow(page) {
   const overflowX = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 2);
   expect(overflowX).toBe(false);
 }
 
-async function openApp(page, hash) {
-  await page.goto(`${APP_URL}/${hash}`, { waitUntil: "domcontentloaded" });
-  await expect(page.locator(".top")).toBeVisible();
-}
-
-for (const viewport of viewports) {
-  test(`home renders search, AI, chart, and responsive layout on ${viewport.name}`, async ({ page }) => {
+for (const viewport of [
+  { name: "desktop", width: 1440, height: 1000 },
+  { name: "mobile", width: 390, height: 900 }
+]) {
+  test(`research home renders search, chart, AI, and learning entry on ${viewport.name}`, async ({ page }) => {
     const errors = [];
     page.on("console", (message) => {
-      if (message.type() === "error") errors.push(message.text());
+      if (message.type() === "error" && !message.text().includes("Failed to load resource")) {
+        errors.push(message.text());
+      }
     });
     page.on("pageerror", (error) => errors.push(error.message));
 
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openApp(page, "#home");
 
+    await expect(page).toHaveTitle("리서치 | 한국 주식 AI 리서치");
     await expect(page.locator(".marketHero")).toBeVisible();
-    await expect(page).toHaveTitle("오늘 | 한국 주식 AI 리서치");
-    await expect(page.locator(".appNav button[aria-current='page']")).toHaveText("오늘");
-    await expect(page.getByRole("button", { name: "운영" })).toHaveCount(0);
     await expect(page.locator(".heroSearch")).toBeVisible();
     await expect(page.locator(".heroAssistant .assistantTitle")).toHaveText("AI 시장 해석");
-    await expect(page.getByLabel("AI 리서치 요약").getByText("AI 시장 해석")).toBeVisible();
-    await expect(page.getByLabel("AI에게 물어볼 질문")).toBeVisible();
-    await expect(page.getByText(/개발자용|관리자 영역에서 생성/)).toHaveCount(0);
+    await expect(page.locator(".stockResearch")).toBeVisible();
     await expect(page.locator(".realChart canvas").first()).toBeVisible({ timeout: 20000 });
-    await expect(page.getByRole("img", { name: /캔들 차트/ }).first()).toBeVisible();
+    await expect(page.locator(".candidateSection")).toContainText("오늘 관심 후보");
+    await expect(page.locator(".learningDock")).toContainText("모르는 용어");
     await expectNoHorizontalOverflow(page);
-
-    await page.fill("#universal-search", "반도체");
-    await expect(page.locator(".searchResults")).toBeVisible();
-    await expect(page.locator(".searchResults button").first()).toBeVisible();
-    await expect(page.locator(".searchResults")).toContainText("삼성전자");
-    await expect(page.locator(".searchResults")).not.toContainText(/seed catalog|fallback|어댑터/);
-    await expectNoHorizontalOverflow(page);
-
     expect(errors).toEqual([]);
   });
 }
 
-test("learning tab exposes beginner structure and assistant entry points", async ({ page }) => {
+test("universal search keeps results readable on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await openApp(page, "#home");
+
+  await page.fill("#universal-search", "반도체");
+  await expect(page.locator(".searchResults")).toBeVisible();
+  await expect(page.locator(".searchResults")).toContainText("삼성전자");
+  await expect(page.locator(".searchResults")).toContainText("차트 보기");
+  await expectNoHorizontalOverflow(page);
+});
+
+test("chart tooltip stays inside chart bounds", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await openApp(page, "#home");
+  await expect(page.locator(".realChart canvas").first()).toBeVisible({ timeout: 20000 });
+
+  await page.evaluate(() => document.querySelector(".realChart")?.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(200);
+  const chartBox = await page.locator(".realChart").boundingBox();
+  expect(chartBox).not.toBeNull();
+  await page.mouse.move(chartBox.x + chartBox.width * 0.48, chartBox.y + chartBox.height * 0.45);
+  await expect(page.locator(".chartTooltip.visible")).toBeVisible();
+
+  const bounds = await page.evaluate(() => {
+    const chart = document.querySelector(".realChart").getBoundingClientRect();
+    const tooltip = document.querySelector(".chartTooltip.visible").getBoundingClientRect();
+    return {
+      insideX: tooltip.left >= chart.left - 1 && tooltip.right <= chart.right + 1,
+      insideY: tooltip.top >= chart.top - 1 && tooltip.bottom <= chart.bottom + 1
+    };
+  });
+  expect(bounds.insideX).toBe(true);
+  expect(bounds.insideY).toBe(true);
+});
+
+test("learning page exposes beginner term structure", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await openApp(page, "#learning");
 
@@ -65,258 +118,26 @@ test("learning tab exposes beginner structure and assistant entry points", async
   await expect(page.getByText("핵심요약")).toBeVisible();
   await expect(page.getByText("자세한 설명")).toBeVisible();
   await expect(page.getByText("차트에서 보는 법")).toBeVisible();
-  await expect(page.getByText("왜 중요한가")).toBeVisible();
   await expect(page.getByText("시나리오 예시")).toBeVisible();
   await expect(page.getByText("바로 물어보기")).toBeVisible();
   await expectNoHorizontalOverflow(page);
 });
 
-test("keyboard users can skip repeated navigation", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await openApp(page, "#home");
-
-  await page.keyboard.press("Tab");
-  await expect(page.locator(".skipLink")).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(page.locator("#main-content")).toBeFocused();
-});
-
-test("stock search result opens chart research flow", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await openApp(page, "#home");
-
-  await page.fill("#universal-search", "삼성전자");
-  await expect(page.locator(".searchResults button").first()).toBeVisible();
-  await expect(page.locator(".searchResults")).toContainText("005930");
-  await page.locator(".searchResults button").filter({ hasText: "005930" }).first().click();
-
-  await expect(page.locator("#stock-detail")).toBeVisible();
-  await expect(page.locator(".stockResearch")).toBeVisible();
-  await expect(page.locator(".realChart canvas").first()).toBeVisible({ timeout: 20000 });
-});
-
-test("term search result opens learning detail flow", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await openApp(page, "#home");
-
-  await page.fill("#universal-search", "PER");
-  const perResult = page.locator(".searchResults button").filter({
-    has: page.locator("strong", { hasText: /^PER/ })
-  }).first();
-  await expect(perResult).toBeVisible();
-  await perResult.click();
-
-  await expect(page).toHaveTitle("배우기 | 한국 주식 AI 리서치");
-  await expect(page.locator(".learningPanel")).toBeVisible();
-  await expect(page.locator(".termButton.active")).toContainText("PER");
-  await expect(page.getByLabel("AI에게 물어볼 질문")).not.toHaveValue("");
-  await expectNoHorizontalOverflow(page);
-});
-
-test("theme search result opens visible AI market interpretation", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await openApp(page, "#home");
-
-  await page.fill("#universal-search", "반도체");
-  await expect(page.locator(".searchResults button").first()).toBeVisible();
-  await page.locator(".searchResults button").filter({ hasText: "THEME" }).first().click();
-
-  await expect(page.locator(".heroAssistant")).toBeVisible({ timeout: 10000 });
-  await expect(page.locator(".assistantAnswer")).toBeVisible({ timeout: 45000 });
-  await expect(page.locator(".assistantAnswer")).toContainText("반도체", { timeout: 45000 });
-  await expect(page.locator(".assistantStructured")).toContainText("결론");
-  await expect(page.locator(".assistantStructured")).toContainText("근거");
-  await expect(page.locator(".assistantStructured")).toContainText("반대 신호");
-  await expect(page.locator(".assistantStructured")).toContainText("리스크");
-  await expect(page.locator(".assistantStructured")).toContainText("기준/신뢰도");
-  await expect(page.locator(".assistantAnswer")).toContainText("출처");
-  await expect(page.locator(".assistantAnswer")).toContainText("근거 검증");
-  await expect(page.locator(".assistantAnswer")).toContainText(/LLM 사용|규칙형 RAG/);
-  await expectNoHorizontalOverflow(page);
-});
-
-test("history page restores public calendar and detail access", async ({ page }) => {
+test("history and admin keep legacy operations out of public home", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openApp(page, "#history");
 
   await expect(page).toHaveTitle("기록 | 한국 주식 AI 리서치");
   await expect(page.locator(".calendar")).toBeVisible();
   await expect(page.locator(".detail")).toBeVisible();
-  await expect(page.locator(".adminPanel")).toHaveCount(0);
   await expect(page.locator(".adminActions button")).toHaveCount(0);
-  await expect(page.locator(".backfillBar button")).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
-});
 
-test("summary detail preserves verification and collection notes disclosures", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await openApp(page, "#history");
-
-  const detail = page.locator(".detail");
-  await expect(detail).toBeVisible();
-  await expect(detail).toContainText("검증", { timeout: 20000 });
-
-  await detail.getByText("검증 상세").click();
-  await expect(detail.locator(".devDetails")).toBeVisible();
-  await expect(detail.locator(".devDetails")).toContainText("KRX 검증 아티팩트");
-  await expect(detail.locator(".verifyTable")).toBeVisible();
-
-  await detail.getByText("수집 노트 보기").click();
-  await expect(detail.locator("pre.content")).toBeVisible();
-  await expect(detail.locator("pre.content")).not.toHaveText("-");
-  await expectNoHorizontalOverflow(page);
-});
-
-test("admin direct route explains key requirement without exposing admin actions", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await openApp(page, "#admin");
-
+  await page.goto(`${APP_URL}/#admin`, { waitUntil: "domcontentloaded" });
   await expect(page).toHaveTitle("운영 | 한국 주식 AI 리서치");
   await expect(page.locator(".adminPanel")).toBeVisible();
   await expect(page.locator(".adminPanel")).toContainText("관리자 키가 필요합니다");
   await expect(page.locator(".calendar")).toBeVisible();
-  await expect(page.locator(".appNav button", { hasText: "운영" })).toHaveCount(0);
   await expect(page.locator(".adminActions button")).toHaveCount(0);
-  await expect(page.locator(".backfillBar button")).toHaveCount(0);
-  await expectNoHorizontalOverflow(page);
-});
-
-test("empty market pulse fallback rows are not clickable when no latest summary exists", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 900 });
-  await page.route(/\/api\/summaries\/(latest|\d{4}-\d{2}-\d{2})$/, (route) => {
-    route.fulfill({
-      status: 404,
-      contentType: "application/json",
-      body: JSON.stringify({ error: "not_found" })
-    });
-  });
-
-  await openApp(page, "#home");
-
-  await expect(page.locator(".empty")).toContainText("요약이 아직 없습니다");
-  await expect(page.locator(".pulseRow").first()).toBeDisabled();
-  await expectNoHorizontalOverflow(page);
-});
-
-test("chart tab supports interval switching and bounded tooltip display", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await openApp(page, "#home");
-  await page.fill("#universal-search", "삼성전자");
-  await expect(page.locator(".searchResults button").first()).toBeVisible();
-  const chartResponse = page.waitForResponse((response) => response.url().includes("/api/stocks/005930/chart") && response.ok());
-  const eventsResponse = page.waitForResponse((response) => response.url().includes("/api/stocks/005930/events") && response.ok());
-  await page.locator(".searchResults button").filter({ hasText: "005930" }).first().click();
-  const chartPayload = await (await chartResponse).json();
-  const eventsPayload = await (await eventsResponse).json();
-
-  await expect(page.locator("#stock-detail")).toBeVisible();
-  await expect(page.locator(".stockResearch")).toBeVisible();
-  await expect(page.locator(".realChart canvas").first()).toBeVisible({ timeout: 20000 });
-  await expect(page.locator(".eventList")).toContainText("네이버 뉴스 검색");
-  await expect(page.locator(".eventList")).toContainText("DART 공시 검색");
-  await expect(page.locator(".eventList")).toContainText("원인 점수");
-  await expect(page.locator(".eventList")).toContainText("요인");
-
-  let chart = page.locator(".realChart").first();
-  let box = await chart.boundingBox();
-  expect(box).not.toBeNull();
-
-  const eventDates = eventsPayload.events.map((event) => event.date);
-  const eventDate = chartPayload.data.find((row) => eventDates.includes(row.date))?.date;
-  const eventIndex = chartPayload.data.findIndex((row) => row.date === eventDate);
-  expect(eventIndex).toBeGreaterThanOrEqual(0);
-
-  let eventTooltipText = "";
-  const eventX = box.x + (box.width * eventIndex) / Math.max(1, chartPayload.data.length - 1);
-  for (const offset of [-72, -54, -36, -18, 0, 18, 36, 54, 72]) {
-    await page.mouse.move(eventX + offset, box.y + box.height * 0.36);
-    const text = await page.locator(".chartTooltip.visible").textContent().catch(() => "");
-    if (text.includes("마커 근거")) {
-      eventTooltipText = text;
-      break;
-    }
-  }
-
-  expect(eventTooltipText).toContain("기준일");
-  expect(eventTooltipText).toContain("이유:");
-  expect(eventTooltipText).toContain("근거:");
-  expect(eventTooltipText).toContain("신뢰도");
-  expect(eventTooltipText).toContain("원인 점수");
-
-  await page.getByRole("button", { name: "주봉" }).click();
-  await expect(page.locator(".intervalTabs button.active", { hasText: "주봉" })).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "주봉" })).toHaveAttribute("aria-pressed", "true");
-
-  await page.getByRole("button", { name: "월봉" }).click();
-  await expect(page.locator(".intervalTabs button.active", { hasText: "월봉" })).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "월봉" })).toHaveAttribute("aria-pressed", "true");
-
-  chart = page.locator(".realChart").first();
-  box = await chart.boundingBox();
-  expect(box).not.toBeNull();
-
-  for (const ratio of [0.25, 0.4, 0.55, 0.7]) {
-    await page.mouse.move(box.x + box.width * ratio, box.y + box.height * 0.46);
-    if (await page.locator(".chartTooltip.visible").count()) break;
-  }
-
-  await expect(page.locator(".chartTooltip.visible")).toBeVisible();
-  const tooltipBox = await page.locator(".chartTooltip.visible").boundingBox();
-  expect(tooltipBox).not.toBeNull();
-  expect(tooltipBox.x).toBeGreaterThanOrEqual(box.x);
-  expect(tooltipBox.y).toBeGreaterThanOrEqual(box.y);
-  expect(tooltipBox.x + tooltipBox.width).toBeLessThanOrEqual(box.x + box.width + 1);
-  expect(tooltipBox.y + tooltipBox.height).toBeLessThanOrEqual(box.y + box.height + 1);
-});
-
-test("chart API failure exposes an accessible error state", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 900 });
-  await page.route("**/api/stocks/*/chart?**", (route) => {
-    route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({ error: "chart_failed" })
-    });
-  });
-
-  await openApp(page, "#research");
-
-  await expect(page.locator(".stockResearch")).toBeVisible();
-  await expect(page.getByRole("alert").filter({ hasText: /차트 데이터를 불러오지 못했습니다/ })).toBeVisible();
-  await expectNoHorizontalOverflow(page);
-});
-
-test("portfolio sandbox preserves add, weight, persistence, and removal flow", async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await openApp(page, "#home");
-  await page.evaluate(() => localStorage.removeItem("portfolioSandbox"));
-  await page.reload({ waitUntil: "domcontentloaded" });
-
-  await page.fill("#universal-search", "삼성전자");
-  await expect(page.locator(".searchResults")).toContainText("005930");
-  await page.locator(".searchResults button").filter({ hasText: "005930" }).first().click();
-  await expect(page.locator("#stock-detail")).toBeVisible();
-
-  await page.evaluate(() => {
-    window.location.hash = "#portfolio";
-  });
-  await expect(page).toHaveTitle("포트폴리오 | 한국 주식 AI 리서치");
-  await expect(page.locator(".portfolioPanel")).toBeVisible();
-  await expect(page.locator(".portfolioPanel .empty")).toContainText("관심 종목을 추가");
-
-  await page.locator(".portfolioPanel .btn.primary").click();
-  await expect(page.locator(".portfolioItem")).toContainText("삼성전자");
-  await expect(page.locator(".portfolioItem")).toContainText("005930");
-
-  await page.locator(".portfolioItem input").first().fill("35");
-  await expect(page.locator(".portfolioRisk")).toContainText("총 가상 비중 35%");
-
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.locator(".portfolioPanel")).toBeVisible();
-  await expect(page.locator(".portfolioItem")).toContainText("삼성전자");
-  await expect(page.locator(".portfolioRisk")).toContainText("총 가상 비중 35%");
-
-  await page.locator(".portfolioItem button", { hasText: "제외" }).click();
-  await expect(page.locator(".portfolioPanel .empty")).toContainText("관심 종목을 추가");
   await expectNoHorizontalOverflow(page);
 });

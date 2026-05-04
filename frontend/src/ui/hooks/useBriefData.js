@@ -29,39 +29,44 @@ export function useBriefData({ apiClient, gateEnabled, accessKey }) {
     [month]
   );
 
+  async function loadKrxArtifact(dateStr) {
+    try {
+      const artifact = await apiClient.request(`/api/summaries/${dateStr}/verification/krx`);
+      setKrxArtifact(artifact);
+    } catch (artifactErr) {
+      setKrxArtifact(null);
+      setKrxArtifactError(artifactErr.message || String(artifactErr));
+    }
+  }
+
   async function load(dateStr) {
     setLoading(true);
     setError("");
     setKrxArtifact(null);
     setKrxArtifactError("");
     try {
+      if (dateStr === todayStr) {
+        const latest = await apiClient.request("/api/summaries/latest");
+        setSummary(latest);
+        setLoading(false);
+        if (latest?.date) {
+          if (latest.date !== dateStr) {
+            setSelected(latest.date);
+            const [y, m, d] = latest.date.split("-").map(Number);
+            setMonth(new Date(y, m - 1, d));
+          } else {
+            await loadKrxArtifact(latest.date);
+          }
+        }
+        return;
+      }
+
       const data = await apiClient.request(`/api/summaries/${dateStr}`);
       setSummary(data);
       setLoading(false);
-
-      try {
-        const artifact = await apiClient.request(`/api/summaries/${dateStr}/verification/krx`);
-        setKrxArtifact(artifact);
-      } catch (artifactErr) {
-        setKrxArtifact(null);
-        setKrxArtifactError(artifactErr.message || String(artifactErr));
-      }
+      await loadKrxArtifact(dateStr);
     } catch (e) {
       if (String(e.message).includes("404")) {
-        if (dateStr === isoDate(new Date())) {
-          try {
-            const latest = await apiClient.request("/api/summaries/latest");
-            setSummary(latest);
-            if (latest?.date && latest.date !== dateStr) {
-              setSelected(latest.date);
-              const [y, m, d] = latest.date.split("-").map(Number);
-              setMonth(new Date(y, m - 1, d));
-            }
-            return;
-          } catch {
-            // Fall through to the empty state when there is no stored summary.
-          }
-        }
         setSummary(null);
       } else {
         setError(e.message || String(e));

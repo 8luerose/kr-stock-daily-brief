@@ -75,6 +75,23 @@ export function buildStockPicks(summary) {
   ].filter(Boolean);
 }
 
+export function buildDefaultStockPicks() {
+  return SEARCH_STOCK_FALLBACKS.slice(0, 3).map((item, index) => ({
+    code: item.code,
+    name: item.title,
+    rate: [1.55, 2.18, -0.72][index] ?? 0,
+    group: index === 0 ? "반도체 대표" : index === 1 ? "AI 반도체" : "수출 대표",
+    market: item.market,
+    tags: item.tags,
+    summary: item.summary
+  }));
+}
+
+export function buildDisplayStockPicks(summary) {
+  const live = buildStockPicks(summary).slice(0, 3);
+  return live.length > 0 ? live : buildDefaultStockPicks();
+}
+
 export function getDataAsOf(summary, selected) {
   if (!summary) return selected;
   return formatEffectiveDate(summary.effectiveDate) || summary.date || selected;
@@ -196,6 +213,175 @@ export function buildDecisionPanel(chart, events, riskMode, tradeZones) {
     opposite: zoneByType("risk_management")?.oppositeSignal || "가격은 오르지만 거래량이 줄거나, 거래량은 늘지만 종가가 저가 근처에서 끝나면 상승 해석을 낮춰야 함",
     evidence: asArray(tradeZones?.evidence).length > 0 ? tradeZones.evidence : fallbackEvidence,
     confidence: tradeZones?.confidence || (asArray(chart?.data).length >= 60 ? "중간-높음" : "중간")
+  };
+}
+
+function addDays(date, delta) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + delta);
+  return copy;
+}
+
+function toIsoDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function seedFromStock(stock) {
+  const code = String(stock?.code || "005930");
+  return code.split("").reduce((sum, char) => sum + Number(char || 0), 0) || 29;
+}
+
+export function buildFallbackChart(stock, interval = "daily", basisDate) {
+  const seed = seedFromStock(stock);
+  const count = interval === "monthly" ? 48 : interval === "weekly" ? 72 : 118;
+  const step = interval === "monthly" ? 30 : interval === "weekly" ? 7 : 1;
+  const end = basisDate ? new Date(basisDate) : new Date();
+  if (Number.isNaN(end.getTime())) end.setTime(Date.now());
+  let close = 58000 + seed * 1130;
+  const data = [];
+
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const index = count - 1 - i;
+    const wave = Math.sin((index + seed) / 7) * 0.018 + Math.cos((index + seed) / 17) * 0.012;
+    const trend = (index - count * 0.36) / count * 0.004;
+    const shock = index === Math.floor(count * 0.54) ? 0.055 : index === Math.floor(count * 0.78) ? -0.034 : 0;
+    const prevClose = close;
+    close = Math.max(1000, close * (1 + wave + trend + shock));
+    const open = prevClose * (1 + Math.sin(index + seed) * 0.006);
+    const high = Math.max(open, close) * (1 + 0.012 + Math.abs(Math.sin(index / 5)) * 0.012);
+    const low = Math.min(open, close) * (1 - 0.012 - Math.abs(Math.cos(index / 6)) * 0.01);
+    const volumeBase = 620000 + seed * 18000;
+    const volumeSpike = index === Math.floor(count * 0.54) || index === Math.floor(count * 0.78) ? 2.6 : 1;
+    data.push({
+      date: toIsoDate(addDays(end, -i * step)),
+      open: Math.round(open),
+      high: Math.round(high),
+      low: Math.round(low),
+      close: Math.round(close),
+      volume: Math.round(volumeBase * (1 + Math.abs(wave) * 14) * volumeSpike)
+    });
+  }
+
+  return {
+    code: stock?.code || "005930",
+    name: stock?.name || "삼성전자",
+    interval,
+    range: rangeForInterval(interval),
+    asOf: data.at(-1)?.date || basisDate,
+    data
+  };
+}
+
+export function buildFallbackEvents(chart, stock) {
+  const data = asArray(chart?.data);
+  if (data.length === 0) return { code: stock?.code || "", events: [] };
+  const points = [0.34, 0.54, 0.78].map((ratio) => data[Math.max(0, Math.min(data.length - 1, Math.floor(data.length * ratio)))]);
+  return {
+    code: stock?.code || chart?.code || "",
+    events: points.map((row, index) => ({
+      date: row.date,
+      type: index === 2 ? "price_drop" : index === 1 ? "volume_spike" : "price_rise",
+      severity: index === 1 ? "high" : "medium",
+      title: index === 0 ? "20일선 회복 시도" : index === 1 ? "거래량 동반 돌파" : "리스크 재확인 구간",
+      explanation:
+        index === 0
+          ? "가격이 평균선 근처에서 버티며 반등을 시도하는 구간입니다."
+          : index === 1
+            ? "거래량이 평소보다 커지며 추세 확인 필요성이 높아진 구간입니다."
+            : "단기 과열 후 지지선 이탈 여부를 확인해야 하는 구간입니다.",
+      priceChangeRate: index === 2 ? -3.42 : index === 1 ? 5.18 : 2.05,
+      volumeChangeRate: index === 1 ? 166.2 : 48.5,
+      evidenceSources: [
+        {
+          type: "price_history",
+          title: "가격/거래량",
+          url: stock?.code ? `https://finance.naver.com/item/sise_day.naver?code=${stock.code}` : "#",
+          description: "캔들, 거래량, 이동평균선 기준"
+        },
+        {
+          type: "disclosure",
+          title: "DART 확인",
+          url: "https://dart.fss.or.kr/",
+          description: "공시 근거 확인"
+        }
+      ],
+      causalScores: [
+        {
+          label: index === 1 ? "수급/거래량" : "가격 위치",
+          score: index === 1 ? 82 : 68,
+          confidence: index === 1 ? "높음" : "중간",
+          evidenceLevel: "market_data",
+          causalFactors: index === 1 ? ["거래량", "돌파", "추세"] : ["이동평균선", "지지선"],
+          signalCount: index === 1 ? 3 : 1,
+          signalSummary: "가격과 거래량이 같은 방향으로 움직이는지 확인합니다.",
+          signalOrigins: ["chart"]
+        }
+      ]
+    }))
+  };
+}
+
+export function buildFallbackTradeZones(chart, riskMode = "neutral") {
+  const data = asArray(chart?.data);
+  const latest = data.at(-1);
+  if (!latest) {
+    return { zones: [], evidence: [], confidence: "중간" };
+  }
+  const close = Number(latest.close || 0);
+  const multiplier = riskMode === "aggressive" ? 0.985 : riskMode === "conservative" ? 0.94 : 0.965;
+  const buyFrom = Math.round(close * multiplier);
+  const buyTo = Math.round(close * (multiplier + 0.018));
+  return {
+    confidence: riskMode === "conservative" ? "중간-높음" : "중간",
+    evidence: [
+      `기준일: ${latest.date}`,
+      `현재가 기준: ${formatNumber(close)}원`,
+      "가격, 거래량, 이동평균선, 이벤트 마커를 함께 반영",
+      "교육용 조건형 시나리오이며 매수/매도 지시가 아님"
+    ],
+    zones: [
+      {
+        type: "buy_review",
+        label: "매수 검토",
+        fromPrice: buyFrom,
+        toPrice: buyTo,
+        condition: "20일선 회복 후 거래량이 평균 이상으로 유지될 때 매수 검토",
+        beginnerExplanation: "한 번에 결론내지 말고 가격, 거래량, 지지선 세 조건을 같이 봅니다."
+      },
+      {
+        type: "split_buy",
+        label: "분할매수",
+        fromPrice: Math.round(close * 0.93),
+        toPrice: Math.round(close * 0.96),
+        condition: "지지선 근처에서 반등이 확인되면 소액부터 나누어 검토",
+        beginnerExplanation: "처음부터 큰 비중을 싣지 않고 조건 확인마다 나눕니다."
+      },
+      {
+        type: "watch",
+        label: "관망",
+        fromPrice: Math.round(close * 0.985),
+        toPrice: Math.round(close * 1.025),
+        condition: "가격은 움직이지만 거래량이나 근거가 부족하면 관망",
+        beginnerExplanation: "모르는 구간에서는 쉬는 것도 전략입니다."
+      },
+      {
+        type: "sell_review",
+        label: "매도 검토",
+        fromPrice: Math.round(close * 1.06),
+        toPrice: Math.round(close * 1.1),
+        condition: "급등 후 거래량이 줄거나 긴 윗꼬리가 반복되면 일부 매도 검토",
+        beginnerExplanation: "수익 구간에서도 반대 신호를 확인합니다."
+      },
+      {
+        type: "risk_management",
+        label: "리스크 관리",
+        fromPrice: Math.round(close * 0.9),
+        toPrice: Math.round(close * 0.93),
+        condition: "전저점 이탈과 하락 거래량 증가가 겹치면 리스크 관리",
+        beginnerExplanation: "손실 허용 기준을 넘으면 시나리오를 다시 세웁니다.",
+        oppositeSignal: "가격은 오르지만 거래량이 줄거나 종가가 저가 근처면 상승 해석을 낮춥니다."
+      }
+    ]
   };
 }
 

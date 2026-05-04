@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { portfolioRisk } from "../AppUtils.js";
 
 const STORAGE_KEY = "portfolioSandbox";
 
-export function usePortfolio() {
+export function usePortfolio(apiClient) {
   const [portfolio, setPortfolio] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -11,8 +11,10 @@ export function usePortfolio() {
       return [];
     }
   });
+  const [serverSummary, setServerSummary] = useState(null);
+  const [portfolioSource, setPortfolioSource] = useState("local_fallback");
 
-  const savePortfolio = useCallback((next) => {
+  const persistLocal = useCallback((next) => {
     setPortfolio(next);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -21,12 +23,41 @@ export function usePortfolio() {
     }
   }, []);
 
+  const applyServerResponse = useCallback((data) => {
+    const next = Array.isArray(data?.items) ? data.items : [];
+    setPortfolio(next);
+    setServerSummary(data?.summary || null);
+    setPortfolioSource(data?.source || "server_mysql_portfolio_sandbox");
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!apiClient) return;
+      try {
+        const data = await apiClient.request("/api/portfolio");
+        if (!cancelled) applyServerResponse(data);
+      } catch {
+        if (!cancelled) setPortfolioSource("local_fallback");
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiClient, applyServerResponse]);
+
   const addStockToPortfolio = useCallback(
-    (stock) => {
+    async (stock) => {
       if (!stock?.code) return;
       const exists = portfolio.some((item) => item.code === stock.code);
       if (exists) return;
-      savePortfolio([
+      const fallback = [
         ...portfolio,
         {
           code: stock.code,
@@ -36,31 +67,62 @@ export function usePortfolio() {
           count: stock.count,
           weight: 10
         }
-      ]);
+      ];
+      try {
+        const data = await apiClient.request("/api/portfolio/items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fallback[fallback.length - 1])
+        });
+        applyServerResponse(data);
+      } catch {
+        setPortfolioSource("local_fallback");
+        persistLocal(fallback);
+      }
     },
-    [portfolio, savePortfolio]
+    [apiClient, applyServerResponse, persistLocal, portfolio]
   );
 
   const updatePortfolioWeight = useCallback(
-    (code, weight) => {
+    async (code, weight) => {
       const value = Math.max(0, Math.min(100, Number(weight || 0)));
-      savePortfolio(portfolio.map((item) => (item.code === code ? { ...item, weight: value } : item)));
+      const fallback = portfolio.map((item) => (item.code === code ? { ...item, weight: value } : item));
+      try {
+        const data = await apiClient.request(`/api/portfolio/items/${code}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ weight: value })
+        });
+        applyServerResponse(data);
+      } catch {
+        setPortfolioSource("local_fallback");
+        persistLocal(fallback);
+      }
     },
-    [portfolio, savePortfolio]
+    [apiClient, applyServerResponse, persistLocal, portfolio]
   );
 
   const removePortfolioItem = useCallback(
-    (code) => {
-      savePortfolio(portfolio.filter((item) => item.code !== code));
+    async (code) => {
+      const fallback = portfolio.filter((item) => item.code !== code);
+      try {
+        const data = await apiClient.request(`/api/portfolio/items/${code}`, { method: "DELETE" });
+        applyServerResponse(data);
+      } catch {
+        setPortfolioSource("local_fallback");
+        persistLocal(fallback);
+      }
     },
-    [portfolio, savePortfolio]
+    [apiClient, applyServerResponse, persistLocal, portfolio]
   );
 
-  const portfolioSummary = useMemo(() => portfolioRisk(portfolio), [portfolio]);
+  const localSummary = useMemo(() => portfolioRisk(portfolio), [portfolio]);
+  const portfolioSummary = serverSummary || localSummary;
 
   return {
     portfolio,
     portfolioSummary,
+    portfolioSource,
     addStockToPortfolio,
     updatePortfolioWeight,
     removePortfolioItem

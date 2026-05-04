@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { AiInsightPanel, AdminOperationsPanel, BriefHistoryCalendar } from "./AppPanels.jsx";
 import { COPY, PAGE_LABELS } from "./AppConstants.js";
-import { HistoryOverview, LearningPanel, PortfolioPanel, StockResearchPanel } from "./AppSections.jsx";
+import { HistoryOverview, LearningPanel, PortfolioPanel } from "./AppSections.jsx";
 import { HomePage } from "./HomePage.jsx";
 import { SummaryDetailPanel } from "./SummaryDetailPanel.jsx";
 import { createApiClient } from "./apiClient.js";
-import { useBriefData } from "./hooks/useBriefData.js";
 import { useAssistantFlows } from "./hooks/useAssistantFlows.js";
+import { useBriefData } from "./hooks/useBriefData.js";
 import { useLearningTerms } from "./hooks/useLearningTerms.js";
 import { usePortfolio } from "./hooks/usePortfolio.js";
 import { useSearchResults } from "./hooks/useSearchResults.js";
@@ -15,10 +15,13 @@ import {
   addMonths,
   asArray,
   buildDecisionPanel,
+  buildDisplayStockPicks,
   buildEvidenceLinks,
+  buildFallbackChart,
+  buildFallbackEvents,
+  buildFallbackTradeZones,
   buildNaverLinks,
   buildSearchItems,
-  buildStockPicks,
   buildTermCoreSummary,
   buildTermScenario,
   filterMostMentioned,
@@ -50,7 +53,6 @@ export default function App() {
     [adminKey, cfg.apiBaseUrl, k]
   );
   const [activePage, setActivePage] = useState(() => pageFromHash(window.location.hash));
-
   const [darkMode, setDarkMode] = useState(() => {
     try {
       return localStorage.getItem("theme") === "dark";
@@ -58,13 +60,18 @@ export default function App() {
       return false;
     }
   });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [selectedStock, setSelectedStock] = useState(null);
+  const [stockInterval, setStockInterval] = useState("daily");
+  const [riskMode, setRiskMode] = useState("neutral");
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
     try {
       localStorage.setItem("theme", darkMode ? "dark" : "light");
     } catch {
-      // ignore
+      // localStorage can be unavailable in private contexts.
     }
   }, [darkMode]);
 
@@ -95,6 +102,7 @@ export default function App() {
     runBackfill,
     jumpToLatest
   } = useBriefData({ apiClient, gateEnabled: cfg.gateEnabled, accessKey: k });
+
   const {
     learningTerms,
     learningError,
@@ -112,14 +120,8 @@ export default function App() {
     enabled: !(cfg.gateEnabled && !k),
     loadFailedMessage: COPY.learningLoadFailed
   });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [selectedStock, setSelectedStock] = useState(null);
-  const [stockInterval, setStockInterval] = useState("daily");
-  const [riskMode, setRiskMode] = useState("neutral");
-  const { portfolio, portfolioSummary, addStockToPortfolio, updatePortfolioWeight, removePortfolioItem } = usePortfolio();
 
-  const stockPicks = useMemo(() => buildStockPicks(summary), [summary]);
+  const stockPicks = useMemo(() => buildDisplayStockPicks(summary), [summary]);
   const searchItems = useMemo(() => buildSearchItems(summary, learningTerms), [learningTerms, summary]);
   const { searchResults, searchLoading } = useSearchResults({
     apiClient,
@@ -127,10 +129,12 @@ export default function App() {
     query: searchQuery,
     baseItems: searchItems
   });
+
   const topGainers = useMemo(() => sortTopGainers(summary?.topGainers).slice(0, 3), [summary]);
   const topLosers = useMemo(() => sortTopLosers(summary?.topLosers).slice(0, 3), [summary]);
   const topMentioned = useMemo(() => filterMostMentioned(summary?.mostMentionedTop).slice(0, 3), [summary]);
   const currentStock = selectedStock || stockPicks[0] || null;
+  const { portfolio, portfolioSummary, portfolioSource, addStockToPortfolio, updatePortfolioWeight, removePortfolioItem } = usePortfolio(apiClient);
   const { stockChart, stockEvents, tradeZones, stockChartLoading, stockChartError } = useStockResearch({
     apiClient,
     stock: currentStock,
@@ -138,12 +142,21 @@ export default function App() {
     riskMode,
     chartFailedMessage: COPY.chartFailed
   });
+
   const dataAsOf = useMemo(() => getDataAsOf(summary, selected), [summary, selected]);
   const confidenceLabel = useMemo(() => getConfidenceLabel(summary), [summary]);
-  const decisionPanel = useMemo(
-    () => buildDecisionPanel(stockChart, stockEvents, riskMode, tradeZones),
-    [riskMode, stockChart, stockEvents, tradeZones]
+  const fallbackChart = useMemo(
+    () => buildFallbackChart(currentStock, stockInterval, dataAsOf),
+    [currentStock, dataAsOf, stockInterval]
   );
+  const effectiveStockChart = stockChart || fallbackChart;
+  const effectiveStockEvents = stockEvents || buildFallbackEvents(effectiveStockChart, currentStock);
+  const effectiveTradeZones = tradeZones || buildFallbackTradeZones(effectiveStockChart, riskMode);
+  const decisionPanel = useMemo(
+    () => buildDecisionPanel(effectiveStockChart, effectiveStockEvents, riskMode, effectiveTradeZones),
+    [effectiveStockChart, effectiveStockEvents, effectiveTradeZones, riskMode]
+  );
+
   const {
     assistantQuestion,
     setAssistantQuestion,
@@ -165,13 +178,19 @@ export default function App() {
     selectedTerm,
     currentStock,
     stockInterval,
-    stockChart,
-    stockEvents,
-    tradeZones,
+    stockChart: effectiveStockChart,
+    stockEvents: effectiveStockEvents,
+    tradeZones: effectiveTradeZones,
     dataAsOf,
     riskMode,
     setError
   });
+
+  function navigatePage(page) {
+    setActivePage(page);
+    const hash = page === "home" ? "#home" : `#${page}`;
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
+  }
 
   function selectTerm(term) {
     if (!term) return;
@@ -223,7 +242,11 @@ export default function App() {
       ? window.location.hash.replace("#research-stock-", "")
       : "";
     const matched = hashCode ? stockPicks.find((stock) => stock.code === hashCode) : null;
-    setSelectedStock(matched || stockPicks[0]);
+    setSelectedStock((current) => {
+      if (matched) return matched;
+      if (current && stockPicks.some((stock) => stock.code === current.code)) return current;
+      return stockPicks[0];
+    });
   }, [stockPicks]);
 
   useEffect(() => {
@@ -232,35 +255,24 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  const primaryNavItems = [
-    ["home", PAGE_LABELS.home],
-    ["research", PAGE_LABELS.research]
-  ];
-  const menuNavItems = [
-    ["history", PAGE_LABELS.history],
-    ["learning", PAGE_LABELS.learning],
-    ["portfolio", PAGE_LABELS.portfolio]
-  ];
-  const visibleMenuItems = adminKey ? [...menuNavItems, ["admin", PAGE_LABELS.admin]] : menuNavItems;
-  const isMenuActive = visibleMenuItems.some(([page]) => page === activePage);
-  const showsCalendar = activePage === "history" || activePage === "admin";
-  const showsDetail = activePage === "research" || activePage === "home" || activePage === "history" || activePage === "admin";
-  const usesResearchLayout = activePage === "research" || activePage === "home" || showsCalendar;
-
   useEffect(() => {
     const pageLabel = PAGE_LABELS[activePage] || PAGE_LABELS.home;
     document.title = `${pageLabel} | ${COPY.brand}`;
   }, [activePage]);
 
-  function navigatePage(page) {
-    setActivePage(page);
-    const hash = page === "home" ? "#home" : `#${page}`;
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
-  }
-
+  const primaryNavItems = [
+    ["home", PAGE_LABELS.home],
+    ["learning", PAGE_LABELS.learning]
+  ];
+  const menuNavItems = [
+    ["history", PAGE_LABELS.history],
+    ["portfolio", PAGE_LABELS.portfolio],
+    ["admin", PAGE_LABELS.admin]
+  ];
+  const isResearchSurface = activePage === "home" || activePage === "research";
   const assistantPanel = (
     <AiInsightPanel
-      activePage={activePage}
+      activePage={isResearchSurface ? "home" : activePage}
       copy={COPY}
       selected={selected}
       summary={summary}
@@ -280,36 +292,44 @@ export default function App() {
     <div className="page">
       <a className="skipLink" href="#main-content">본문으로 건너뛰기</a>
       <header className="top">
-        <div>
-          <div className="brand">{COPY.brand}</div>
-          <div className="brandSub">{COPY.productTagline}</div>
-        </div>
+        <button type="button" className="brandLockup" onClick={() => navigatePage("home")} aria-label="리서치 첫 화면으로 이동">
+          <span className="brandMark">KR</span>
+          <span>
+            <strong>{COPY.brand}</strong>
+            <small>{COPY.productTagline}</small>
+          </span>
+        </button>
+
         <div className="actions">
           <nav className="appNav" aria-label="주요 화면">
-            {primaryNavItems.map(([page, label]) => (
-              <button
-                key={page}
-                type="button"
-                className={activePage === page ? "active" : ""}
-                aria-current={activePage === page ? "page" : undefined}
-                onClick={() => navigatePage(page)}
-              >
-                {label}
-              </button>
-            ))}
+            {primaryNavItems.map(([page, label]) => {
+              const active = page === "home" ? isResearchSurface : activePage === page;
+              return (
+                <button
+                  key={page}
+                  type="button"
+                  className={active ? "active" : ""}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => navigatePage(page)}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </nav>
-          <details className={`navMenu ${isMenuActive ? "active" : ""}`}>
+
+          <details className={`navMenu ${menuNavItems.some(([page]) => page === activePage) ? "active" : ""}`}>
             <summary>메뉴</summary>
             <div className="navMenuPanel">
-              {visibleMenuItems.map(([page, label]) => (
+              {menuNavItems.map(([page, label]) => (
                 <button
                   key={page}
                   type="button"
                   className={activePage === page ? "active" : ""}
                   aria-current={activePage === page ? "page" : undefined}
-                  onClick={(e) => {
+                  onClick={(event) => {
                     navigatePage(page);
-                    e.currentTarget.closest("details")?.removeAttribute("open");
+                    event.currentTarget.closest("details")?.removeAttribute("open");
                   }}
                 >
                   {label}
@@ -318,7 +338,7 @@ export default function App() {
               <button type="button" onClick={jumpToLatest} disabled={loading}>
                 {COPY.moveToLatest}
               </button>
-              <button type="button" onClick={() => setDarkMode((v) => !v)}>
+              <button type="button" onClick={() => setDarkMode((value) => !value)}>
                 {darkMode ? COPY.toggleDarkOff : COPY.toggleDarkOn}
               </button>
             </div>
@@ -326,191 +346,36 @@ export default function App() {
         </div>
       </header>
 
-      {activePage === "home" ? (
-        <div className="homeLaunchGrid">
-          <div className="homeLaunchContent">
-            <HomePage
-              copy={COPY}
-              summary={summary}
-              selected={selected}
-              dataAsOf={dataAsOf}
-              confidenceLabel={confidenceLabel}
-              headline={getMarketHeadline(summary, selected)}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              searchLoading={searchLoading}
-              searchResults={searchResults}
-              selectSearchResult={selectSearchResult}
-              stockPicks={stockPicks}
-              currentStock={currentStock}
-              selectStock={selectStock}
-              stockInterval={stockInterval}
-              setStockInterval={setStockInterval}
-              stockChart={stockChart}
-              stockEvents={stockEvents}
-              stockChartLoading={stockChartLoading}
-              stockChartError={stockChartError}
-              darkMode={darkMode}
-              riskMode={riskMode}
-              setRiskMode={setRiskMode}
-              decisionPanel={decisionPanel}
-              addCurrentStockToPortfolio={addCurrentStockToPortfolio}
-              askChartAi={askChartAi}
-              aiResearchLoading={aiResearchLoading}
-              aiResearchResponse={aiResearchResponse}
-              asArray={asArray}
-              formatNumber={formatNumber}
-              formatRate={formatRate}
-              buildNaverLinks={buildNaverLinks}
-              showResearchPanel={false}
-            />
-          </div>
-          <aside className="homeLaunchAi" aria-label="AI 시장 해석">
-            {assistantPanel}
-          </aside>
-          {summary && currentStock ? (
-            <div className="homeLaunchChart">
-              <StockResearchPanel
-                copy={COPY}
-                homeCompact
-                currentStock={currentStock}
-                stockInterval={stockInterval}
-                setStockInterval={setStockInterval}
-                stockChart={stockChart}
-                stockEvents={stockEvents}
-                stockChartLoading={stockChartLoading}
-                stockChartError={stockChartError}
-                darkMode={darkMode}
-                dataAsOf={dataAsOf}
-                riskMode={riskMode}
-                setRiskMode={setRiskMode}
-                decisionPanel={decisionPanel}
-                addCurrentStockToPortfolio={addCurrentStockToPortfolio}
-                askChartAi={askChartAi}
-                aiResearchLoading={aiResearchLoading}
-                aiResearchResponse={aiResearchResponse}
-                summary={summary}
-                asArray={asArray}
-                formatNumber={formatNumber}
-                formatRate={formatRate}
-                buildNaverLinks={buildNaverLinks}
-              />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {activePage === "learning" ? assistantPanel : null}
-
-      {activePage === "history" ? (
-        <HistoryOverview copy={COPY} stats={stats} insights={insights} />
-      ) : null}
-
       <main
         id="main-content"
         tabIndex="-1"
-        className={`main ${usesResearchLayout ? "researchLayout" : "singleLayout"}`}
+        className={`mainShell ${isResearchSurface ? "researchSurface" : activePage}`}
       >
-        {activePage !== "home" ? (
-        <div className="sideStack">
-        {activePage === "admin" ? (
-        <AdminOperationsPanel
-          copy={COPY}
-          showAdminPanel={showAdminPanel}
-          setShowAdminPanel={setShowAdminPanel}
-          forceOpen={activePage === "admin"}
-          adminKey={adminKey}
-          selected={selected}
-          setSelected={setSelected}
-          loading={loading}
-          todayStr={todayStr}
-          generate={generate}
-          archiveSelected={archiveSelected}
-          backfillFrom={backfillFrom}
-          setBackfillFrom={setBackfillFrom}
-          backfillTo={backfillTo}
-          setBackfillTo={setBackfillTo}
-          runBackfill={runBackfill}
-          backfillResult={backfillResult}
-        />
-        ) : null}
-
-        {showsCalendar ? (
-        <BriefHistoryCalendar
-          activePage={activePage}
-          copy={COPY}
-          selected={selected}
-          monthLabel={monthLabel}
-          setMonth={setMonth}
-          addMonths={addMonths}
-          days={days}
-          isoDate={isoDate}
-          month={month}
-          todayStr={todayStr}
-          monthHasSummary={monthHasSummary}
-          setSelected={setSelected}
-        />
-        ) : null}
-
-        {activePage === "learning" ? (
-          <LearningPanel
+        {isResearchSurface ? (
+          <HomePage
             copy={COPY}
-            learningError={learningError}
-            termQuery={termQuery}
-            setTermQuery={setTermQuery}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            categories={categories}
-            visibleTerms={visibleTerms}
-            selectedTerm={selectedTerm}
-            selectTerm={selectTerm}
-            buildTermCoreSummary={buildTermCoreSummary}
-            buildTermScenario={buildTermScenario}
-            askLearningAssistant={askLearningAssistant}
-            assistantLoading={assistantLoading}
-            asArray={asArray}
-          />
-        ) : null}
-
-        {activePage === "portfolio" ? (
-          <PortfolioPanel
-            copy={COPY}
-            currentStock={currentStock}
-            addCurrentStockToPortfolio={addCurrentStockToPortfolio}
-            portfolio={portfolio}
-            updatePortfolioWeight={updatePortfolioWeight}
-            removePortfolioItem={removePortfolioItem}
-            portfolioSummary={portfolioSummary}
-          />
-        ) : null}
-        </div>
-        ) : null}
-
-        {showsDetail ? (
-          <SummaryDetailPanel
-            activePage={activePage}
-            cfg={cfg}
-            k={k}
-            error={error}
-            loading={loading}
             summary={summary}
             selected={selected}
-            briefTerms={briefTerms}
-            selectedTerm={selectedTerm}
-            selectTerm={selectTerm}
-            topGainers={topGainers}
-            topLosers={topLosers}
-            topMentioned={topMentioned}
-            selectStock={selectStock}
+            dataAsOf={dataAsOf}
+            confidenceLabel={confidenceLabel}
+            headline={getMarketHeadline(summary, selected)}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            searchLoading={searchLoading}
+            searchResults={searchResults}
+            selectSearchResult={selectSearchResult}
+            askMarketAssistant={askMarketAssistant}
+            stockPicks={stockPicks}
             currentStock={currentStock}
+            selectStock={selectStock}
             stockInterval={stockInterval}
             setStockInterval={setStockInterval}
-            stockChart={stockChart}
-            stockEvents={stockEvents}
+            stockChart={effectiveStockChart}
+            stockEvents={effectiveStockEvents}
+            tradeZones={effectiveTradeZones}
             stockChartLoading={stockChartLoading}
             stockChartError={stockChartError}
             darkMode={darkMode}
-            dataAsOf={dataAsOf}
             riskMode={riskMode}
             setRiskMode={setRiskMode}
             decisionPanel={decisionPanel}
@@ -518,19 +383,210 @@ export default function App() {
             askChartAi={askChartAi}
             aiResearchLoading={aiResearchLoading}
             aiResearchResponse={aiResearchResponse}
-            krxArtifact={krxArtifact}
-            krxArtifactError={krxArtifactError}
-            formatEffectiveDate={formatEffectiveDate}
-            buildEvidenceLinks={buildEvidenceLinks}
-            buildNaverLinks={buildNaverLinks}
-            resolveApiLink={resolveApiLink}
-            getLeaderExplanation={getLeaderExplanation}
-            stockFromEntry={stockFromEntry}
-            valueOrDash={valueOrDash}
+            assistantQuestion={assistantQuestion}
+            setAssistantQuestion={setAssistantQuestion}
+            assistantResponse={assistantResponse}
+            assistantLoading={assistantLoading}
+            askAssistant={askAssistant}
+            learningTerms={learningTerms}
+            selectedTerm={selectedTerm}
+            selectTerm={selectTerm}
+            navigatePage={navigatePage}
+            asArray={asArray}
             formatNumber={formatNumber}
             formatRate={formatRate}
-            asArray={asArray}
+            buildNaverLinks={buildNaverLinks}
           />
+        ) : null}
+
+        {activePage === "learning" ? (
+          <div className="workspaceGrid learningWorkspace">
+            <LearningPanel
+              copy={COPY}
+              learningError={learningError}
+              termQuery={termQuery}
+              setTermQuery={setTermQuery}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              categories={categories}
+              visibleTerms={visibleTerms}
+              selectedTerm={selectedTerm}
+              selectTerm={selectTerm}
+              buildTermCoreSummary={buildTermCoreSummary}
+              buildTermScenario={buildTermScenario}
+              askLearningAssistant={askLearningAssistant}
+              assistantLoading={assistantLoading}
+              asArray={asArray}
+            />
+            {assistantPanel}
+          </div>
+        ) : null}
+
+        {activePage === "portfolio" ? (
+          <div className="singleColumn">
+            <PortfolioPanel
+              copy={COPY}
+              currentStock={currentStock}
+              addCurrentStockToPortfolio={addCurrentStockToPortfolio}
+              portfolio={portfolio}
+              updatePortfolioWeight={updatePortfolioWeight}
+              removePortfolioItem={removePortfolioItem}
+              portfolioSummary={portfolioSummary}
+              portfolioSource={portfolioSource}
+            />
+          </div>
+        ) : null}
+
+        {activePage === "history" ? (
+          <div className="archiveLayout">
+            <div className="archiveRail">
+              <HistoryOverview copy={COPY} stats={stats} insights={insights} />
+              <BriefHistoryCalendar
+                activePage={activePage}
+                copy={COPY}
+                selected={selected}
+                monthLabel={monthLabel}
+                setMonth={setMonth}
+                addMonths={addMonths}
+                days={days}
+                isoDate={isoDate}
+                month={month}
+                todayStr={todayStr}
+                monthHasSummary={monthHasSummary}
+                setSelected={setSelected}
+              />
+            </div>
+            <SummaryDetailPanel
+              activePage={activePage}
+              cfg={cfg}
+              k={k}
+              error={error}
+              loading={loading}
+              summary={summary}
+              selected={selected}
+              briefTerms={briefTerms}
+              selectedTerm={selectedTerm}
+              selectTerm={selectTerm}
+              topGainers={topGainers}
+              topLosers={topLosers}
+              topMentioned={topMentioned}
+              selectStock={selectStock}
+              currentStock={currentStock}
+              stockInterval={stockInterval}
+              setStockInterval={setStockInterval}
+              stockChart={effectiveStockChart}
+              stockEvents={effectiveStockEvents}
+              tradeZones={effectiveTradeZones}
+              stockChartLoading={stockChartLoading}
+              stockChartError={stockChartError}
+              darkMode={darkMode}
+              dataAsOf={dataAsOf}
+              riskMode={riskMode}
+              setRiskMode={setRiskMode}
+              decisionPanel={decisionPanel}
+              addCurrentStockToPortfolio={addCurrentStockToPortfolio}
+              askChartAi={askChartAi}
+              aiResearchLoading={aiResearchLoading}
+              aiResearchResponse={aiResearchResponse}
+              krxArtifact={krxArtifact}
+              krxArtifactError={krxArtifactError}
+              formatEffectiveDate={formatEffectiveDate}
+              buildEvidenceLinks={buildEvidenceLinks}
+              buildNaverLinks={buildNaverLinks}
+              resolveApiLink={resolveApiLink}
+              getLeaderExplanation={getLeaderExplanation}
+              stockFromEntry={stockFromEntry}
+              valueOrDash={valueOrDash}
+              formatNumber={formatNumber}
+              formatRate={formatRate}
+              asArray={asArray}
+            />
+          </div>
+        ) : null}
+
+        {activePage === "admin" ? (
+          <div className="archiveLayout adminLayout">
+            <div className="archiveRail">
+              <AdminOperationsPanel
+                copy={COPY}
+                showAdminPanel={showAdminPanel}
+                setShowAdminPanel={setShowAdminPanel}
+                forceOpen
+                adminKey={adminKey}
+                selected={selected}
+                setSelected={setSelected}
+                loading={loading}
+                todayStr={todayStr}
+                generate={generate}
+                archiveSelected={archiveSelected}
+                backfillFrom={backfillFrom}
+                setBackfillFrom={setBackfillFrom}
+                backfillTo={backfillTo}
+                setBackfillTo={setBackfillTo}
+                runBackfill={runBackfill}
+                backfillResult={backfillResult}
+              />
+              <BriefHistoryCalendar
+                activePage={activePage}
+                copy={COPY}
+                selected={selected}
+                monthLabel={monthLabel}
+                setMonth={setMonth}
+                addMonths={addMonths}
+                days={days}
+                isoDate={isoDate}
+                month={month}
+                todayStr={todayStr}
+                monthHasSummary={monthHasSummary}
+                setSelected={setSelected}
+              />
+            </div>
+            <SummaryDetailPanel
+              activePage={activePage}
+              cfg={cfg}
+              k={k}
+              error={error}
+              loading={loading}
+              summary={summary}
+              selected={selected}
+              briefTerms={briefTerms}
+              selectedTerm={selectedTerm}
+              selectTerm={selectTerm}
+              topGainers={topGainers}
+              topLosers={topLosers}
+              topMentioned={topMentioned}
+              selectStock={selectStock}
+              currentStock={currentStock}
+              stockInterval={stockInterval}
+              setStockInterval={setStockInterval}
+              stockChart={effectiveStockChart}
+              stockEvents={effectiveStockEvents}
+              tradeZones={effectiveTradeZones}
+              stockChartLoading={stockChartLoading}
+              stockChartError={stockChartError}
+              darkMode={darkMode}
+              dataAsOf={dataAsOf}
+              riskMode={riskMode}
+              setRiskMode={setRiskMode}
+              decisionPanel={decisionPanel}
+              addCurrentStockToPortfolio={addCurrentStockToPortfolio}
+              askChartAi={askChartAi}
+              aiResearchLoading={aiResearchLoading}
+              aiResearchResponse={aiResearchResponse}
+              krxArtifact={krxArtifact}
+              krxArtifactError={krxArtifactError}
+              formatEffectiveDate={formatEffectiveDate}
+              buildEvidenceLinks={buildEvidenceLinks}
+              buildNaverLinks={buildNaverLinks}
+              resolveApiLink={resolveApiLink}
+              getLeaderExplanation={getLeaderExplanation}
+              stockFromEntry={stockFromEntry}
+              valueOrDash={valueOrDash}
+              formatNumber={formatNumber}
+              formatRate={formatRate}
+              asArray={asArray}
+            />
+          </div>
         ) : null}
       </main>
     </div>

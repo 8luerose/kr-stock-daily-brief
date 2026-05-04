@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { LEARNING_TERM_FALLBACKS } from "../AppConstants.js";
 import { asArray, pickBriefTerms, termMatches } from "../AppUtils.js";
 
 export function useLearningTerms({ apiClient, enabled, loadFailedMessage }) {
@@ -37,7 +38,8 @@ export function useLearningTerms({ apiClient, enabled, loadFailedMessage }) {
 
     async function loadLearningTerms() {
       if (!enabled) {
-        setLearningTerms([]);
+        setLearningTerms(LEARNING_TERM_FALLBACKS);
+        setSelectedTermId((current) => current || LEARNING_TERM_FALLBACKS[0]?.id || "");
         return;
       }
 
@@ -50,7 +52,8 @@ export function useLearningTerms({ apiClient, enabled, loadFailedMessage }) {
       } catch (e) {
         if (!mounted) return;
         console.warn("Failed to load learning terms", e);
-        setLearningTerms([]);
+        setLearningTerms(LEARNING_TERM_FALLBACKS);
+        setSelectedTermId((current) => current || LEARNING_TERM_FALLBACKS[0]?.id || "");
         setLearningError(loadFailedMessage);
       }
     }

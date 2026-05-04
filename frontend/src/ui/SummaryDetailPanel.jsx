@@ -98,6 +98,7 @@ export function SummaryDetailPanel({
   setStockInterval,
   stockChart,
   stockEvents,
+  tradeZones,
   stockChartLoading,
   stockChartError,
   darkMode,
@@ -240,6 +241,7 @@ export function SummaryDetailPanel({
               setStockInterval={setStockInterval}
               stockChart={stockChart}
               stockEvents={stockEvents}
+              tradeZones={tradeZones}
               stockChartLoading={stockChartLoading}
               stockChartError={stockChartError}
               darkMode={darkMode}
