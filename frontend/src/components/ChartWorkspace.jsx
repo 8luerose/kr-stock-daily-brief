@@ -1,5 +1,6 @@
-import { Activity, AlertTriangle, TrendingUp } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, CircleHelp, Newspaper, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
+import { fallbackWorkspace } from "../data/fallbackData.js";
 
 const intervals = [
   { id: "daily", label: "일봉" },
@@ -20,26 +21,30 @@ function movingAverage(rows, period) {
   });
 }
 
-function buildPoints(rows, width, height, top = 34, bottom = 92) {
+function buildPoints(rows, width, height, top = 64, bottom = 102) {
   const minPrice = Math.min(...rows.map((row) => row.low)) * 0.985;
-  const maxPrice = Math.max(...rows.map((row) => row.high)) * 1.015;
+  const maxPrice = Math.max(...rows.map((row) => row.high)) * 1.012;
   const chartHeight = height - top - bottom;
   return rows.map((row, index) => {
-    const x = 42 + (index / Math.max(rows.length - 1, 1)) * (width - 94);
+    const x = 48 + (index / Math.max(rows.length - 1, 1)) * (width - 102);
     const y = top + (1 - (row.close - minPrice) / (maxPrice - minPrice || 1)) * chartHeight;
     return { ...row, x, y };
   });
 }
 
-function toPolyline(points) {
+function polyline(points) {
   return points.map((point) => `${point.x},${point.y}`).join(" ");
 }
 
+function zoneText(zone) {
+  return zone.price || `${zone.fromPrice?.toLocaleString("ko-KR")}~${zone.toPrice?.toLocaleString("ko-KR")}원`;
+}
+
 export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) {
-  const [activeNote, setActiveNote] = useState("move");
+  const [activeNote, setActiveNote] = useState("rise");
   const rows = workspace.chart.rows;
-  const width = 920;
-  const height = 460;
+  const width = 980;
+  const height = 560;
   const points = useMemo(() => buildPoints(rows, width, height), [rows]);
   const ma20 = useMemo(() => buildPoints(movingAverage(rows, 5), width, height), [rows]);
   const ma60 = useMemo(() => buildPoints(movingAverage(rows, 9), width, height), [rows]);
@@ -49,58 +54,77 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
   const maxVolume = Math.max(...rows.map((row) => row.volume));
   const volumeBars = points.map((point) => ({
     x: point.x,
-    h: Math.max(8, (point.volume / maxVolume) * 58),
+    h: Math.max(9, (point.volume / maxVolume) * 68),
     up: point.close >= point.open
   }));
 
   const notes = [
     {
-      id: "move",
+      id: "rise",
       x: 65,
-      y: 26,
+      y: 24,
       label: "왜 올랐나",
-      title: "거래량이 붙은 상승",
-      body: "3월 초 돌파 구간에서 가격과 거래량이 같이 움직였습니다. 초보자는 가격만 보지 말고 아래 거래량 막대가 커졌는지 같이 봅니다.",
+      title: "가격 돌파와 거래량 증가",
+      body: "상승 구간에서 가격만 오른 것이 아니라 거래량 막대도 함께 커졌습니다. 초보자는 이 조합을 먼저 확인합니다.",
       icon: TrendingUp
     },
     {
-      id: "pullback",
+      id: "pause",
       x: 48,
-      y: 48,
+      y: 47,
       label: "왜 쉬었나",
-      title: "전고점 근처 관망",
-      body: "상단 가격대에서 거래량이 줄면 호재가 있어도 속도 조절이 나올 수 있습니다. 전고점을 넘는 종가 확인이 필요합니다.",
+      title: "전고점 앞 속도 조절",
+      body: "상단 가격대에서 거래량이 줄면 좋은 뉴스가 있어도 잠시 쉬는 흐름이 나올 수 있습니다.",
       icon: Activity
+    },
+    {
+      id: "bad",
+      x: 82,
+      y: 37,
+      label: "악재 확인",
+      title: "호재 반영 뒤 반대 신호",
+      body: "기대가 이미 가격에 반영된 뒤에는 긴 윗꼬리와 거래량 둔화를 악재처럼 함께 봅니다.",
+      icon: Newspaper
     },
     {
       id: "risk",
       x: 24,
-      y: 63,
+      y: 66,
       label: "리스크",
-      title: "지지선 이탈 확인",
-      body: "82,000원 부근 지지선이 반복 이탈하면 먼저 방어 기준을 세웁니다. 반대로 빠르게 회복하면 다시 평가합니다.",
+      title: "지지선 이탈 기준",
+      body: "주요 지지선 아래에서 종가가 반복되면 수익보다 방어 기준을 먼저 세워야 합니다.",
       icon: AlertTriangle
     }
   ];
 
   const active = notes.find((note) => note.id === activeNote) || notes[0];
   const ActiveIcon = active.icon;
+  const allZones = useMemo(() => {
+    const nextZones = Array.isArray(workspace.zones) && workspace.zones.length ? [...workspace.zones] : [];
+    fallbackWorkspace.zones.forEach((fallbackZone) => {
+      if (!nextZones.some((zone) => zone.type === fallbackZone.type || zone.label === fallbackZone.label)) {
+        nextZones.push(fallbackZone);
+      }
+    });
+    return nextZones;
+  }, [workspace.zones]);
+  const visibleZones = allZones.slice(0, mode === "learning" ? 3 : 5);
 
   return (
     <section className="chartWorkspace" aria-label="AI 차트 해석">
-      <div className="chartHeader">
+      <div className="chartTop">
         <div>
           <span className="eyebrow">AI 차트 주석</span>
-          <h2>{workspace.stock.name} 흐름</h2>
+          <h2>{workspace.stock.name}</h2>
           <p>{workspace.ai.conclusion}</p>
         </div>
         <div className="timeSegment" aria-label="차트 주기">
           {intervals.map((item) => (
             <button
-              key={item.id}
-              className={interval === item.id ? "selected" : ""}
-              type="button"
               aria-pressed={interval === item.id}
+              className={interval === item.id ? "selected" : ""}
+              key={item.id}
+              type="button"
               onClick={() => onIntervalChange(item.id)}
             >
               {item.label}
@@ -110,62 +134,51 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
       </div>
 
       <div className="chartFrame">
-        <svg className="priceChart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="가격, 거래량, AI 주석 차트">
+        <svg className="priceChart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="가격 흐름과 AI 주석 차트">
           <defs>
             <linearGradient id="priceFill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#3182f6" stopOpacity="0.26" />
-              <stop offset="100%" stopColor="#3182f6" stopOpacity="0" />
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.34" />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
             </linearGradient>
           </defs>
 
           {[0, 1, 2, 3].map((line) => (
-            <line
-              className="gridLine"
-              key={line}
-              x1="42"
-              x2="872"
-              y1={58 + line * 78}
-              y2={58 + line * 78}
-            />
+            <line className="gridLine" key={line} x1="48" x2="925" y1={92 + line * 86} y2={92 + line * 86} />
           ))}
 
-          <rect className="zone buy" x="598" y="130" width="132" height="82" rx="6" />
-          <rect className="zone watch" x="730" y="108" width="86" height="106" rx="6" />
-          <rect className="zone risk" x="110" y="252" width="130" height="62" rx="6" />
-          <text className="zoneText" x="606" y="122">매수 검토</text>
-          <text className="zoneText" x="738" y="100">관망</text>
-          <text className="zoneText" x="118" y="244">리스크 관리</text>
+          <rect className="zone buy" x="592" y="170" width="146" height="96" rx="8" />
+          <rect className="zone watch" x="738" y="142" width="96" height="128" rx="8" />
+          <rect className="zone sell" x="826" y="96" width="70" height="138" rx="8" />
+          <rect className="zone risk" x="112" y="322" width="138" height="70" rx="8" />
+          <text className="zoneText" x="604" y="158">매수 검토</text>
+          <text className="zoneText" x="748" y="130">관망</text>
+          <text className="zoneText" x="833" y="84">매도 검토</text>
+          <text className="zoneText" x="124" y="310">리스크 관리</text>
 
-          <polygon className="area" points={`${toPolyline(points)} 872,368 42,368`} />
-          <polyline className="priceLine" points={toPolyline(points)} />
-          <polyline className="maLine blue" points={toPolyline(ma20)} />
-          <polyline className="maLine amber" points={toPolyline(ma60)} />
+          <polygon className="area" points={`${polyline(points)} 925,430 48,430`} />
+          <polyline className="priceLine" points={polyline(points)} />
+          <polyline className="maLine blue" points={polyline(ma20)} />
+          <polyline className="maLine amber" points={polyline(ma60)} />
 
           {points.map((point, index) => (
-            <circle className={point.close >= point.open ? "candle up" : "candle down"} key={point.date} cx={point.x} cy={point.y} r={index % 3 === 0 ? 4.5 : 3.2} />
+            <circle className={point.close >= point.open ? "candle up" : "candle down"} key={point.date} cx={point.x} cy={point.y} r={index % 3 === 0 ? 4.4 : 3.1} />
           ))}
 
           {volumeBars.map((bar, index) => (
-            <rect
-              className={bar.up ? "volumeBar up" : "volumeBar down"}
-              key={`${points[index].date}-volume`}
-              x={bar.x - 7}
-              y={388 - bar.h}
-              width="10"
-              height={bar.h}
-              rx="3"
-            />
+            <rect className={bar.up ? "volumeBar up" : "volumeBar down"} key={`${points[index].date}-volume`} x={bar.x - 6} y={468 - bar.h} width="10" height={bar.h} rx="3" />
           ))}
 
-          <path className="handArrow" d="M680 92 C646 100 622 118 606 146" />
-          <path className="handArrow" d="M426 186 C452 196 488 200 518 188" />
-          <path className="handArrow" d="M214 238 C186 250 164 266 146 290" />
-          <text className="handLabel" x="674" y="84">전고점 재돌파 확인</text>
-          <text className="handLabel" x="382" y="178">거래량 둔화, 잠시 관망</text>
-          <text className="handLabel" x="120" y="232">지지선이 기준</text>
+          <path className="handArrow" d="M690 112 C658 124 632 146 614 178" />
+          <path className="handArrow" d="M474 248 C502 258 532 256 558 236" />
+          <path className="handArrow" d="M230 310 C198 324 172 346 150 378" />
+          <path className="handArrow red" d="M846 156 C830 176 816 196 802 224" />
+          <text className="handLabel" x="684" y="102">거래량 붙은 돌파</text>
+          <text className="handLabel" x="386" y="238">속도 조절</text>
+          <text className="handLabel" x="116" y="298">지지선 기준</text>
+          <text className="handLabel" x="790" y="145">반대 신호</text>
 
-          <text className="axisLabel" x="42" y="424">거래량</text>
-          <text className="axisLabel" x="770" y="424">RSI 62 · MACD 개선 · OBV 우상향</text>
+          <text className="axisLabel" x="48" y="504">거래량</text>
+          <text className="axisLabel" x="690" y="504">RSI · MACD · OBV는 추세 확인용</text>
         </svg>
 
         {notes.map((note) => (
@@ -176,7 +189,6 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
             style={{ left: `${note.x}%`, top: `${note.y}%` }}
             onClick={() => setActiveNote(note.id)}
             onFocus={() => setActiveNote(note.id)}
-            aria-label={`${note.label} 설명 보기`}
           >
             {note.label}
           </button>
@@ -189,17 +201,22 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
         </div>
       </div>
 
-      <div className="chartFooter">
+      <div className="chartMeta">
         <span>{formatPrice(latest.close)} · {change.toFixed(1)}%</span>
         <span>기준일 {workspace.asOf}</span>
-        <span>{workspace.source}</span>
+        <span>{workspace.ai.confidence}</span>
       </div>
 
       <div className="zoneBoard" aria-label="매수와 매도 검토 조건">
-        {workspace.zones.slice(0, mode === "practice" ? 5 : 3).map((zone) => (
+        {visibleZones.map((zone) => (
           <article className={`zoneCard ${zone.type}`} key={zone.id || zone.label}>
-            <strong>{zone.label}</strong>
-            <span>{zone.price || `${zone.fromPrice?.toLocaleString("ko-KR")}~${zone.toPrice?.toLocaleString("ko-KR")}원`}</span>
+            <div>
+              {zone.type === "buy" || zone.type === "split" ? <CheckCircle2 size={15} /> : null}
+              {zone.type === "watch" ? <CircleHelp size={15} /> : null}
+              {zone.type === "sell" || zone.type === "risk" ? <AlertTriangle size={15} /> : null}
+              <strong>{zone.label}</strong>
+            </div>
+            <span>{zoneText(zone)}</span>
             <p>{zone.condition}</p>
           </article>
         ))}

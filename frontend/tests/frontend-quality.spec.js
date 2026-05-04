@@ -157,9 +157,9 @@ for (const viewport of [
     await openApp(page);
 
     await expect(page).toHaveTitle("한국 주식 AI 학습");
-    await expect(page.locator(".choiceButton")).toHaveCount(2);
-    await expect(page.locator('.choiceButton[href="#learn"]')).toContainText("학습");
-    await expect(page.locator('.choiceButton[href="#practice"]')).toContainText("실전");
+    await expect(page.locator(".modeCard")).toHaveCount(2);
+    await expect(page.locator('.modeCard[href="#learn"]')).toContainText("학습");
+    await expect(page.locator('.modeCard[href="#practice"]')).toContainText("실전");
     await expect(page.locator("#universal-search")).toBeVisible();
     await expect(page.locator(".priceChart")).toBeVisible();
     await expect(page.locator(".chartTooltip")).toContainText("거래량");
@@ -167,7 +167,7 @@ for (const viewport of [
     await expect(page.locator(".aiPanel")).toContainText("호재");
     await expect(page.locator(".aiPanel")).toContainText("악재");
     await expect(page.locator(".learningPanel.compact")).toContainText("초보자 학습");
-    await expect(page.locator(".homeSourceCard")).toContainText("근거와 한계");
+    await expect(page.locator(".evidenceRibbon")).toContainText("기준일");
     await expect(page.locator(".quietNav a")).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
     expect(errors).toEqual([]);
@@ -194,10 +194,7 @@ for (const viewport of [
     await expect(page.locator(".aiPanel")).toContainText("매도 검토 조건");
     await expect(page.locator(".aiPanel")).toContainText("호재");
     await expect(page.locator(".aiPanel")).toContainText("악재");
-    await expect(page.locator(".insightStrip article")).toHaveCount(3);
-    await expect(page.locator(".featureDrawer > summary")).toContainText("필요할 때 열어 확인");
-    await page.locator(".featureDrawer > summary").click();
-    await expect(page.locator(".featureDrawer")).toHaveAttribute("open", "");
+    await expect(page.locator(".zoneBoard .zoneCard")).toHaveCount(5);
     await expect(page.locator(".learningPanel.compact")).toContainText("초보자 학습");
     await expect(page.locator(".portfolioSandbox")).toContainText("관심 비중 점검");
     await expectNoHorizontalOverflow(page);

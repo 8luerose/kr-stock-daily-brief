@@ -1,34 +1,33 @@
-import { BadgeCheck, CircleAlert, ListChecks, Newspaper } from "lucide-react";
+import { AlertCircle, BadgeCheck, Eye, ListChecks, Newspaper, ShieldAlert } from "lucide-react";
 
 export function AIPredictionPanel({ workspace, mode }) {
   const ai = workspace.ai;
+  const conditions = [
+    { id: "buy", icon: BadgeCheck, label: "매수 검토 조건", text: ai.buyCondition, tone: "good" },
+    { id: "sell", icon: AlertCircle, label: "매도 검토 조건", text: ai.sellCondition, tone: "bad" },
+    { id: "wait", icon: Eye, label: "관망 조건", text: ai.waitCondition, tone: "watch" },
+    { id: "risk", icon: ShieldAlert, label: "리스크 관리", text: ai.riskCondition, tone: "risk" }
+  ];
 
   return (
     <aside className="aiPanel" aria-label="AI 예측과 조건">
-      <div className="panelHead">
+      <div className="aiHead">
         <span className="eyebrow">AI 예측 요약</span>
         <strong>{ai.phase}</strong>
         <p>{ai.direction}</p>
       </div>
 
-      <div className="signalStack">
-        <article className="signalCard primary">
-          <BadgeCheck size={17} />
-          <span>매수 검토 조건</span>
-          <p>{ai.buyCondition}</p>
-        </article>
-        <article className="signalCard">
-          <CircleAlert size={17} />
-          <span>매도 검토 조건</span>
-          <p>{ai.sellCondition}</p>
-        </article>
-        {mode === "practice" ? (
-          <article className="signalCard">
-            <ListChecks size={17} />
-            <span>관망 조건</span>
-            <p>{ai.waitCondition}</p>
-          </article>
-        ) : null}
+      <div className="aiConditions">
+        {conditions.slice(0, mode === "home" ? 3 : 4).map((item) => {
+          const Icon = item.icon;
+          return (
+            <article className={`signalCard ${item.tone}`} key={item.id}>
+              <Icon size={16} />
+              <span>{item.label}</span>
+              <p>{item.text}</p>
+            </article>
+          );
+        })}
       </div>
 
       <div className="newsSplit" aria-label="호재와 악재">
@@ -41,7 +40,7 @@ export function AIPredictionPanel({ workspace, mode }) {
           </ul>
         </section>
         <section>
-          <span className="miniTitle bad"><CircleAlert size={14} /> 악재</span>
+          <span className="miniTitle bad"><AlertCircle size={14} /> 악재</span>
           <ul>
             {ai.negatives.slice(0, 3).map((item) => (
               <li key={item}>{item}</li>
@@ -51,8 +50,8 @@ export function AIPredictionPanel({ workspace, mode }) {
       </div>
 
       <div className="checklist">
-        <span>초보자 체크</span>
-        {ai.checklist.map((item) => (
+        <span><ListChecks size={15} /> 다음 확인</span>
+        {ai.checklist.slice(0, 3).map((item) => (
           <label key={item}>
             <input type="checkbox" />
             {item}

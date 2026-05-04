@@ -1,21 +1,23 @@
 :root {
   color-scheme: light;
   font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
-  --bg: #f7f9fc;
+  --bg: #f4f7fb;
   --surface: rgba(255, 255, 255, 0.88);
   --surface-solid: #ffffff;
-  --surface-soft: #eef5ff;
-  --text: #121826;
-  --muted: #64748b;
-  --line: #d8e1ee;
-  --blue: #3182f6;
+  --surface-soft: #eef4ff;
+  --ink: #101828;
+  --muted: #667085;
+  --subtle: #98a2b3;
+  --line: #d9e2ef;
+  --blue: #1f7aff;
   --blue-deep: #1457c9;
-  --green: #00a868;
+  --green: #00a86b;
   --red: #f04452;
-  --amber: #f59e0b;
-  --navy: #172033;
-  --shadow: 0 22px 60px rgba(32, 47, 77, 0.12);
-  --shadow-soft: 0 12px 32px rgba(32, 47, 77, 0.08);
+  --amber: #f5a524;
+  --navy: #151d2f;
+  --chart: #0d1527;
   --radius: 8px;
-  --speed: 220ms;
+  --shadow: 0 24px 70px rgba(20, 37, 68, 0.14);
+  --shadow-soft: 0 12px 34px rgba(20, 37, 68, 0.08);
+  --speed: 210ms;
 }

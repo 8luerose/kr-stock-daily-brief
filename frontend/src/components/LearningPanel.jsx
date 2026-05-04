@@ -1,5 +1,5 @@
 import { MessageCircleQuestion, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { findLearningTerm } from "../data/fallbackData.js";
 
 export function LearningPanel({ compact = false, terms = [], onAsk }) {
@@ -11,12 +11,21 @@ export function LearningPanel({ compact = false, terms = [], onAsk }) {
     safeTerms.find((term) => term.term === "거래량") ||
     safeTerms[0];
 
+  useEffect(() => {
+    function onQuestion(event) {
+      const match = safeTerms.find((term) => event.detail?.includes(term.term));
+      if (match) setSelectedId(match.id);
+    }
+    window.addEventListener("learning-question", onQuestion);
+    return () => window.removeEventListener("learning-question", onQuestion);
+  }, [safeTerms]);
+
   const filteredTerms = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return safeTerms.slice(0, compact ? 4 : 12);
+    if (!normalized) return safeTerms.slice(0, compact ? 5 : 14);
     return safeTerms
       .filter((term) => `${term.term} ${term.category} ${term.coreSummary}`.toLowerCase().includes(normalized))
-      .slice(0, 12);
+      .slice(0, 14);
   }, [compact, query, safeTerms]);
 
   return (
@@ -37,12 +46,12 @@ export function LearningPanel({ compact = false, terms = [], onAsk }) {
       <div className="termTabs" role="tablist" aria-label="학습 용어">
         {filteredTerms.map((term) => (
           <button
+            aria-selected={selected.id === term.id}
             className={selected.id === term.id ? "selected" : ""}
             key={term.id}
             type="button"
-            onClick={() => setSelectedId(term.id)}
             role="tab"
-            aria-selected={selected.id === term.id}
+            onClick={() => setSelectedId(term.id)}
           >
             {term.term}
           </button>
@@ -78,6 +87,10 @@ export function LearningPanel({ compact = false, terms = [], onAsk }) {
               <div>
                 <dt>관련 차트 구간</dt>
                 <dd>{selected.relatedChartZone}</dd>
+              </div>
+              <div>
+                <dt>관련 질문</dt>
+                <dd>{selected.relatedQuestions?.join(" / ")}</dd>
               </div>
             </>
           ) : null}

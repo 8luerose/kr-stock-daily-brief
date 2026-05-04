@@ -1,4 +1,4 @@
-import { Search, Sparkles } from "lucide-react";
+import { ArrowUpRight, BookOpen, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { fallbackStocks } from "../data/fallbackData.js";
 import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
@@ -9,14 +9,16 @@ export function SearchCommand({ candidates, onSelectStock, onOpenLearning }) {
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const debouncedQuery = useDebouncedValue(query);
+  const visibleCandidates = useMemo(() => (candidates?.length ? candidates : fallbackStocks).slice(0, 3), [candidates]);
 
   useEffect(() => {
     let alive = true;
-    if (!debouncedQuery.trim()) {
+    const nextQuery = debouncedQuery.trim();
+    if (!nextQuery) {
       setResults([]);
       return undefined;
     }
-    searchWorkspace(debouncedQuery).then((nextResults) => {
+    searchWorkspace(nextQuery).then((nextResults) => {
       if (alive) setResults(nextResults);
     });
     return () => {
@@ -24,23 +26,20 @@ export function SearchCommand({ candidates, onSelectStock, onOpenLearning }) {
     };
   }, [debouncedQuery]);
 
-  const visibleCandidates = useMemo(() => (candidates?.length ? candidates : fallbackStocks).slice(0, 3), [candidates]);
-
   function selectResult(result) {
     if (result.type === "term") {
-      onOpenLearning();
-      setOpen(false);
-      return;
+      onOpenLearning?.();
+    } else {
+      onSelectStock?.(result.code);
+      setQuery(result.name || result.title || result.code);
     }
-    onSelectStock(result.code);
-    setQuery(result.name || result.title || result.code);
     setOpen(false);
   }
 
   return (
     <section className="commandCenter" aria-label="통합 검색">
-      <div className="searchBox">
-        <Search size={20} />
+      <label className="searchBox" htmlFor="universal-search">
+        <Search size={21} />
         <input
           id="universal-search"
           value={query}
@@ -49,38 +48,33 @@ export function SearchCommand({ candidates, onSelectStock, onOpenLearning }) {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          placeholder="종목, 테마, 주식 용어를 검색하세요"
+          placeholder="종목, 테마, 용어를 검색하세요"
           autoComplete="off"
         />
-        <span className="searchHint">예측·학습 연결</span>
-      </div>
-
-      <p className="searchGuide">추천 검색어: 삼성전자 · 거래량 · 반도체 호재</p>
+        <span>AI 차트 연결</span>
+      </label>
 
       {open && query.trim() ? (
         <div className="searchResults" role="listbox" aria-label="검색 결과">
           {results.length ? (
             results.map((result) => (
-              <button
-                className="resultItem"
-                key={result.id}
-                type="button"
-                onClick={() => selectResult(result)}
-                role="option"
-              >
-                <span>
-                  <strong>{result.title || result.name}</strong>
-                  <small>{result.code} · {result.market} · {result.theme}</small>
-                </span>
+              <button className="resultItem" key={result.id} type="button" onClick={() => selectResult(result)} role="option">
+                <span className="resultMeta">{result.market || "학습"} · {result.code}</span>
+                <strong>{result.title || result.name}</strong>
                 <em>{result.changeRate}</em>
                 <p>{result.beginnerLine}</p>
+                <small>호재 {result.positive || "차트 근거 확인"} · 악재 {result.negative || "반대 신호 확인"}</small>
               </button>
             ))
           ) : (
             <div className="emptyResult">
               <Sparkles size={18} />
-              <strong>검색 결과가 아직 없습니다.</strong>
-              <span>삼성전자, 거래량, 반도체 호재처럼 다시 입력해 보세요.</span>
+              <strong>결과가 비었습니다.</strong>
+              <p>삼성전자, 거래량, 반도체 호재처럼 다시 검색하거나 아래 관심 후보를 눌러보세요.</p>
+              <button type="button" onClick={onOpenLearning}>
+                <BookOpen size={15} />
+                용어부터 보기
+              </button>
             </div>
           )}
         </div>
@@ -88,20 +82,13 @@ export function SearchCommand({ candidates, onSelectStock, onOpenLearning }) {
 
       <div className="candidateRail" aria-label="오늘 관심 후보">
         {visibleCandidates.map((stock) => (
-          <article
-            className="candidateCard"
-            key={stock.code}
-            tabIndex={0}
-            onClick={() => onSelectStock(stock.code)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") onSelectStock(stock.code);
-            }}
-          >
+          <button className="candidateCard" key={stock.code} type="button" onClick={() => onSelectStock?.(stock.code)}>
             <span>{stock.market}</span>
             <strong>{stock.name}</strong>
             <em>{stock.changeRate}</em>
             <p>{stock.beginnerLine}</p>
-          </article>
+            <ArrowUpRight size={15} />
+          </button>
         ))}
       </div>
     </section>
