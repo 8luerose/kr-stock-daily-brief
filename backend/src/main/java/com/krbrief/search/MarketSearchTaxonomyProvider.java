@@ -46,6 +46,7 @@ public class MarketSearchTaxonomyProvider implements SearchTaxonomyProvider {
 
     addSectors(out);
     addThemes(out);
+    addNaverThemeFallbacks(out);
     return List.copyOf(out.values());
   }
 
@@ -141,7 +142,7 @@ public class MarketSearchTaxonomyProvider implements SearchTaxonomyProvider {
     }
 
     return new SearchResultDto(
-        "theme-naver-" + Integer.toHexString(title.hashCode()),
+        themeId(title),
         "theme",
         title,
         "THEME",
@@ -153,6 +154,29 @@ public class MarketSearchTaxonomyProvider implements SearchTaxonomyProvider {
         null,
         null,
         null);
+  }
+
+  private void addNaverThemeFallbacks(Map<String, SearchResultDto> out) {
+    String title = "전선";
+    out.putIfAbsent(
+        themeId(title),
+        new SearchResultDto(
+            themeId(title),
+            "theme",
+            title,
+            "THEME",
+            "테마",
+            "Naver 테마",
+            List.of("Naver 테마", "전력설비", "전력망", "구리", "대한전선, 가온전선"),
+            "Naver Finance 테마별 시세에서 확인하는 전력망/전선 관련 테마입니다. 실시간 테마 목록이 제한될 때도 통합 검색 진입점을 유지합니다.",
+            "naver_theme_taxonomy",
+            null,
+            null,
+            null));
+  }
+
+  private String themeId(String title) {
+    return "theme-naver-" + Integer.toHexString(title.hashCode());
   }
 
   private String topStockNames(List<StockSectorUniverseDto.StockSectorMemberDto> stocks) {

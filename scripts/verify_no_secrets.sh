@@ -21,14 +21,36 @@ fi
 
 secret_pattern='-----BEGIN ((RSA|DSA|EC|OPENSSH) )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{32,}'
 
-if git grep -n -I -E -- \
-  "$secret_pattern" \
-  -- . \
+tracked_scan_files=/tmp/krbrief_secret_files.z
+git ls-files -z -- \
+  . \
   ':(exclude)docs/**' \
   ':(exclude)scripts/verify_no_secrets.sh' \
   ':(exclude)frontend/package-lock.json' \
-  >/tmp/krbrief_secret_scan.txt; then
+  >"$tracked_scan_files"
+
+scan_result=1
+: >/tmp/krbrief_secret_scan.txt
+while IFS= read -r -d '' file; do
+  if rg -n -I -e "$secret_pattern" -- "$file" >>/tmp/krbrief_secret_scan.txt; then
+    scan_result=0
+  else
+    file_scan_result=$?
+    if [[ "$file_scan_result" != "1" ]]; then
+      scan_result="$file_scan_result"
+      break
+    fi
+  fi
+done <"$tracked_scan_files"
+
+if [[ "$scan_result" == "0" ]]; then
   echo "[FAIL] Potential secret material found:"
+  cat /tmp/krbrief_secret_scan.txt
+  exit 1
+fi
+
+if [[ "$scan_result" != "1" ]]; then
+  echo "[FAIL] Secret scanner failed:"
   cat /tmp/krbrief_secret_scan.txt
   exit 1
 fi
