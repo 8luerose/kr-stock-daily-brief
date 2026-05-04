@@ -17,6 +17,10 @@ export function AiInsightPanel({
   activePage,
   copy,
   selected,
+  summary,
+  currentStock,
+  decisionPanel,
+  dataAsOf,
   assistantQuestion,
   setAssistantQuestion,
   assistantLoading,
@@ -24,6 +28,14 @@ export function AiInsightPanel({
   askAssistant,
   selectTerm
 }) {
+  const marketSignal = summary
+    ? `${summary.topGainer || "-"} 상승, ${summary.topLoser || "-"} 하락, ${summary.mostMentioned || "-"} 관심`
+    : "최신 저장 브리프를 기다리는 중";
+  const chartSignal = currentStock?.name
+    ? `${currentStock.name}: ${decisionPanel?.summary || "차트 데이터를 확인하는 중"}`
+    : "대표 종목 차트를 선택하면 판단 근거를 표시";
+  const riskSignal = decisionPanel?.stop || "전저점 이탈, 거래량 급감, 근거 부족 구간은 리스크 관리 대상으로 표시";
+
   return (
     <div className="assistantBox heroAssistant">
       <div className="assistantHead">
@@ -33,6 +45,23 @@ export function AiInsightPanel({
         </div>
         <span className="assistantDate">{selected}</span>
       </div>
+      {activePage === "home" ? (
+        <div className="assistantSignalGrid" aria-label="AI 리서치 요약">
+          <div className="assistantSignalCard">
+            <span>{copy.aiMarketPanel}</span>
+            <strong>{marketSignal}</strong>
+          </div>
+          <div className="assistantSignalCard">
+            <span>AI 차트 판단</span>
+            <strong>{chartSignal}</strong>
+          </div>
+          <div className="assistantSignalCard">
+            <span>AI 리스크 요약</span>
+            <strong>{riskSignal}</strong>
+            <small>{copy.dataAsOf}: {dataAsOf || selected}</small>
+          </div>
+        </div>
+      ) : null}
       <div className="assistantInputRow">
         <input
           aria-label={copy.assistantQuestionLabel}

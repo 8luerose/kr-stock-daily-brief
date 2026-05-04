@@ -430,7 +430,7 @@ export function StockResearchPanel({
           <span className="stockGroup">{currentStock.group}</span>
           <h3>{currentStock.name} {currentStock.code ? <small>{currentStock.code}</small> : null}</h3>
         </div>
-        {!homeCompact ? <div className="intervalTabs" aria-label="차트 기간">
+        <div className="intervalTabs" aria-label="차트 기간">
           {[
             ["daily", "일봉"],
             ["weekly", "주봉"],
@@ -446,7 +446,7 @@ export function StockResearchPanel({
               {label}
             </button>
           ))}
-        </div> : null}
+        </div>
       </div>
 
       <div className="stockResearchGrid">
@@ -461,7 +461,7 @@ export function StockResearchPanel({
           ) : null}
         </div>
         <div className="stockSignalPanel">
-          {!homeCompact ? <div className="riskTabs" aria-label={copy.riskMode}>
+          <div className="riskTabs" aria-label={copy.riskMode}>
             {[
               ["aggressive", copy.aggressive],
               ["neutral", copy.neutral],
@@ -477,7 +477,7 @@ export function StockResearchPanel({
               {label}
             </button>
           ))}
-          </div> : null}
+          </div>
           <div className="stockMetricRow">
             <span>랭킹</span>
             <strong>{currentStock.group}</strong>

@@ -33,7 +33,8 @@ export function HomePage({
   asArray,
   formatNumber,
   formatRate,
-  buildNaverLinks
+  buildNaverLinks,
+  showResearchPanel = true
 }) {
   return (
     <>
@@ -57,7 +58,7 @@ export function HomePage({
         formatRate={formatRate}
       />
 
-      {summary && currentStock ? (
+      {showResearchPanel && summary && currentStock ? (
         <StockResearchPanel
           copy={copy}
           homeCompact

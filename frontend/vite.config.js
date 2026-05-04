@@ -3,6 +3,18 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    noDiscovery: true,
+    include: [
+      "@vitejs/plugin-react/preamble",
+      "lightweight-charts",
+      "react",
+      "react-dom",
+      "react-dom/client",
+      "react/jsx-dev-runtime",
+      "react/jsx-runtime"
+    ]
+  },
   build: {
     outDir: "dist"
   },
@@ -12,4 +24,3 @@ export default defineConfig({
     host: true
   }
 });
-

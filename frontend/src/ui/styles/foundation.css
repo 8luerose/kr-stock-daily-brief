@@ -286,6 +286,9 @@ textarea {
   top: calc(100% + 8px);
   display: grid;
   gap: 8px;
+  box-sizing: border-box;
+  max-height: min(420px, 42vh);
+  overflow: auto;
   padding: 10px;
   border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
   border-radius: var(--radius);
