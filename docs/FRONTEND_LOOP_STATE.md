@@ -958,6 +958,12 @@
 - [x] CI schema migration 루프 `./gradlew test --no-daemon --stacktrace`: 통과, fresh Testcontainers DB에서 `V6` 파싱/적용 확인
 - [x] CI schema migration 루프 Docker 기준 `flyway_schema_history`: version `6`, description `market segment leader fields`, `success=1`
 - [x] CI schema migration 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke ALL PASS, Playwright `16 passed`
+- [x] CI no-credential marketdata 루프 원인: 원격 CI `.env.example` 환경에서 KRX 인증 없이 pykrx OHLCV/종목명/universe가 불완전해 `GET /api/stocks/005930/chart` 또는 `GET /api/stocks/universe?query=유한양행` smoke 실패 가능
+- [x] CI no-credential marketdata 루프 수정: Naver 일별 시세 OHLCV fallback, 대표 종목명 fallback, baseline stock universe/sector taxonomy 병합
+- [x] CI no-credential marketdata 루프 격리 재현: 별도 Compose project/포트/fresh volume + `.env.example` 기준 `./scripts/test_all_apis.sh` ALL PASS
+- [x] CI no-credential marketdata 루프 E2E 안정화: 포트폴리오 reload 대기 조건 `networkidle` -> `domcontentloaded`, targeted `portfolio sandbox` Playwright `1 passed`
+- [x] CI no-credential marketdata 루프 Makefile 안정화: E2E 직전 `npm ci --include=dev` 재확인으로 로컬 Node 24/npm 11 Playwright 부분 설치 손상 회피
+- [x] CI no-credential marketdata 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke ALL PASS, Playwright `16 passed`
 
 ### 9.3 최신 viewport 계측
 
@@ -1002,7 +1008,7 @@
 | 사용자 | 495/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시, live `rag_llm` 응답 검증 | Toss급 최종 polish는 아직 완전한 객관 증거 부족 |
 | 프론트 개발자 | 494/500 | 홈 차트 구조 개선, HomePage 분리, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, assistant/learning hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI, 기존 기능 보존 E2E 강화 | 최종 visual polish와 화면별 더 작은 컴포넌트 경계 부족 |
 | 백엔드 개발자 | 497/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, OpenAI/Anthropic-compatible AI status/RAG contract, source-grounded `grounding` 리포트, live `rag_llm` smoke, repeatable LLM benchmark 3/3 PASS, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
-| DevOps 개발자 | 494/500 | make quality, Docker health, API smoke, E2E, preservation E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과 | 실제 원격 CI 실행 결과와 배포 플랫폼 실서비스 증거 부족 |
+| DevOps 개발자 | 494/500 | make quality, Docker health, API smoke, E2E, preservation E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과, `.env.example` no-credential CI 재현 API smoke 통과 | 최신 원격 CI 재실행 결과와 배포 플랫폼 실서비스 증거 부족 |
 | VC/투자자 | 486/500 | AI/RAG 구조, Anthropic-compatible live `rag_llm` smoke, repeatable LLM benchmark 3/3 PASS, source-grounded RAG evidence log, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 원격 배포 증거, 최종 product polish 증거, 실제 사용자 만족도 검증 부족 |
 
 ## 11. 다음 루프 계획

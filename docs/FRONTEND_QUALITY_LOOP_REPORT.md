@@ -330,6 +330,12 @@ Additional live Docker API checks:
 - CI schema migration loop `./gradlew test --no-daemon --stacktrace`: passed, covering fresh Testcontainers migration execution
 - CI schema migration loop Docker `flyway_schema_history`: version `6`, description `market segment leader fields`, `success=1`
 - CI schema migration loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke ALL PASS, and Playwright `16 passed`
+- CI no-credential marketdata loop root cause: the remote `.env.example` CI stack starts without KRX credentials, so pykrx can return incomplete OHLCV names/universe even after the stack is healthy
+- CI no-credential marketdata loop fix: added Naver daily OHLCV fallback, string-safe representative stock names, and baseline stock universe/sector taxonomy merges for required smoke terms such as `유한양행` and `의료·정밀기기`
+- CI no-credential marketdata loop isolated reproduction: separate Compose project, alternate ports, fresh volumes, and `.env.example` completed `./scripts/test_all_apis.sh` with ALL PASS
+- CI no-credential marketdata loop E2E stabilization: portfolio reload now waits for `domcontentloaded` instead of `networkidle`; targeted `portfolio sandbox` Playwright check passed
+- CI no-credential marketdata loop Makefile stabilization: `make quality` refreshes frontend dev dependencies immediately before Playwright to avoid local Node 24/npm 11 partial Playwright installs
+- CI no-credential marketdata loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke ALL PASS, and Playwright `16 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -378,7 +384,7 @@ Latest viewport metrics:
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, `Add source grounded AI evidence`, `Strengthen search contract coverage`, `Cover preserved frontend flows`, and `Add Anthropic compatible live LLM path`. This report also records the repeatable LLM benchmark and CI schema migration loops for the next recovery commits.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, `Add source grounded AI evidence`, `Strengthen search contract coverage`, `Cover preserved frontend flows`, and `Add Anthropic compatible live LLM path`. This report also records the repeatable LLM benchmark, CI schema migration, and CI no-credential marketdata loops for the next recovery commits.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 

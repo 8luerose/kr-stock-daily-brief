@@ -85,7 +85,7 @@ quality:
 	$(MAKE) health
 	./scripts/verify_investment_language.sh
 	./scripts/test_all_apis.sh
-	cd frontend && npm run test:e2e -- --reporter=line
+	cd frontend && npm ci --include=dev && npm run test:e2e -- --reporter=line
 
 # Runs API tests against a disposable MySQL Testcontainer (inside the Gradle container).
 backend-test:

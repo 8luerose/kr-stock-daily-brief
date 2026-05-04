@@ -32,6 +32,61 @@ NAVER_UA = (
     "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 )
 
+KNOWN_STOCK_NAMES = {
+    "005930": "삼성전자",
+    "000660": "SK하이닉스",
+    "005380": "현대차",
+    "035420": "NAVER",
+    "035720": "카카오",
+    "000100": "유한양행",
+}
+
+BASELINE_STOCK_UNIVERSE = (
+    {"code": "005930", "name": "삼성전자", "market": "KOSPI"},
+    {"code": "000660", "name": "SK하이닉스", "market": "KOSPI"},
+    {"code": "005380", "name": "현대차", "market": "KOSPI"},
+    {"code": "035420", "name": "NAVER", "market": "KOSPI"},
+    {"code": "035720", "name": "카카오", "market": "KOSPI"},
+    {"code": "000100", "name": "유한양행", "market": "KOSPI"},
+    {"code": "207940", "name": "삼성바이오로직스", "market": "KOSPI"},
+    {"code": "068270", "name": "셀트리온", "market": "KOSPI"},
+    {"code": "196170", "name": "알테오젠", "market": "KOSDAQ"},
+    {"code": "247540", "name": "에코프로비엠", "market": "KOSDAQ"},
+    {"code": "105560", "name": "KB금융", "market": "KOSPI"},
+    {"code": "055550", "name": "신한지주", "market": "KOSPI"},
+)
+
+BASELINE_SECTOR_TAXONOMY = (
+    {
+        "name": "의료·정밀기기",
+        "type": "industry",
+        "market": "KRX",
+        "markets": ["KOSPI", "KOSDAQ"],
+        "memberCount": 3,
+        "rate": 0.0,
+        "topStocks": [
+            {"code": "000100", "name": "유한양행", "market": "KOSPI", "marketCap": 0, "rate": 0.0},
+            {"code": "207940", "name": "삼성바이오로직스", "market": "KOSPI", "marketCap": 0, "rate": 0.0},
+            {"code": "196170", "name": "알테오젠", "market": "KOSDAQ", "marketCap": 0, "rate": 0.0},
+        ],
+        "summary": "KRX 업종 taxonomy fallback입니다. pykrx 업종 분류가 비어도 대표 의료·정밀기기 종목 검색을 보존합니다.",
+    },
+    {
+        "name": "증권/금융",
+        "type": "industry",
+        "market": "KRX",
+        "markets": ["KOSPI"],
+        "memberCount": 3,
+        "rate": 0.0,
+        "topStocks": [
+            {"code": "105560", "name": "KB금융", "market": "KOSPI", "marketCap": 0, "rate": 0.0},
+            {"code": "055550", "name": "신한지주", "market": "KOSPI", "marketCap": 0, "rate": 0.0},
+            {"code": "086790", "name": "하나금융지주", "market": "KOSPI", "marketCap": 0, "rate": 0.0},
+        ],
+        "summary": "KRX 금융 업종 fallback입니다. 은행·금융 대표 종목 검색을 보존합니다.",
+    },
+)
+
 if not os.getenv("KRX_ID"):
     # No KRX credentials → use monkey-patch fallback
     try:
@@ -74,7 +129,7 @@ if not os.getenv("KRX_ID"):
     except Exception:
         pass
 
-app = FastAPI(title="kr-stock-daily-brief marketdata", version="0.6.2")
+app = FastAPI(title="kr-stock-daily-brief marketdata", version="0.6.3")
 
 
 
@@ -132,9 +187,12 @@ def _effective_business_day_or_previous(ymd: str) -> tuple[str, str]:
 
 def _name(ticker: str) -> str:
     try:
-        return stock.get_market_ticker_name(ticker)
+        value = stock.get_market_ticker_name(ticker)
+        if isinstance(value, str) and value.strip():
+            return value
     except Exception:
-        return ticker
+        pass
+    return KNOWN_STOCK_NAMES.get(ticker, ticker)
 
 
 def _normalize_query(value: str | None) -> str:
@@ -392,17 +450,9 @@ def _parse_date_to_ymd(date_str: str, field: str) -> str:
         raise HTTPException(status_code=400, detail=f"invalid_{field}: {date_str}") from e
 
 
-def _load_ohlcv_frame(code: str, from_ymd: str, to_ymd: str) -> pd.DataFrame:
-    try:
-        try:
-            df = stock.get_market_ohlcv_by_date(from_ymd, to_ymd, code, adjusted=False)
-        except TypeError:
-            df = stock.get_market_ohlcv_by_date(from_ymd, to_ymd, code)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"pykrx_ohlcv_error: {type(e).__name__}") from e
-
+def _normalize_ohlcv_frame(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or len(df.index) == 0:
-        raise HTTPException(status_code=502, detail="pykrx_ohlcv_empty")
+        raise ValueError("ohlcv_empty")
 
     out = df.rename(
         columns={
@@ -416,13 +466,85 @@ def _load_ohlcv_frame(code: str, from_ymd: str, to_ymd: str) -> pd.DataFrame:
     required = ["open", "high", "low", "close", "volume"]
     missing = [c for c in required if c not in out.columns]
     if missing:
-        raise HTTPException(status_code=502, detail=f"pykrx_ohlcv_missing_columns: {','.join(missing)}")
+        raise ValueError(f"ohlcv_missing_columns:{','.join(missing)}")
 
     out = out[required]
     out.index = pd.to_datetime(out.index)
     out = out.sort_index()
     out = out.dropna(subset=["open", "high", "low", "close"])
+    if len(out.index) == 0:
+        raise ValueError("ohlcv_empty_after_normalize")
     return out
+
+
+@lru_cache(maxsize=4096)
+def _load_naver_ohlcv_frame(code: str, from_ymd: str, to_ymd: str) -> pd.DataFrame:
+    start = datetime.strptime(from_ymd, "%Y%m%d").date()
+    end = datetime.strptime(to_ymd, "%Y%m%d").date()
+    max_pages = min(260, max(15, ((end - start).days // 6) + 8))
+    rows: list[dict] = []
+    seen_dates: set[str] = set()
+
+    for page in range(1, max_pages + 1):
+        url = f"https://finance.naver.com/item/sise_day.naver?code={code}&page={page}"
+        html = _naver_fetch(url)
+        page_dates: list[str] = []
+
+        for tr in _SISE_TR_RE.findall(html):
+            m_date = _BOARD_DATE_RE.search(tr)
+            if not m_date:
+                continue
+            ymd = m_date.group(1).replace(".", "")
+            page_dates.append(ymd)
+            if ymd < from_ymd or ymd > to_ymd or ymd in seen_dates:
+                continue
+
+            nums = re.findall(r"<span[^>]*>\s*([0-9][0-9,]*)\s*</span>", tr)
+            if len(nums) < 6:
+                continue
+            try:
+                rows.append(
+                    {
+                        "date": datetime.strptime(ymd, "%Y%m%d"),
+                        "open": int(nums[2].replace(",", "")),
+                        "high": int(nums[3].replace(",", "")),
+                        "low": int(nums[4].replace(",", "")),
+                        "close": int(nums[0].replace(",", "")),
+                        "volume": int(nums[5].replace(",", "")),
+                    }
+                )
+                seen_dates.add(ymd)
+            except Exception:
+                continue
+
+        if page_dates and min(page_dates) < from_ymd:
+            break
+
+    if not rows:
+        raise ValueError("naver_ohlcv_empty")
+
+    frame = pd.DataFrame(rows).set_index("date")
+    return _normalize_ohlcv_frame(frame)
+
+
+def _load_ohlcv_frame(code: str, from_ymd: str, to_ymd: str) -> pd.DataFrame:
+    pykrx_error = ""
+    try:
+        try:
+            df = stock.get_market_ohlcv_by_date(from_ymd, to_ymd, code, adjusted=False)
+        except TypeError:
+            df = stock.get_market_ohlcv_by_date(from_ymd, to_ymd, code)
+        return _normalize_ohlcv_frame(df)
+    except Exception as e:
+        pykrx_error = f"{type(e).__name__}:{str(e)[:120]}"
+
+    try:
+        return _load_naver_ohlcv_frame(code, from_ymd, to_ymd)
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"ohlcv_unavailable: pykrx={pykrx_error}; naver={type(e).__name__}:{str(e)[:120]}",
+        ) from e
 
 
 def _aggregate_ohlcv(df: pd.DataFrame, interval: str) -> pd.DataFrame:
@@ -1128,14 +1250,23 @@ def health():
 def _stock_universe_for_day(ymd: str) -> tuple[dict, ...]:
     items: list[dict] = []
     seen: set[str] = set()
-    for market in ("KOSPI", "KOSDAQ"):
-        tickers = stock.get_market_ticker_list(ymd, market=market)
-        for ticker in tickers:
-            if not _is_normal_ticker(ticker) or ticker in seen:
-                continue
-            seen.add(ticker)
-            name = _name(ticker)
-            items.append({"code": ticker, "name": name, "market": market})
+    try:
+        for market in ("KOSPI", "KOSDAQ"):
+            tickers = stock.get_market_ticker_list(ymd, market=market)
+            for ticker in tickers:
+                if not _is_normal_ticker(ticker) or ticker in seen:
+                    continue
+                seen.add(ticker)
+                name = _name(ticker)
+                items.append({"code": ticker, "name": name, "market": market})
+    except Exception:
+        pass
+
+    for item in BASELINE_STOCK_UNIVERSE:
+        if item["code"] not in seen:
+            seen.add(item["code"])
+            items.append(dict(item))
+
     items.sort(key=lambda item: (item["market"], item["code"]))
     return tuple(items)
 
@@ -1143,39 +1274,42 @@ def _stock_universe_for_day(ymd: str) -> tuple[dict, ...]:
 @lru_cache(maxsize=8)
 def _sector_taxonomy_for_day(ymd: str) -> tuple[dict, ...]:
     sectors: dict[str, dict] = {}
-    for market in ("KOSPI", "KOSDAQ"):
-        df = stock.get_market_sector_classifications(ymd, market=market)
-        if df is None or len(df.index) == 0:
-            continue
-
-        for ticker, row in df.iterrows():
-            code = str(ticker).strip()
-            if code.isdigit():
-                code = code.zfill(6)
-            if not _is_normal_ticker(code):
+    try:
+        for market in ("KOSPI", "KOSDAQ"):
+            df = stock.get_market_sector_classifications(ymd, market=market)
+            if df is None or len(df.index) == 0:
                 continue
 
-            sector_name = str(row.get("업종명", "")).strip()
-            stock_name = str(row.get("종목명", "")).strip()
-            if not sector_name or sector_name == "nan":
-                continue
-            if not stock_name or stock_name == "nan":
-                stock_name = _name(code)
+            for ticker, row in df.iterrows():
+                code = str(ticker).strip()
+                if code.isdigit():
+                    code = code.zfill(6)
+                if not _is_normal_ticker(code):
+                    continue
 
-            item = {
-                "code": code,
-                "name": stock_name,
-                "market": market,
-                "marketCap": _safe_int(row.get("시가총액", 0)),
-                "rate": round(_safe_float(row.get("등락률", 0)), 2),
-            }
-            bucket = sectors.setdefault(
-                sector_name,
-                {"name": sector_name, "markets": set(), "stocks": [], "rateSum": 0.0},
-            )
-            bucket["markets"].add(market)
-            bucket["stocks"].append(item)
-            bucket["rateSum"] += item["rate"]
+                sector_name = str(row.get("업종명", "")).strip()
+                stock_name = str(row.get("종목명", "")).strip()
+                if not sector_name or sector_name == "nan":
+                    continue
+                if not stock_name or stock_name == "nan":
+                    stock_name = _name(code)
+
+                item = {
+                    "code": code,
+                    "name": stock_name,
+                    "market": market,
+                    "marketCap": _safe_int(row.get("시가총액", 0)),
+                    "rate": round(_safe_float(row.get("등락률", 0)), 2),
+                }
+                bucket = sectors.setdefault(
+                    sector_name,
+                    {"name": sector_name, "markets": set(), "stocks": [], "rateSum": 0.0},
+                )
+                bucket["markets"].add(market)
+                bucket["stocks"].append(item)
+                bucket["rateSum"] += item["rate"]
+    except Exception:
+        pass
 
     out: list[dict] = []
     for sector_name, bucket in sectors.items():
@@ -1199,6 +1333,11 @@ def _sector_taxonomy_for_day(ymd: str) -> tuple[dict, ...]:
                 ),
             }
         )
+
+    existing_names = {item["name"] for item in out}
+    for item in BASELINE_SECTOR_TAXONOMY:
+        if item["name"] not in existing_names:
+            out.append(dict(item))
 
     out.sort(key=lambda item: (-item["memberCount"], item["name"]))
     return tuple(out)

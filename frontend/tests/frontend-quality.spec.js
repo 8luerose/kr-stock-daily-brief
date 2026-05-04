@@ -284,7 +284,7 @@ test("portfolio sandbox preserves add, weight, persistence, and removal flow", a
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
   await page.evaluate(() => localStorage.removeItem("portfolioSandbox"));
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
 
   await page.fill("#universal-search", "삼성전자");
   await expect(page.locator(".searchResults")).toContainText("005930");
@@ -305,7 +305,7 @@ test("portfolio sandbox preserves add, weight, persistence, and removal flow", a
   await page.locator(".portfolioItem input").first().fill("35");
   await expect(page.locator(".portfolioRisk")).toContainText("총 가상 비중 35%");
 
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.locator(".portfolioPanel")).toBeVisible();
   await expect(page.locator(".portfolioItem")).toContainText("삼성전자");
   await expect(page.locator(".portfolioRisk")).toContainText("총 가상 비중 35%");
