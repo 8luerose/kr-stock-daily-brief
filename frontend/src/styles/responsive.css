@@ -63,6 +63,20 @@
     padding: 18px 0 46px;
   }
 
+  .homeHero,
+  .homeLearningCue {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .homeHero {
+    padding-top: 18px;
+  }
+
+  .homeActionDock {
+    gap: 10px;
+  }
+
   .choiceCopy h1 {
     font-size: 39px;
     line-height: 1.04;
@@ -77,6 +91,11 @@
   .choiceActions {
     gap: 10px;
     margin-top: 22px;
+  }
+
+  .homeActionDock .choiceButton {
+    min-height: 88px;
+    padding: 14px;
   }
 
   .choiceButton {
@@ -298,6 +317,10 @@
 
   .heroCopy h1 {
     font-size: 29px;
+  }
+
+  .homeActionDock .choiceButton {
+    min-height: 74px;
   }
 
   .searchBox input {

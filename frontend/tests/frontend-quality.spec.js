@@ -144,7 +144,7 @@ for (const viewport of [
   { name: "desktop", width: 1440, height: 1000 },
   { name: "mobile", width: 390, height: 900 }
 ]) {
-  test(`home is a two-choice entry on ${viewport.name}`, async ({ page }) => {
+  test(`home shows search, AI chart, and two clear paths on ${viewport.name}`, async ({ page }) => {
     const errors = [];
     page.on("console", (message) => {
       if (message.type() === "error" && !message.text().includes("Failed to load resource")) {
@@ -160,8 +160,14 @@ for (const viewport of [
     await expect(page.locator(".choiceButton")).toHaveCount(2);
     await expect(page.locator('.choiceButton[href="#learn"]')).toContainText("학습");
     await expect(page.locator('.choiceButton[href="#practice"]')).toContainText("실전");
-    await expect(page.locator(".landingPreview")).toContainText("AI 예측");
-    await expect(page.locator("#universal-search")).toHaveCount(0);
+    await expect(page.locator("#universal-search")).toBeVisible();
+    await expect(page.locator(".priceChart")).toBeVisible();
+    await expect(page.locator(".chartTooltip")).toContainText("거래량");
+    await expect(page.locator(".aiPanel")).toContainText("매수 검토 조건");
+    await expect(page.locator(".aiPanel")).toContainText("호재");
+    await expect(page.locator(".aiPanel")).toContainText("악재");
+    await expect(page.locator(".learningPanel.compact")).toContainText("초보자 학습");
+    await expect(page.locator(".homeSourceCard")).toContainText("근거와 한계");
     await expect(page.locator(".quietNav a")).toHaveCount(0);
     await expectNoHorizontalOverflow(page);
     expect(errors).toEqual([]);
