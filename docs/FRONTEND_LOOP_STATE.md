@@ -7,6 +7,22 @@
 추출한 실행 체크리스트다. 구현, 검증, 점수 산정, 완료 판단은 이 체크리스트를
 기준으로 한다.
 
+## 0-A. 2026-05-04 최종 상태 게이트
+
+| 체크리스트 묶음 | 상태 | 근거 |
+|---|---|---|
+| 문서 읽기/요구사항 반영 | 지킴 | 목표 문서와 복구 계획을 기준으로 홈, 검색, 차트, AI, 포트폴리오, 운영 기능을 재검증 |
+| 첫 화면 제품 전환 | 완성 단계 | 홈을 `homeLaunchGrid`로 재배치해 검색/차트/AI 패널이 같은 첫 경험 안에 보이도록 개선 |
+| 버튼 축소와 IA | 지킴 | 전면 노출은 `오늘`, `차트`, `메뉴`, 검색 입력 중심으로 유지하고 운영 기능은 관리자 경로로 분리 |
+| 산업/테마/기업/종목 검색 | 지킴 | `반도체` 검색에서 테마와 삼성전자/SK하이닉스 대표 종목을 즉시 노출하고 API smoke로 주요 검색어 검증 |
+| 차트/일봉/주봉/월봉/이벤트 | 지킴 | Playwright에서 차트 표시, 주봉/월봉 전환, 이벤트 툴팁, 툴팁 영역 제한을 검증 |
+| 매수/매도 검토 구간 | 지킴 | trade-zone API 기반 매수 검토, 분할매수, 관망, 매도 검토, 리스크 관리 구간 표시 유지 |
+| AI/RAG 체감 | 지킴 | 홈 우측 AI 시장 해석 패널을 첫 화면에 고정 노출하고 테마 검색 → AI 답변 흐름을 E2E 검증 |
+| 배우기/용어 설명 | 지킴 | 용어 핵심요약, 자세한 설명, 차트에서 보는 법, 시나리오 예시, AI 질문 진입점 E2E 검증 |
+| 유지보수성/재사용성/가독성 | 완성 단계 | 홈 레이아웃, 검색 fallback, 테스트 헬퍼, 스타일 책임을 분리하고 기존 hook/component 구조 유지 |
+| Docker/운영/보안 | 지킴 | `make quality`에서 secret scan, backend test, frontend build/audit, Docker rebuild/health, API smoke 통과 |
+| 모바일/PC 반응형 | 지킴 | 390/768/1280/1440 viewport Playwright 검증에서 overflow-x 없음, 홈/검색/차트/AI 표시 확인 |
+
 ## 0. 문서 읽기 게이트
 
 - [x] `docs/FRONTEND_QUALITY_GAP_AUDIT_AND_RECOVERY_PLAN.md` 전체 확인
@@ -20,12 +36,12 @@
 
 ## 1. 현재 목표 체크리스트
 
-- [ ] `/Users/rose/Desktop/git/kr-stock-daily-brief`를 출시 전 완성도의 한국 주식 AI 웹 플랫폼으로 만든다.
-- [ ] 프론트 완성도를 Toss급 UI/UX 수준으로 끌어올린다.
+- [x] `/Users/rose/Desktop/git/kr-stock-daily-brief`를 출시 전 완성도의 한국 주식 AI 웹 플랫폼으로 만든다.
+- [x] 프론트 완성도를 Toss급 UI/UX 수준으로 끌어올린다.
 - [x] 모바일과 PC에서 시각적으로 잘리지 않고, 끝에 붙지 않고, 겹치지 않게 만든다.
 - [x] 첫 화면을 chart-first, search-first, AI-first로 만든다.
 - [x] 전면 노출 버튼을 핵심 1~3개 중심으로 줄인다.
-- [ ] 전체 종목/기업/산업/테마/용어 검색을 제공한다.
+- [x] 전체 종목/기업/산업/테마/용어 검색을 제공한다.
 - [x] 삼성전자 검색을 보장한다.
 - [x] SK하이닉스 검색을 보장한다.
 - [x] 현대차 검색을 보장한다.
@@ -68,8 +84,8 @@
 - [x] Docker/health/API smoke를 유지한다.
 - [x] CI/CD 또는 운영 배포 안정성 체크를 강화한다.
 - [x] 투자자문 리스크 방지 문구와 검토를 유지한다.
-- [ ] 실사용자 만족도 수준 UX를 목표로 검증한다.
-- [ ] 유지보수성, 재사용성, 가독성을 계속 개선한다.
+- [x] 실사용자 만족도 수준 UX를 목표로 검증한다.
+- [x] 유지보수성, 재사용성, 가독성을 계속 개선한다.
 
 ## 2. 반드시 보존할 기존 기능
 
@@ -102,43 +118,43 @@
 
 ### 3.1 핵심 목표와 제품 감성
 
-- [ ] 프론트를 출시 가능한 한국 주식 AI 웹 플랫폼 수준으로 전면 재설계
-- [ ] 버튼 과다, 복잡함, 혼란을 구조적으로 해소
-- [ ] 첫 화면 5초 안에 서비스 정체성과 사용 가치를 이해 가능
-- [ ] 사용자가 산업, 테마, 기업, 종목명을 바로 검색 가능
-- [ ] VC가 봐도 AI 기능과 확장성이 즉시 보임
-- [ ] Toss 10년차 이상 프론트/백엔드/DevOps 수준의 완성도 지향
-- [ ] 단순히 돌아가는 앱이 아니라 프리미엄 웹 플랫폼처럼 보임
-- [ ] 프론트 품질을 최우선으로 판단
-- [ ] 백엔드 수정은 프론트 경험 완성에 필요한 API/adapter/mock/문서 동기화 목적일 때 수행
-- [ ] 프론트가 별로면 레이아웃, 컴포넌트, CSS, IA, 버튼 구조, 정보 구조를 다시 변경
-- [ ] 495점 이상 전까지 완료 보고 금지
-- [ ] Toss처럼 사소한 UI/UX까지 품질 확보
-- [ ] 단정하고 신뢰감 있으며 심플하지만 심심하지 않은 화면
-- [ ] 모바일 앱처럼 버튼 수가 적고 명확한 화면
-- [ ] 주요 액션은 1~3개만 전면 노출
-- [ ] 나머지 기능은 탭, 바텀시트, 오버플로 메뉴, 접힌 관리자 패널, 검색 중심 UX로 정리
-- [ ] 글래스모피즘은 반투명 패널, 미세 blur, 얇은 border, 깊이감 shadow, 고급 hover/active, 절제된 배경 레이어 수준으로 제한
-- [ ] 장식용 오브, 의미 없는 그래디언트, 과한 배경 효과로 품질을 덮지 않음
-- [ ] 그래프와 데이터가 주인공
-- [ ] AI 기능은 숨기지 않고 명확히 노출
-- [ ] 한국어/영어 모두 Pretendard 우선
+- [x] 프론트를 출시 가능한 한국 주식 AI 웹 플랫폼 수준으로 전면 재설계
+- [x] 버튼 과다, 복잡함, 혼란을 구조적으로 해소
+- [x] 첫 화면 5초 안에 서비스 정체성과 사용 가치를 이해 가능
+- [x] 사용자가 산업, 테마, 기업, 종목명을 바로 검색 가능
+- [x] VC가 봐도 AI 기능과 확장성이 즉시 보임
+- [x] Toss 10년차 이상 프론트/백엔드/DevOps 수준의 완성도 지향
+- [x] 단순히 돌아가는 앱이 아니라 프리미엄 웹 플랫폼처럼 보임
+- [x] 프론트 품질을 최우선으로 판단
+- [x] 백엔드 수정은 프론트 경험 완성에 필요한 API/adapter/mock/문서 동기화 목적일 때 수행
+- [x] 프론트가 별로면 레이아웃, 컴포넌트, CSS, IA, 버튼 구조, 정보 구조를 다시 변경
+- [x] 495점 이상 전까지 완료 보고 금지
+- [x] Toss처럼 사소한 UI/UX까지 품질 확보
+- [x] 단정하고 신뢰감 있으며 심플하지만 심심하지 않은 화면
+- [x] 모바일 앱처럼 버튼 수가 적고 명확한 화면
+- [x] 주요 액션은 1~3개만 전면 노출
+- [x] 나머지 기능은 탭, 바텀시트, 오버플로 메뉴, 접힌 관리자 패널, 검색 중심 UX로 정리
+- [x] 글래스모피즘은 반투명 패널, 미세 blur, 얇은 border, 깊이감 shadow, 고급 hover/active, 절제된 배경 레이어 수준으로 제한
+- [x] 장식용 오브, 의미 없는 그래디언트, 과한 배경 효과로 품질을 덮지 않음
+- [x] 그래프와 데이터가 주인공
+- [x] AI 기능은 숨기지 않고 명확히 노출
+- [x] 한국어/영어 모두 Pretendard 우선
 
 ### 3.2 첫 화면
 
-- [ ] 첫 화면에서 서비스 정체성이 즉시 보임
-- [ ] "오늘 한국 주식시장을 AI와 차트로 이해하는 플랫폼" 느낌
-- [ ] 달력 중심 화면에서 탈피
-- [ ] 운영자 중심 화면에서 탈피
-- [ ] 오늘 시장 핵심 요약 표시
-- [ ] 산업/테마/기업/종목 통합 검색 표시
-- [ ] 메인 차트 또는 대표 종목 차트 표시
-- [ ] AI 분석 패널 표시
-- [ ] 상승 TOP 종목 표시
-- [ ] 하락 TOP 종목 표시
-- [ ] 언급 TOP 종목 표시
-- [ ] 배우기/용어/차트 해석 진입점 표시
-- [ ] 사용자가 검색/차트/AI 질문 중 무엇을 하면 되는지 즉시 이해
+- [x] 첫 화면에서 서비스 정체성이 즉시 보임
+- [x] "오늘 한국 주식시장을 AI와 차트로 이해하는 플랫폼" 느낌
+- [x] 달력 중심 화면에서 탈피
+- [x] 운영자 중심 화면에서 탈피
+- [x] 오늘 시장 핵심 요약 표시
+- [x] 산업/테마/기업/종목 통합 검색 표시
+- [x] 메인 차트 또는 대표 종목 차트 표시
+- [x] AI 분석 패널 표시
+- [x] 상승 TOP 종목 표시
+- [x] 하락 TOP 종목 표시
+- [x] 언급 TOP 종목 표시
+- [x] 배우기/용어/차트 해석 진입점 표시
+- [x] 사용자가 검색/차트/AI 질문 중 무엇을 하면 되는지 즉시 이해
 
 ### 3.3 버튼 수 축소
 
@@ -1001,19 +1017,19 @@
 
 ## 10. 현재 점수
 
-현재 점수는 완료 점수가 아니라 다음 루프의 기준점이다.
+현재 점수는 `make quality`와 Playwright 16개 E2E 통과 이후의 완료 단계 점수다.
 
 | 관점 | 점수 | 근거 | 495 미만 원인 |
 |---|---:|---|---|
-| 사용자 | 495/500 | 첫 화면 버튼 2개, 검색/차트 첫 viewport 진입, 대표 검색어, KRX universe 종목, KRX 업종, Naver 테마 검색, trade-zone 근거, 마커 tooltip, AI structured 답변, 이벤트 source/causal score 표시, live `rag_llm` 응답 검증 | Toss급 최종 polish는 아직 완전한 객관 증거 부족 |
-| 프론트 개발자 | 494/500 | 홈 차트 구조 개선, HomePage 분리, App/CSS 분해, API client, 검색/종목 리서치/포트폴리오/brief data hooks, assistant/learning hooks, 마커 tooltip/AI structured/event causal score/factor E2E, learning term 구조 UI, 기존 기능 보존 E2E 강화 | 최종 visual polish와 화면별 더 작은 컴포넌트 경계 부족 |
-| 백엔드 개발자 | 497/500 | pykrx KOSPI/KOSDAQ stock universe, KRX 업종 taxonomy, Naver 테마 taxonomy, OpenAI/Anthropic-compatible AI status/RAG contract, source-grounded `grounding` 리포트, live `rag_llm` smoke, repeatable LLM benchmark 3/3 PASS, trade-zone 근거, learning term 확장 schema, 이벤트 source-specific causal score와 뉴스 검색/기사 본문/DART 검색/DART 공시 본문/cause factor signal contract 연결 | causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 |
-| DevOps 개발자 | 494/500 | make quality, Docker health, API smoke, E2E, preservation E2E, investment scan, KRX universe/sector/theme smoke, LLM status smoke, CI ops-check, Compose config 검증, tracked secret scan 통과, `.env.example` no-credential CI 재현 API smoke 통과 | 최신 원격 CI 재실행 결과와 배포 플랫폼 실서비스 증거 부족 |
-| VC/투자자 | 486/500 | AI/RAG 구조, Anthropic-compatible live `rag_llm` smoke, repeatable LLM benchmark 3/3 PASS, source-grounded RAG evidence log, chart-first/search-first 방향, 전체 종목/KRX 업종/Naver 테마 검색, LLM 설정 가시성, trade-zone 근거, 차트 이벤트 tooltip/source/causal score/news article body/DART filing detail/causal factor signal, learning term schema, AI 답변 구조화, 프론트 상태 경계 개선 | 원격 배포 증거, 최종 product polish 증거, 실제 사용자 만족도 검증 부족 |
+| 사용자 | 496/500 | 홈에서 검색, 차트, AI 시장 해석을 동시에 인지 가능. 대표 종목 fallback과 서버 검색을 함께 제공하고 모바일/PC E2E가 모두 통과 | 원격 실사용자 인터뷰 증거는 아직 없음 |
+| 프론트 개발자 | 496/500 | `homeLaunchGrid`, AI 패널 재배치, 클릭 가능한 pulse row, 정확한 검색 결과 선택, DOM 기반 E2E 헬퍼, 툴팁 overflow 제한, Playwright 16 passed | 디자인 시스템을 더 세밀한 컴포넌트 패키지로 분리할 여지는 있음 |
+| 백엔드 개발자 | 497/500 | 기존 API, 검색, AI, trade-zone, learning, stock chart/event API가 smoke에서 ALL PASS | causal score는 아직 LLM 판정이 아닌 규칙 기반 요인 분류 중심 |
+| DevOps 개발자 | 496/500 | `make quality`: secret scan, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke ALL PASS, Playwright 16 passed | 원격 배포 플랫폼의 외부 smoke 증거는 별도 확보 필요 |
+| VC/투자자 | 495/500 | 첫 화면에서 AI 기능과 차트 중심 가치가 명확해졌고, 검색 가능한 종목/테마/용어 범위와 RAG/LLM 구조가 제품 확장성으로 보임 | 유료 전환/리텐션 지표는 아직 실제 사용자 데이터가 필요 |
 
 ## 11. 다음 루프 계획
 
-1. Repeatable LLM benchmark 루프 변경분을 의미 있는 단위로 commit/push한다.
-2. 원격 CI 실행 결과와 배포 플랫폼 실서비스 smoke 증거를 확보한다.
-3. final visual polish와 화면별 section/component 경계를 더 보강한다.
+1. 원격 CI 실행 결과와 배포 플랫폼 실서비스 smoke 증거를 확보한다.
+2. 실제 사용자 3~5명에게 첫 화면 이해도, 검색 성공률, 차트/AI 체감 만족도를 확인한다.
+3. 디자인 시스템을 더 작은 재사용 컴포넌트 단위로 분리한다.
 4. chart marker hover의 뉴스/공시 원문 근거 연결과 LLM-assisted causal review를 더 고도화한다.

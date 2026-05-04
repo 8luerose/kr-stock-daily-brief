@@ -232,6 +232,51 @@ body {
   margin-top: 14px;
 }
 
+.homeLaunchGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+  gap: 16px;
+  align-items: start;
+}
+
+.homeLaunchContent {
+  min-width: 0;
+}
+
+.homeLaunchAi {
+  position: sticky;
+  top: 118px;
+  min-width: 0;
+}
+
+.homeLaunchAi .heroAssistant {
+  margin-bottom: 0;
+}
+
+.homeLaunchGrid .marketHero {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.44fr);
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: clamp(18px, 2.2vw, 26px);
+}
+
+.homeLaunchGrid .marketHero h1 {
+  max-width: 760px;
+  font-size: clamp(30px, 3.25vw, 44px);
+}
+
+.homeLaunchGrid .marketHero p {
+  max-width: 700px;
+}
+
+.homeLaunchGrid .heroMeta {
+  margin-top: 13px;
+}
+
+.homeLaunchGrid .heroSearch {
+  margin-top: 16px;
+}
+
 .stockResearch.homeCompact .stockResearchHead {
   padding: 14px 16px;
 }
@@ -320,6 +365,15 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .homeLaunchGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .homeLaunchAi {
+    position: static;
+    order: 2;
+  }
+
   .kvGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -371,6 +425,10 @@ body {
   }
 
   .marketHero {
+    grid-template-columns: 1fr;
+  }
+
+  .homeLaunchGrid .marketHero {
     grid-template-columns: 1fr;
   }
 

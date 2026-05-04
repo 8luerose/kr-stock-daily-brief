@@ -1,4 +1,4 @@
-import { COPY, SEARCH_THEME_FALLBACKS } from "./AppConstants.js";
+import { COPY, SEARCH_STOCK_FALLBACKS, SEARCH_THEME_FALLBACKS } from "./AppConstants.js";
 
 function naverMainFromDayUrl(dayUrl) {
   if (!dayUrl) return "";
@@ -359,7 +359,7 @@ export function buildSearchItems(summary, terms) {
     summary: buildTermCoreSummary(term),
     term
   }));
-  return [...stocks, ...SEARCH_THEME_FALLBACKS, ...glossary];
+  return [...stocks, ...SEARCH_STOCK_FALLBACKS, ...SEARCH_THEME_FALLBACKS, ...glossary];
 }
 
 export function normalizeSearchResult(item, localItems) {

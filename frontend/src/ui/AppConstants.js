@@ -145,6 +145,64 @@ export const PAGE_LABELS = {
   admin: "운영"
 };
 
+export const SEARCH_STOCK_FALLBACKS = [
+  {
+    id: "stock-005930-baseline",
+    type: "stock",
+    title: "삼성전자",
+    code: "005930",
+    market: "KOSPI",
+    rate: "대표",
+    tags: ["반도체", "AI 반도체", "메모리", "대형주", "코스피"],
+    summary: "한국 반도체와 대형주 흐름을 볼 때 가장 먼저 확인하는 대표 종목입니다.",
+    stock: { code: "005930", name: "삼성전자", group: "반도체 대표 종목" }
+  },
+  {
+    id: "stock-000660-baseline",
+    type: "stock",
+    title: "SK하이닉스",
+    code: "000660",
+    market: "KOSPI",
+    rate: "대표",
+    tags: ["반도체", "HBM", "메모리", "AI 반도체", "코스피"],
+    summary: "HBM, 메모리 가격, AI 서버 투자 흐름과 연결해 보는 반도체 대표 종목입니다.",
+    stock: { code: "000660", name: "SK하이닉스", group: "반도체 대표 종목" }
+  },
+  {
+    id: "stock-005380-baseline",
+    type: "stock",
+    title: "현대차",
+    code: "005380",
+    market: "KOSPI",
+    rate: "대표",
+    tags: ["자동차", "전기차", "수출", "환율", "코스피"],
+    summary: "자동차 수출, 환율, 전기차 전환을 함께 확인하는 대표 완성차 종목입니다.",
+    stock: { code: "005380", name: "현대차", group: "자동차 대표 종목" }
+  },
+  {
+    id: "stock-035420-baseline",
+    type: "stock",
+    title: "NAVER",
+    code: "035420",
+    market: "KOSPI",
+    rate: "대표",
+    tags: ["네이버", "인터넷", "플랫폼", "AI", "광고"],
+    summary: "광고, 커머스, AI 서비스 기대를 함께 보는 대표 인터넷 플랫폼 종목입니다.",
+    stock: { code: "035420", name: "NAVER", group: "플랫폼 대표 종목" }
+  },
+  {
+    id: "stock-035720-baseline",
+    type: "stock",
+    title: "카카오",
+    code: "035720",
+    market: "KOSPI",
+    rate: "대표",
+    tags: ["카카오", "인터넷", "플랫폼", "콘텐츠", "핀테크"],
+    summary: "플랫폼, 콘텐츠, 핀테크 이슈가 함께 움직이는 대표 인터넷 종목입니다.",
+    stock: { code: "035720", name: "카카오", group: "플랫폼 대표 종목" }
+  }
+];
+
 export const SEARCH_THEME_FALLBACKS = [
   {
     id: "theme-semiconductor",

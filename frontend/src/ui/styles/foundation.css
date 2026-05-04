@@ -390,7 +390,7 @@ textarea {
   background: var(--card);
   color: var(--text);
   text-align: left;
-  cursor: default;
+  cursor: pointer;
   transition: var(--transition);
 }
 

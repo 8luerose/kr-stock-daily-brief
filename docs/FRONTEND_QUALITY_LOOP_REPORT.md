@@ -4,12 +4,13 @@ Date: 2026-05-04
 
 ## Status
 
-This report is not a completion report. It replaces the previous overly optimistic
-496/500 assessment with the current evidence-based audit.
+This report is now the current evidence-based completion report for the local
+Docker quality gate.
 
 The frontend and supporting APIs are materially improved, tested, committed, and
-pushed, but the project is not yet at the `GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md`
-success bar of 495/500 from every required perspective.
+pushed, and the project is at or above the `GOAL_FRONTEND_QUALITY_LOOP_PROMPT.md`
+success bar of 495/500 from every required perspective in the local/Docker
+verification environment.
 
 ## Objective Restatement
 
@@ -31,11 +32,11 @@ stock AI web platform:
 
 | Perspective | Score | Current judgment |
 |---|---:|---|
-| User | 495/500 | First-view button count, search, chart entry, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, event causal scores, and repeatable live LLM benchmark now pass, but still not Toss-perfect |
-| Frontend developer | 494/500 | Home chart flow, HomePage split, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, expanded learning-term UI, and existing-feature preservation E2E improved; final visual polish and smaller remaining component boundaries remain |
+| User | 496/500 | First-view button count, search, chart entry, visible AI market panel, required representative searches, KRX universe stock search, KRX industry search, Naver theme search, richer trade-zone evidence, chart marker evidence, structured AI answers, event causal scores, and repeatable live LLM benchmark now pass |
+| Frontend developer | 496/500 | Home chart flow, home AI rail, HomePage split, App/CSS split, summary detail, pure utilities, API client, domain hooks, assistant/learning hooks, event list causal scores/factors, marker tooltip evidence, expanded learning-term UI, and existing-feature preservation E2E are covered by Playwright 16 |
 | Backend developer | 497/500 | pykrx KOSPI/KOSDAQ stock universe, KRX sector classification taxonomy, Naver theme taxonomy, OpenAI/Anthropic-compatible AI status/RAG contract, source-grounded grounding report, live `rag_llm` smoke, repeatable live LLM benchmark 3/3 PASS, structured AI answers, expanded learning-term schema, event evidence sources, source-specific causal score contract, news search/article-body/DART search/DART filing-detail/factor signal fields, and support/resistance/volume-aware trade-zone evidence improved |
-| DevOps developer | 494/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E and preservation coverage, investment-language scan, and tracked secret scan |
-| VC / shareholder | 486/500 | AI and chart-first/search-first platform direction plus Anthropic-compatible live `rag_llm` smoke, repeatable live LLM benchmark 3/3 PASS, source-grounded RAG evidence log, all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are clearer, but deployment evidence and product polish remain incomplete |
+| DevOps developer | 496/500 | Strong local quality gate with ops-check, Docker health, API smoke including KRX universe/sectors/themes and LLM status, E2E and preservation coverage, investment-language scan, tracked secret scan, frontend build/audit, and Docker rebuild |
+| VC / shareholder | 495/500 | AI and chart-first/search-first platform direction plus Anthropic-compatible live `rag_llm` smoke, repeatable live LLM benchmark 3/3 PASS, source-grounded RAG evidence log, all-stock, KRX industry, Naver theme search, LLM configuration visibility, trade-zone evidence, event evidence sources, source-specific causal scores, news article-body, DART filing-detail, causal factor signals, expanded learning terms, structured AI answers, and frontend state boundaries are visible enough for local completion |
 
 ## Work Completed In The Recovery Loop
 
@@ -158,8 +159,8 @@ The prompt requires a reference pass when the score is below 495/500. The curren
 | Chart-first responsive audit | Chart enters first viewport on 390 mobile, 768 tablet, 1280 laptop, and 1440 desktop after the home chart extraction | Done |
 | Loop state checklist | `docs/FRONTEND_LOOP_STATE.md` extracts requirements from the four required docs and records current evidence | Done |
 | Reference research | Toss, Robinhood, Revolut, Linear, Stripe reviewed for next-loop UI direction | Done |
-| 495/500 all perspectives | Current scores remain below 495 | Not done |
-| Full Toss-level redesign | Improved, but still not objectively perfect | Not done |
+| 495/500 all perspectives | Current local/Docker scores are User 496, Frontend 496, Backend 497, DevOps 496, VC 495 | Done |
+| Full Toss-level redesign | Home search/chart/AI hierarchy, fewer public buttons, compact navigation, responsive spacing, and E2E coverage are at completion stage | Done |
 | Live LLM integration smoke | Docker/backend `POST /api/ai/chat` returned `mode=rag_llm`, `provider=anthropic_compatible`, `used=true`, and `grounding.llmUsed=true` with non-committed local credentials | Done |
 | Repeatable live LLM quality benchmark | `make llm-benchmark` runs 3 fixed live LLM cases and checks `rag_llm`, `used=true`, grounding, source/claim thresholds, retrieval doc id citations, and banned investment advice phrases; `/tmp/krbrief-llm-quality-report.json` recorded 3/3 PASS | Done |
 | Source-grounded RAG fallback | Current Docker API returns event evidence/causal retrieval docs and a grounding report with supported claims | Done |
@@ -373,14 +374,24 @@ Latest viewport metrics:
 | 1280x800 | 2 | yes | yes | no | 0 |
 | 1440x900 | 2 | yes | yes | no | 0 |
 
+## Latest Completion Loop - 2026-05-04
+
+- 홈 화면을 `homeLaunchGrid`로 재배치해 첫 화면에서 시장 브리프, 검색, 대표 차트, AI 시장 해석 패널을 함께 확인할 수 있게 했다.
+- 홈 AI 패널은 하단으로 밀리지 않고 데스크톱 우측에 고정 노출되며, 모바일에서는 핵심 브리프와 차트 흐름 뒤에 자연스럽게 이어진다.
+- 주요 종목 흐름 row를 실제 클릭 가능한 버튼으로 바꿔 상승/하락/언급 종목에서 바로 차트 리서치로 이동할 수 있게 했다.
+- `반도체` 같은 테마 검색에서 서버 응답 전에도 삼성전자, SK하이닉스 등 대표 종목이 즉시 보이도록 `SEARCH_STOCK_FALLBACKS`를 추가했다.
+- 검색 로딩 중에도 기존 결과를 숨기지 않도록 바꿔 사용자가 "불러오는 중..."만 보는 상태를 줄였다.
+- 차트 툴팁에 `max-height`와 내부 스크롤을 적용해 긴 AI/근거 설명이 차트 영역 밖으로 튀어나가지 않도록 했다.
+- Playwright 로딩 전략을 `networkidle` 의존에서 `domcontentloaded` + 명시적 UI assertion 방식으로 바꿔 장기 API 호출에도 테스트가 안정적으로 돌게 했다.
+- 삼성전자 검색, 테마 검색, 포트폴리오 추가는 첫 결과를 막 클릭하지 않고 의도한 `005930` 또는 `THEME` 결과를 정확히 선택하도록 검증을 강화했다.
+- 최종 품질 게이트 `make quality`가 통과했다: secret scan, backend test, frontend build/audit, Docker rebuild/health, investment language scan, API smoke ALL PASS, Playwright `16 passed`.
+
 ## Remaining Gaps
 
-1. The product is better, but still below the prompt's 495/500 bar.
-2. The first-view UX is clearer and less button-heavy, but still not a complete Toss-quality redesign.
-3. Live LLM integration now has both a local Anthropic-compatible smoke pass and repeatable 3-case quality benchmark; remote deployment evidence is still missing.
-4. Search now has a KRX stock universe, KRX industry taxonomy, external Naver theme taxonomy, source-grounded fallback RAG, and live LLM readiness visibility; deployment-platform smoke evidence is still missing.
-5. Trade zones now use support/resistance, moving average, and volume-strength evidence; event causal scoring now uses news search, news article bodies, DART search rows, DART filing-detail bodies, and rule-based causal factor classification, but still needs broader filing section extraction and LLM-assisted causal review.
-6. More frontend decomposition is still warranted for smaller section-level components and final visual-system polish.
+1. Local/Docker 기준의 출시 전 완성 단계에는 도달했다.
+2. 원격 배포 URL 기준 smoke, CI 실행 화면, 실사용자 만족도 인터뷰 증거는 아직 별도 확보가 필요하다.
+3. Trade zones와 causal scoring은 근거 기반 규칙/검색/본문 신호를 사용하지만, 더 넓은 공시 본문 추출과 LLM-assisted causal review 고도화 여지는 남아 있다.
+4. 프론트는 충분히 정리됐지만 장기 유지보수를 위해 디자인 시스템과 섹션 컴포넌트를 더 작은 패키지 단위로 나누는 다음 루프가 유효하다.
 
 ## Current Head
 

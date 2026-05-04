@@ -90,7 +90,7 @@ export function MarketHero({
               {!searchLoading && searchResults.length === 0 ? (
                 <div className="searchEmpty">{copy.searchEmpty}</div>
               ) : null}
-              {!searchLoading && searchResults.length > 0 ? (
+              {searchResults.length > 0 ? (
                 searchResults.map((item) => (
                   <button type="button" key={item.id} onClick={() => selectSearchResult(item)}>
                     <span className="searchType">{item.market}</span>
@@ -134,14 +134,16 @@ export function MarketHero({
           }
 
           return (
-            <div
+            <button
+              type="button"
               key={`${stock.group}-${stock.code || stock.name}-${index}`}
               className={`pulseRow ${currentStock?.code && stock.code === currentStock.code ? "active" : ""}`}
-              role="listitem"
               aria-label={`${stock.name} ${stock.group} ${stock.count ? `${formatNumber(stock.count)}건` : formatRate(stock.rate)}`}
+              aria-pressed={currentStock?.code && stock.code === currentStock.code}
+              onClick={() => selectStock(stock)}
             >
               {content}
-            </div>
+            </button>
           );
         })}
       </div>

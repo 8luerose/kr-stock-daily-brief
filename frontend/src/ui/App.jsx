@@ -323,40 +323,47 @@ export default function App() {
       </header>
 
       {activePage === "home" ? (
-        <HomePage
-          copy={COPY}
-          summary={summary}
-          selected={selected}
-          dataAsOf={dataAsOf}
-          confidenceLabel={confidenceLabel}
-          headline={getMarketHeadline(summary, selected)}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          searchLoading={searchLoading}
-          searchResults={searchResults}
-          selectSearchResult={selectSearchResult}
-          stockPicks={stockPicks}
-          currentStock={currentStock}
-          selectStock={selectStock}
-          stockInterval={stockInterval}
-          setStockInterval={setStockInterval}
-          stockChart={stockChart}
-          stockEvents={stockEvents}
-          stockChartLoading={stockChartLoading}
-          stockChartError={stockChartError}
-          darkMode={darkMode}
-          riskMode={riskMode}
-          setRiskMode={setRiskMode}
-          decisionPanel={decisionPanel}
-          addCurrentStockToPortfolio={addCurrentStockToPortfolio}
-          askChartAi={askChartAi}
-          aiResearchLoading={aiResearchLoading}
-          aiResearchResponse={aiResearchResponse}
-          asArray={asArray}
-          formatNumber={formatNumber}
-          formatRate={formatRate}
-          buildNaverLinks={buildNaverLinks}
-        />
+        <div className="homeLaunchGrid">
+          <div className="homeLaunchContent">
+            <HomePage
+              copy={COPY}
+              summary={summary}
+              selected={selected}
+              dataAsOf={dataAsOf}
+              confidenceLabel={confidenceLabel}
+              headline={getMarketHeadline(summary, selected)}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              searchLoading={searchLoading}
+              searchResults={searchResults}
+              selectSearchResult={selectSearchResult}
+              stockPicks={stockPicks}
+              currentStock={currentStock}
+              selectStock={selectStock}
+              stockInterval={stockInterval}
+              setStockInterval={setStockInterval}
+              stockChart={stockChart}
+              stockEvents={stockEvents}
+              stockChartLoading={stockChartLoading}
+              stockChartError={stockChartError}
+              darkMode={darkMode}
+              riskMode={riskMode}
+              setRiskMode={setRiskMode}
+              decisionPanel={decisionPanel}
+              addCurrentStockToPortfolio={addCurrentStockToPortfolio}
+              askChartAi={askChartAi}
+              aiResearchLoading={aiResearchLoading}
+              aiResearchResponse={aiResearchResponse}
+              asArray={asArray}
+              formatNumber={formatNumber}
+              formatRate={formatRate}
+              buildNaverLinks={buildNaverLinks}
+            />
+          </div>
+          <aside className="homeLaunchAi" aria-label="AI 시장 해석">
+            {assistantPanel}
+          </aside>
+        </div>
       ) : null}
 
       {activePage === "learning" ? assistantPanel : null}
@@ -492,8 +499,6 @@ export default function App() {
           />
         ) : null}
       </main>
-
-      {activePage === "home" ? assistantPanel : null}
     </div>
   );
 }

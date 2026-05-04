@@ -14,6 +14,11 @@ async function expectNoHorizontalOverflow(page) {
   expect(overflowX).toBe(false);
 }
 
+async function openApp(page, hash) {
+  await page.goto(`${APP_URL}/${hash}`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".top")).toBeVisible();
+}
+
 for (const viewport of viewports) {
   test(`home renders search, AI, chart, and responsive layout on ${viewport.name}`, async ({ page }) => {
     const errors = [];
@@ -23,7 +28,7 @@ for (const viewport of viewports) {
     page.on("pageerror", (error) => errors.push(error.message));
 
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+    await openApp(page, "#home");
 
     await expect(page.locator(".marketHero")).toBeVisible();
     await expect(page).toHaveTitle("오늘 | 한국 주식 AI 리서치");
@@ -33,7 +38,7 @@ for (const viewport of viewports) {
     await expect(page.getByText("AI 시장 해석")).toBeVisible();
     await expect(page.getByLabel("AI에게 물어볼 질문")).toBeVisible();
     await expect(page.getByText(/개발자용|관리자 영역에서 생성/)).toHaveCount(0);
-    await expect(page.locator(".realChart canvas").first()).toBeVisible();
+    await expect(page.locator(".realChart canvas").first()).toBeVisible({ timeout: 20000 });
     await expect(page.getByRole("img", { name: /캔들 차트/ }).first()).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
@@ -41,7 +46,7 @@ for (const viewport of viewports) {
     await expect(page.locator(".searchResults")).toBeVisible();
     await expect(page.locator(".searchResults button").first()).toBeVisible();
     await expect(page.locator(".searchResults")).toContainText("삼성전자");
-    await expect(page.getByText(/seed catalog|fallback|어댑터/)).toHaveCount(0);
+    await expect(page.locator(".searchResults")).not.toContainText(/seed catalog|fallback|어댑터/);
     await expectNoHorizontalOverflow(page);
 
     expect(errors).toEqual([]);
@@ -50,7 +55,7 @@ for (const viewport of viewports) {
 
 test("learning tab exposes beginner structure and assistant entry points", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto(`${APP_URL}/#learning`, { waitUntil: "networkidle" });
+  await openApp(page, "#learning");
 
   await expect(page).toHaveTitle("배우기 | 한국 주식 AI 리서치");
   await expect(page.locator(".learningPanel")).toBeVisible();
@@ -67,7 +72,7 @@ test("learning tab exposes beginner structure and assistant entry points", async
 
 test("keyboard users can skip repeated navigation", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await openApp(page, "#home");
 
   await page.keyboard.press("Tab");
   await expect(page.locator(".skipLink")).toBeFocused();
@@ -77,21 +82,21 @@ test("keyboard users can skip repeated navigation", async ({ page }) => {
 
 test("stock search result opens chart research flow", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await openApp(page, "#home");
 
   await page.fill("#universal-search", "삼성전자");
   await expect(page.locator(".searchResults button").first()).toBeVisible();
   await expect(page.locator(".searchResults")).toContainText("005930");
-  await page.locator(".searchResults button").first().click();
+  await page.locator(".searchResults button").filter({ hasText: "005930" }).first().click();
 
   await expect(page.locator("#stock-detail")).toBeVisible();
   await expect(page.locator(".stockResearch")).toBeVisible();
-  await expect(page.locator(".realChart canvas").first()).toBeVisible();
+  await expect(page.locator(".realChart canvas").first()).toBeVisible({ timeout: 20000 });
 });
 
 test("term search result opens learning detail flow", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await openApp(page, "#home");
 
   await page.fill("#universal-search", "PER");
   const perResult = page.locator(".searchResults button").filter({
@@ -109,13 +114,13 @@ test("term search result opens learning detail flow", async ({ page }) => {
 
 test("theme search result opens visible AI market interpretation", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await openApp(page, "#home");
 
   await page.fill("#universal-search", "반도체");
   await expect(page.locator(".searchResults button").first()).toBeVisible();
-  await page.locator(".searchResults button").first().click();
+  await page.locator(".searchResults button").filter({ hasText: "THEME" }).first().click();
 
-  await expect(page.locator(".heroAssistant")).toBeVisible();
+  await expect(page.locator(".heroAssistant")).toBeVisible({ timeout: 10000 });
   await expect(page.locator(".assistantAnswer")).toBeVisible({ timeout: 45000 });
   await expect(page.locator(".assistantAnswer")).toContainText("반도체", { timeout: 45000 });
   await expect(page.locator(".assistantStructured")).toContainText("결론");
@@ -131,7 +136,7 @@ test("theme search result opens visible AI market interpretation", async ({ page
 
 test("history page restores public calendar and detail access", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(`${APP_URL}/#history`, { waitUntil: "networkidle" });
+  await openApp(page, "#history");
 
   await expect(page).toHaveTitle("기록 | 한국 주식 AI 리서치");
   await expect(page.locator(".calendar")).toBeVisible();
@@ -144,11 +149,11 @@ test("history page restores public calendar and detail access", async ({ page })
 
 test("summary detail preserves verification and collection notes disclosures", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(`${APP_URL}/#history`, { waitUntil: "networkidle" });
+  await openApp(page, "#history");
 
   const detail = page.locator(".detail");
   await expect(detail).toBeVisible();
-  await expect(detail).toContainText("검증");
+  await expect(detail).toContainText("검증", { timeout: 20000 });
 
   await detail.getByText("검증 상세").click();
   await expect(detail.locator(".devDetails")).toBeVisible();
@@ -163,7 +168,7 @@ test("summary detail preserves verification and collection notes disclosures", a
 
 test("admin direct route explains key requirement without exposing admin actions", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(`${APP_URL}/#admin`, { waitUntil: "networkidle" });
+  await openApp(page, "#admin");
 
   await expect(page).toHaveTitle("운영 | 한국 주식 AI 리서치");
   await expect(page.locator(".adminPanel")).toBeVisible();
@@ -185,7 +190,7 @@ test("empty market pulse fallback rows are not clickable when no latest summary 
     });
   });
 
-  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await openApp(page, "#home");
 
   await expect(page.locator(".empty")).toContainText("요약이 아직 없습니다");
   await expect(page.locator(".pulseRow").first()).toBeDisabled();
@@ -194,18 +199,18 @@ test("empty market pulse fallback rows are not clickable when no latest summary 
 
 test("chart tab supports interval switching and bounded tooltip display", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await openApp(page, "#home");
   await page.fill("#universal-search", "삼성전자");
   await expect(page.locator(".searchResults button").first()).toBeVisible();
   const chartResponse = page.waitForResponse((response) => response.url().includes("/api/stocks/005930/chart") && response.ok());
   const eventsResponse = page.waitForResponse((response) => response.url().includes("/api/stocks/005930/events") && response.ok());
-  await page.locator(".searchResults button").first().click();
+  await page.locator(".searchResults button").filter({ hasText: "005930" }).first().click();
   const chartPayload = await (await chartResponse).json();
   const eventsPayload = await (await eventsResponse).json();
 
   await expect(page.locator("#stock-detail")).toBeVisible();
   await expect(page.locator(".stockResearch")).toBeVisible();
-  await expect(page.locator(".realChart canvas").first()).toBeVisible();
+  await expect(page.locator(".realChart canvas").first()).toBeVisible({ timeout: 20000 });
   await expect(page.locator(".eventList")).toContainText("네이버 뉴스 검색");
   await expect(page.locator(".eventList")).toContainText("DART 공시 검색");
   await expect(page.locator(".eventList")).toContainText("원인 점수");
@@ -273,7 +278,7 @@ test("chart API failure exposes an accessible error state", async ({ page }) => 
     });
   });
 
-  await page.goto(`${APP_URL}/#research`, { waitUntil: "networkidle" });
+  await openApp(page, "#research");
 
   await expect(page.locator(".stockResearch")).toBeVisible();
   await expect(page.getByRole("alert").filter({ hasText: /차트 데이터를 불러오지 못했습니다/ })).toBeVisible();
@@ -282,13 +287,13 @@ test("chart API failure exposes an accessible error state", async ({ page }) => 
 
 test("portfolio sandbox preserves add, weight, persistence, and removal flow", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto(`${APP_URL}/#home`, { waitUntil: "networkidle" });
+  await openApp(page, "#home");
   await page.evaluate(() => localStorage.removeItem("portfolioSandbox"));
   await page.reload({ waitUntil: "domcontentloaded" });
 
   await page.fill("#universal-search", "삼성전자");
   await expect(page.locator(".searchResults")).toContainText("005930");
-  await page.locator(".searchResults button").first().click();
+  await page.locator(".searchResults button").filter({ hasText: "005930" }).first().click();
   await expect(page.locator("#stock-detail")).toBeVisible();
 
   await page.evaluate(() => {
