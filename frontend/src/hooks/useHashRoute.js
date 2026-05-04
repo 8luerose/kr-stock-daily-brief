@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const routes = new Set(["home", "learn", "archive", "admin"]);
+const routes = new Set(["home", "learn", "practice", "archive", "admin"]);
 
 function readRoute() {
   const route = window.location.hash.replace("#", "") || "home";

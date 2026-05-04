@@ -89,6 +89,8 @@
 }
 
 .homeStage,
+.choiceStage,
+.experienceStage,
 .learningPanel:not(.compact),
 .archivePanel,
 .adminPanel {
@@ -98,6 +100,314 @@
 
 .homeStage {
   padding: 24px 0 72px;
+}
+
+.choiceStage {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(420px, 0.86fr);
+  gap: clamp(24px, 5vw, 72px);
+  align-items: center;
+  min-height: calc(100vh - 86px);
+  padding: 24px 0 78px;
+}
+
+.choiceCopy {
+  width: min(620px, 100%);
+}
+
+.choiceCopy h1 {
+  margin-top: 12px;
+  font-size: clamp(42px, 5.4vw, 72px);
+  line-height: 1.02;
+}
+
+.choiceCopy p {
+  width: min(560px, 100%);
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.68;
+}
+
+.choiceActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: min(560px, 100%);
+  margin-top: 28px;
+}
+
+.choiceButton {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: center;
+  min-height: 104px;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(216, 225, 238, 0.95);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow-soft);
+  transition: transform var(--speed), box-shadow var(--speed), border-color var(--speed), background var(--speed);
+}
+
+.choiceButton::after {
+  position: absolute;
+  inset: auto 18px 12px 18px;
+  height: 3px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--blue), rgba(0, 168, 104, 0.9));
+  content: "";
+  transform: scaleX(0.32);
+  transform-origin: left;
+  transition: transform var(--speed);
+}
+
+.choiceButton.primary {
+  background: var(--navy);
+  color: #ffffff;
+}
+
+.choiceButton:hover,
+.choiceButton:focus-visible {
+  border-color: rgba(49, 130, 246, 0.55);
+  box-shadow: var(--shadow);
+  transform: translateY(-4px);
+}
+
+.choiceButton:hover::after,
+.choiceButton:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.choiceButton svg {
+  color: var(--blue);
+}
+
+.choiceButton.primary svg {
+  color: #9ec5ff;
+}
+
+.choiceButton strong {
+  font-size: 23px;
+  line-height: 1.1;
+}
+
+.choiceButton span {
+  grid-column: 2 / 4;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.42;
+}
+
+.choiceButton.primary span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.landingPreview {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(216, 225, 238, 0.88);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+  animation: panelRise 620ms ease both;
+}
+
+.previewSearch,
+.previewMeta {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.previewSearch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 14px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.previewSearch svg {
+  color: var(--blue);
+}
+
+.previewChart {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(20, 31, 52, 0.96)),
+    #111827;
+}
+
+.previewChart > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 280px;
+}
+
+.previewGrid {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.previewZone {
+  stroke-width: 1;
+}
+
+.previewZone.buy {
+  fill: rgba(0, 168, 104, 0.16);
+  stroke: rgba(0, 168, 104, 0.58);
+}
+
+.previewZone.risk {
+  fill: rgba(240, 68, 82, 0.16);
+  stroke: rgba(240, 68, 82, 0.58);
+}
+
+.previewArea {
+  fill: url("#previewFill");
+}
+
+.previewLine {
+  fill: none;
+  stroke: #65a8ff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 12px rgba(49, 130, 246, 0.58));
+  stroke-dasharray: 720;
+  animation: chartDraw 1.2s ease both;
+}
+
+.previewArrow {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-dasharray: 5 7;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.previewLabel {
+  fill: #ffffff;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.previewVolume {
+  fill: rgba(56, 189, 248, 0.74);
+}
+
+.previewVolume.hot {
+  fill: rgba(239, 68, 68, 0.8);
+}
+
+.previewBubble {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 8px;
+  width: min(245px, calc(100% - 36px));
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius);
+  background: rgba(15, 23, 42, 0.88);
+  color: #ffffff;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(14px);
+}
+
+.previewBubble svg {
+  width: 16px;
+  height: 16px;
+  color: #9ec5ff;
+}
+
+.previewBubble span {
+  grid-column: 1 / -1;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 13px;
+  line-height: 1.48;
+}
+
+.previewMeta {
+  display: grid;
+  gap: 4px;
+  padding: 13px 14px;
+}
+
+.previewMeta span,
+.previewMeta em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.previewMeta strong {
+  font-size: 20px;
+}
+
+.experienceStage {
+  padding: 18px 0 72px;
+}
+
+.experienceIntro {
+  width: min(680px, 100%);
+  padding: 14px 0 2px;
+}
+
+.experienceIntro h1 {
+  margin-top: 8px;
+  font-size: clamp(34px, 4.4vw, 54px);
+  line-height: 1.05;
+}
+
+.experienceIntro p {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+.experienceStage > .learningPanel:not(.compact) {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.supportGrid.singleFocus {
+  grid-template-columns: minmax(300px, 0.55fr);
+}
+
+@keyframes chartDraw {
+  from {
+    stroke-dashoffset: 720;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes panelRise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .heroCopy {
