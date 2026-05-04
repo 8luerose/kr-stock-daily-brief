@@ -952,6 +952,12 @@
 - [x] Repeatable LLM benchmark 루프 `make llm-benchmark`: 3/3 PASS, `samsung_chart_event`, `semiconductor_theme_grounding`, `per_safety_guardrail` 모두 `mode=rag_llm`, `provider=anthropic_compatible`, retrieval 문서 id 2개 이상 인용, 금지 투자문구 미검출
 - [x] Repeatable LLM benchmark 리포트: `/tmp/krbrief-llm-quality-report.json`, `totalCases=3`, `passedCases=3`, `failedCases=0`, `elapsedSeconds=22.259`
 - [x] Repeatable LLM benchmark 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke, Playwright `16 passed`
+- [x] CI schema migration 루프 원인: 원격 fresh DB에서 `DailySummary`의 시장별 KOSPI/KOSDAQ leader 컬럼이 Flyway migration에 없어 Hibernate schema validation 실패
+- [x] CI schema migration 루프 수정: `V6__market_segment_leader_fields.sql` 추가, `kospi_top_gainer`, `kosdaq_top_gainer`, code/rate/list JSON 컬럼 전체 반영
+- [x] CI schema migration 루프 drift 대응: 기존 로컬 DB처럼 컬럼은 이미 있으나 Flyway 이력이 없는 환경도 통과하도록 information_schema 기반 idempotent DDL 적용
+- [x] CI schema migration 루프 `./gradlew test --no-daemon --stacktrace`: 통과, fresh Testcontainers DB에서 `V6` 파싱/적용 확인
+- [x] CI schema migration 루프 Docker 기준 `flyway_schema_history`: version `6`, description `market segment leader fields`, `success=1`
+- [x] CI schema migration 루프 최종 `make quality`: ops-check, backend test, frontend build/audit, Docker rebuild/health, investment scan, API smoke ALL PASS, Playwright `16 passed`
 
 ### 9.3 최신 viewport 계측
 

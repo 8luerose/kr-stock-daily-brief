@@ -324,6 +324,12 @@ Additional live Docker API checks:
 - Repeatable LLM benchmark loop `make llm-benchmark`: 3/3 PASS; `samsung_chart_event`, `semiconductor_theme_grounding`, and `per_safety_guardrail` all returned `mode=rag_llm`, `provider=anthropic_compatible`, at least two cited retrieval document ids, and no banned investment-advice phrase
 - Repeatable LLM benchmark report: `/tmp/krbrief-llm-quality-report.json`, `totalCases=3`, `passedCases=3`, `failedCases=0`, `elapsedSeconds=22.259`
 - Repeatable LLM benchmark loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke, and Playwright `16 passed`
+- CI schema migration loop root cause: remote fresh DB failed backend startup because the Flyway schema did not include market-segment leader fields required by `DailySummary`
+- CI schema migration loop fix: added `V6__market_segment_leader_fields.sql` for KOSPI/KOSDAQ top gainer/loser names, codes, rates, and JSON lists
+- CI schema migration loop drift handling: the migration uses `information_schema` checks so existing databases with manually present columns can still record Flyway version 6 successfully
+- CI schema migration loop `./gradlew test --no-daemon --stacktrace`: passed, covering fresh Testcontainers migration execution
+- CI schema migration loop Docker `flyway_schema_history`: version `6`, description `market segment leader fields`, `success=1`
+- CI schema migration loop final `make quality`: ops-check, backend tests, frontend build/audit, Docker rebuild/health, investment scan, API smoke ALL PASS, and Playwright `16 passed`
 - The first full `make quality` run after adding Naver themes failed because partial theme matches pushed `삼성전자` out of the `반도체` first-view search results. Search scoring now keeps exact theme matches and representative stock tag matches ahead of external partial theme matches. The final `make quality` run passed with Playwright `13 passed`.
 
 Additional screenshots were captured from the Docker-served frontend:
@@ -372,7 +378,7 @@ Latest viewport metrics:
 
 ## Current Head
 
-- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, `Add source grounded AI evidence`, `Strengthen search contract coverage`, `Cover preserved frontend flows`, and `Add Anthropic compatible live LLM path`. This report also records the repeatable LLM benchmark loop for the next recovery commit.
+- Latest recovery-loop commits include `Expand search taxonomy and restore chart-first home`, `Add KRX stock universe search`, `Add KRX sector taxonomy search`, `Add Naver theme taxonomy search`, `Add LLM status visibility`, `Enrich trade zone evidence`, `Split frontend API hooks`, `Enrich chart marker tooltips`, `Structure AI answer summaries`, `Add structured event evidence sources`, `Add operational safety guard`, `Split brief data hook`, `Add event causal scoring`, `Add event text causal signals`, `Add event article body signals`, `Add DART filing detail signals`, `Add causal factor scoring`, the learning term schema commit, `Split assistant learning hooks`, `Add learning related questions alias`, `Split home page component`, `Add source grounded AI evidence`, `Strengthen search contract coverage`, `Cover preserved frontend flows`, and `Add Anthropic compatible live LLM path`. This report also records the repeatable LLM benchmark and CI schema migration loops for the next recovery commits.
 - Branch: `main`
 - Push status: pushed to `origin/main`
 
