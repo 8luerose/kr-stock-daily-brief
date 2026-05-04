@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BookOpen, ChevronRight, LineChart, Search, Sparkles } from "lucide-react";
+import { BadgeCheck, BookOpen, ChevronRight, LineChart, Search, Sparkles, TriangleAlert } from "lucide-react";
 import { AdminArchivePanel } from "../components/AdminArchivePanel.jsx";
 import { AIPredictionPanel } from "../components/AIPredictionPanel.jsx";
 import { AppShell } from "../components/AppShell.jsx";
@@ -98,6 +98,8 @@ function ModeExperience({
   workspace
 }) {
   const isPractice = mode === "practice";
+  const firstZone = workspace.zones[0];
+  const cautionZone = workspace.zones.find((zone) => zone.type === "sell" || zone.type === "risk") || workspace.zones[2];
   return (
     <section className="experienceStage">
       <div className="experienceIntro">
@@ -110,6 +112,24 @@ function ModeExperience({
         </p>
       </div>
 
+      <div className="insightStrip" aria-label="현재 화면 요약">
+        <article>
+          <Sparkles size={16} />
+          <span>AI 방향</span>
+          <strong>{workspace.ai.phase}</strong>
+        </article>
+        <article>
+          <BadgeCheck size={16} />
+          <span>검토 기준</span>
+          <strong>{firstZone?.label || "매수 검토"}</strong>
+        </article>
+        <article>
+          <TriangleAlert size={16} />
+          <span>반대 신호</span>
+          <strong>{cautionZone?.label || "리스크 관리"}</strong>
+        </article>
+      </div>
+
       <SearchCommand candidates={candidates} onOpenLearning={onOpenLearning} onSelectStock={onSelectStock} />
 
       {status === "loading" ? <div className="softStatus">차트와 AI 조건을 불러오는 중입니다.</div> : null}
@@ -120,19 +140,25 @@ function ModeExperience({
         <AIPredictionPanel mode={isPractice ? "practice" : "learning"} workspace={workspace} />
       </div>
 
-      {isPractice ? (
-        <div className="supportGrid">
-          <LearningPanel compact terms={terms} onAsk={onAskLearning} />
-          <PortfolioSandbox workspace={workspace} />
-        </div>
-      ) : (
-        <>
-          <LearningPanel terms={terms} onAsk={onAskLearning} />
-          <div className="supportGrid singleFocus">
+      <details className="featureDrawer" open={!isPractice}>
+        <summary>
+          <span>{isPractice ? "학습과 샌드박스 더 보기" : "학습 내용과 샌드박스"}</span>
+          <strong>{isPractice ? "필요할 때 열어 확인" : "차트 개념을 이어서 보기"}</strong>
+        </summary>
+        {isPractice ? (
+          <div className="supportGrid">
+            <LearningPanel compact terms={terms} onAsk={onAskLearning} />
             <PortfolioSandbox workspace={workspace} />
           </div>
-        </>
-      )}
+        ) : (
+          <>
+            <LearningPanel terms={terms} onAsk={onAskLearning} />
+            <div className="supportGrid singleFocus">
+              <PortfolioSandbox workspace={workspace} />
+            </div>
+          </>
+        )}
+      </details>
     </section>
   );
 }
@@ -144,6 +170,7 @@ export function App() {
 
   useEffect(() => {
     document.title = titles[route] || titles.home;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [route]);
 
   function askLearning(question) {

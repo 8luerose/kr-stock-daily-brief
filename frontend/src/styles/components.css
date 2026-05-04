@@ -381,9 +381,108 @@
   line-height: 1.68;
 }
 
+.insightStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.insightStrip article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 8px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid rgba(216, 225, 238, 0.9);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-soft);
+  animation: panelRise 360ms ease both;
+}
+
+.insightStrip article:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.insightStrip article:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.insightStrip svg {
+  grid-row: span 2;
+  color: var(--blue);
+}
+
+.insightStrip span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.insightStrip strong {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .experienceStage > .learningPanel:not(.compact) {
   width: 100%;
   margin-top: 18px;
+}
+
+.featureDrawer {
+  margin-top: 18px;
+}
+
+.featureDrawer > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 0 18px;
+  border: 1px solid rgba(216, 225, 238, 0.9);
+  border-radius: var(--radius);
+  background: #ffffff;
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  list-style: none;
+}
+
+.featureDrawer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.featureDrawer > summary span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.featureDrawer > summary strong {
+  color: var(--navy);
+  font-size: 19px;
+}
+
+.featureDrawer > summary::after {
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--blue);
+  border-bottom: 2px solid var(--blue);
+  content: "";
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--speed);
+}
+
+.featureDrawer[open] > summary::after {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.featureDrawer[open] > .learningPanel,
+.featureDrawer[open] > .supportGrid {
+  animation: panelRise 320ms ease both;
 }
 
 .supportGrid.singleFocus {
@@ -396,6 +495,25 @@
   }
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mainChartDraw {
+  from {
+    stroke-dashoffset: 1200;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes notePulse {
+  0%,
+  100% {
+    box-shadow: 0 12px 28px rgba(49, 130, 246, 0.32);
+  }
+  50% {
+    box-shadow: 0 14px 34px rgba(49, 130, 246, 0.52);
   }
 }
 
@@ -475,6 +593,7 @@
   background: var(--surface);
   box-shadow: var(--shadow);
   backdrop-filter: blur(20px);
+  animation: panelRise 420ms ease both;
 }
 
 .searchBox {
@@ -690,6 +809,7 @@
 
 .chartWorkspace {
   padding: 18px;
+  animation: panelRise 420ms ease both;
 }
 
 .chartHeader {
@@ -777,7 +897,9 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 4;
+  stroke-dasharray: 1200;
   filter: drop-shadow(0 0 10px rgba(49, 130, 246, 0.45));
+  animation: mainChartDraw 1.1s ease both;
 }
 
 .maLine {
@@ -879,6 +1001,10 @@
   transform: translate(-50%, -50%) scale(1.04);
 }
 
+.chartNote.active {
+  animation: notePulse 1.8s ease-in-out infinite;
+}
+
 .chartTooltip {
   position: absolute;
   z-index: 7;
@@ -956,6 +1082,7 @@
 .learningPanel,
 .portfolioSandbox {
   padding: 18px;
+  animation: panelRise 420ms ease both;
 }
 
 .panelHead strong {
@@ -984,6 +1111,13 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #ffffff;
+  transition: border-color var(--speed), box-shadow var(--speed), transform var(--speed);
+}
+
+.signalCard:hover {
+  border-color: rgba(49, 130, 246, 0.38);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
 }
 
 .signalCard.primary {

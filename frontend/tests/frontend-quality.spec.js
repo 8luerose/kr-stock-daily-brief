@@ -188,6 +188,10 @@ for (const viewport of [
     await expect(page.locator(".aiPanel")).toContainText("매도 검토 조건");
     await expect(page.locator(".aiPanel")).toContainText("호재");
     await expect(page.locator(".aiPanel")).toContainText("악재");
+    await expect(page.locator(".insightStrip article")).toHaveCount(3);
+    await expect(page.locator(".featureDrawer > summary")).toContainText("필요할 때 열어 확인");
+    await page.locator(".featureDrawer > summary").click();
+    await expect(page.locator(".featureDrawer")).toHaveAttribute("open", "");
     await expect(page.locator(".learningPanel.compact")).toContainText("초보자 학습");
     await expect(page.locator(".portfolioSandbox")).toContainText("관심 비중 점검");
     await expectNoHorizontalOverflow(page);
