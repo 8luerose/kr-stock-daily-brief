@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check llm-benchmark deploy-smoke ci-test-report
+.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-install frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check llm-benchmark deploy-smoke ci-test-report
 
 DOCKER_SOCK ?= /var/run/docker.sock
 
@@ -74,18 +74,35 @@ deploy-smoke:
 ci-test-report:
 	./scripts/ci_test_report.sh
 
+frontend-install:
+	@cd frontend && \
+	for i in 1 2 3 4 5; do \
+		chmod -R u+w node_modules 2>/dev/null || true; \
+		rm -rf node_modules && break; \
+		echo "node_modules deletion retry $$i/5"; \
+		sleep $$i; \
+	done; \
+	if [ -d node_modules ]; then \
+		echo "node_modules deletion failed after retries."; \
+		exit 1; \
+	fi; \
+	npm ci --include=dev
+
 frontend-quality:
-	cd frontend && npm ci --include=dev && npm run build && npm audit && npm run test:e2e -- --reporter=line
+	$(MAKE) frontend-install
+	cd frontend && npm run build && npm audit && npm run test:e2e -- --reporter=line
 
 quality:
 	$(MAKE) ops-check
 	cd backend && ./gradlew test
-	cd frontend && npm ci --include=dev && npm run build && npm audit
+	$(MAKE) frontend-install
+	cd frontend && npm run build && npm audit
 	$(MAKE) up
 	$(MAKE) health
 	./scripts/verify_investment_language.sh
 	./scripts/test_all_apis.sh
-	cd frontend && npm ci --include=dev && npm run test:e2e -- --reporter=line
+	$(MAKE) frontend-install
+	cd frontend && npm run test:e2e -- --reporter=line
 
 # Runs API tests against a disposable MySQL Testcontainer (inside the Gradle container).
 backend-test:

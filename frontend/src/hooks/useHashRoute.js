@@ -1,29 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-const routes = new Set(["home", "learning", "history", "portfolio", "admin"]);
+const routes = new Set(["home", "learn", "archive", "admin"]);
 
 function readRoute() {
-  const raw = window.location.hash.replace(/^#\/?/, "") || "home";
-  const route = raw.split("?")[0];
+  const route = window.location.hash.replace("#", "") || "home";
   return routes.has(route) ? route : "home";
 }
 
 export function useHashRoute() {
-  const [route, setRoute] = useState(readRoute);
+  const [route, setRouteState] = useState(readRoute);
 
   useEffect(() => {
-    const onHashChange = () => setRoute(readRoute());
+    const onHashChange = () => setRouteState(readRoute());
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  return useMemo(
-    () => ({
-      route,
-      go(nextRoute) {
-        window.location.hash = nextRoute === "home" ? "#home" : `#${nextRoute}`;
-      }
-    }),
-    [route]
-  );
+  function setRoute(nextRoute) {
+    window.location.hash = nextRoute;
+  }
+
+  return [route, setRoute];
 }

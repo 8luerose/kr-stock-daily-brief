@@ -1,121 +1,109 @@
-import { ArrowUpRight, ChartNoAxesCombined, GraduationCap, Search, Sparkles } from "lucide-react";
-import { StateBlock } from "./StateBlock.jsx";
+import { Search, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { fallbackStocks } from "../data/fallbackData.js";
+import { useDebouncedValue } from "../hooks/useDebouncedValue.js";
+import { searchWorkspace } from "../services/apiClient.js";
 
-function resultIcon(type) {
-  if (type === "term") return GraduationCap;
-  if (type === "theme" || type === "industry") return Sparkles;
-  return ChartNoAxesCombined;
-}
+export function SearchCommand({ candidates, onSelectStock, onOpenLearning }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const debouncedQuery = useDebouncedValue(query);
 
-export function SearchCommand({ query, setQuery, results, state, onSelect, candidates }) {
-  const hasQuery = Boolean(query.trim());
-  const visibleResults = hasQuery ? results : [];
+  useEffect(() => {
+    let alive = true;
+    if (!debouncedQuery.trim()) {
+      setResults([]);
+      return undefined;
+    }
+    searchWorkspace(debouncedQuery).then((nextResults) => {
+      if (alive) setResults(nextResults);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [debouncedQuery]);
+
+  const visibleCandidates = useMemo(() => (candidates?.length ? candidates : fallbackStocks).slice(0, 3), [candidates]);
+
+  function selectResult(result) {
+    if (result.type === "term") {
+      onOpenLearning();
+      setOpen(false);
+      return;
+    }
+    onSelectStock(result.code);
+    setQuery(result.name || result.title || result.code);
+    setOpen(false);
+  }
 
   return (
-    <section className="commandCenter" aria-labelledby="search-title">
-      <div className="commandCopy">
-        <span className="eyebrow">AI가 차트 위에 설명하는 한국 주식 학습</span>
-        <h1 id="search-title">검색하면 차트 위에서 상승과 하락 이유, 매수와 매도 검토 조건을 바로 봅니다.</h1>
-        <p>
-          초보자가 이해할 수 있도록 호재, 악재, 반대 신호, 리스크를 조건형으로 정리합니다.
-        </p>
-      </div>
-
+    <section className="commandCenter" aria-label="통합 검색">
       <div className="searchBox">
-        <label htmlFor="universal-search">통합 검색</label>
-        <div className="searchInput">
-          <Search size={20} aria-hidden="true" />
-          <input
-            id="universal-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="예: 삼성전자, 반도체, 거래량, RSI"
-            autoComplete="off"
-          />
-          {state.loading ? <span className="pulseDot" aria-label="검색 중" /> : null}
-        </div>
-        <div className="quickTerms" aria-label="추천 검색어">
-          {["삼성전자", "거래량", "RSI"].map((term) => (
-            <button key={term} type="button" onClick={() => setQuery(term)}>
-              {term}
-            </button>
-          ))}
-        </div>
+        <Search size={20} />
+        <input
+          id="universal-search"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="종목, 테마, 주식 용어를 검색하세요"
+          autoComplete="off"
+        />
+        <span className="searchHint">예측·학습 연결</span>
       </div>
 
-      {hasQuery || state.error ? (
-        <div className="searchResults" aria-live="polite">
-          {state.error ? (
-            <StateBlock
-              tone="error"
-              title="검색 API를 불러오지 못했습니다"
-              description="추천 후보와 fallback 데이터를 표시합니다. 백엔드 연결 뒤 자동으로 실제 결과를 사용합니다."
-            />
-          ) : null}
-          {hasQuery && !visibleResults.length && !state.loading ? (
-            <>
-              <StateBlock
-                tone="empty"
-                title="검색 결과가 없습니다"
-                description="추천 검색어를 눌러 차트 해석, 용어 학습, 오늘 관심 후보로 이어갈 수 있습니다."
-              />
-              <div className="emptySuggestions" aria-label="검색 실패 추천">
-                {(candidates || []).slice(0, 3).map((candidate) => (
-                  <button
-                    key={candidate.code}
-                    type="button"
-                    onClick={() =>
-                      onSelect({
-                        id: candidate.code,
-                        type: "stock",
-                        title: candidate.name,
-                        code: candidate.code,
-                        market: candidate.market,
-                        rate: candidate.rate,
-                        tags: [candidate.theme],
-                        summary: candidate.beginnerLine,
-                        stockCode: candidate.code,
-                        stockName: candidate.name
-                      })
-                    }
-                  >
-                    {candidate.name}
-                    <small>{candidate.rate}</small>
-                  </button>
-                ))}
-              </div>
-            </>
+      <p className="searchGuide">추천 검색어: 삼성전자 · 거래량 · 반도체 호재</p>
+
+      {open && query.trim() ? (
+        <div className="searchResults" role="listbox" aria-label="검색 결과">
+          {results.length ? (
+            results.map((result) => (
+              <button
+                className="resultItem"
+                key={result.id}
+                type="button"
+                onClick={() => selectResult(result)}
+                role="option"
+              >
+                <span>
+                  <strong>{result.title || result.name}</strong>
+                  <small>{result.code} · {result.market} · {result.theme}</small>
+                </span>
+                <em>{result.changeRate}</em>
+                <p>{result.beginnerLine}</p>
+              </button>
+            ))
           ) : (
-            visibleResults.slice(0, 4).map((item) => {
-              const Icon = resultIcon(item.type);
-              return (
-                <button key={item.id} type="button" className="resultRow" onClick={() => onSelect(item)}>
-                  <span className="resultIcon" aria-hidden="true">
-                    <Icon size={18} />
-                  </span>
-                  <span className="resultMain">
-                    <strong>
-                      {item.title}
-                      <small>{item.code}</small>
-                    </strong>
-                    <em>{item.summary}</em>
-                    <span className="tagLine">
-                      {(item.tags || []).slice(0, 3).map((tag) => (
-                        <i key={tag}>{tag}</i>
-                      ))}
-                    </span>
-                  </span>
-                  <span className="resultSide">
-                    <b>{item.rate || "-"}</b>
-                    <small>{item.market || "KRX"}</small>
-                    <ArrowUpRight size={15} aria-hidden="true" />
-                  </span>
-                </button>
-              );
-            })
+            <div className="emptyResult">
+              <Sparkles size={18} />
+              <strong>검색 결과가 아직 없습니다.</strong>
+              <span>삼성전자, 거래량, 반도체 호재처럼 다시 입력해 보세요.</span>
+            </div>
           )}
         </div>
       ) : null}
+
+      <div className="candidateRail" aria-label="오늘 관심 후보">
+        {visibleCandidates.map((stock) => (
+          <article
+            className="candidateCard"
+            key={stock.code}
+            tabIndex={0}
+            onClick={() => onSelectStock(stock.code)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onSelectStock(stock.code);
+            }}
+          >
+            <span>{stock.market}</span>
+            <strong>{stock.name}</strong>
+            <em>{stock.changeRate}</em>
+            <p>{stock.beginnerLine}</p>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

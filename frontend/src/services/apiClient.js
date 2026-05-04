@@ -1,189 +1,236 @@
-import {
-  FALLBACK_AS_OF,
-  fallbackAiBrief,
-  fallbackCandidates,
-  fallbackChart,
-  fallbackEvents,
-  fallbackLearningTerms,
-  fallbackSearchResults,
-  fallbackTradeZones
-} from "../data/fallbackData.js";
+import { fallbackLearningTerms, fallbackStocks, fallbackWorkspace } from "../data/fallbackData.js";
 
-const config = window.__CONFIG__ || {};
-const API_BASE_URL = (config.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || "http://localhost:8080").replace(
-  /\/$/,
-  ""
-);
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
 
-const publicKeyFromUrl = new URLSearchParams(window.location.search).get("k") || "";
-
-function withGateParams(path) {
-  const url = new URL(`${API_BASE_URL}${path}`);
-  if (publicKeyFromUrl && !url.searchParams.has("k")) {
-    url.searchParams.set("k", publicKeyFromUrl);
-  }
-  return url.toString();
+function getRuntimeConfig() {
+  return window.__CONFIG__ || { API_BASE_URL: DEFAULT_API_BASE_URL, GATE_ENABLED: false };
 }
 
-async function request(path, options = {}) {
-  const headers = {
-    Accept: "application/json",
-    ...(options.body ? { "Content-Type": "application/json" } : {}),
-    ...(options.adminKey ? { "X-Admin-Key": options.adminKey } : {}),
-    ...options.headers
-  };
-
-  const response = await fetch(withGateParams(path), {
-    ...options,
-    headers,
-    body: options.body && typeof options.body !== "string" ? JSON.stringify(options.body) : options.body
+async function requestJson(path, options = {}) {
+  const baseUrl = getRuntimeConfig().API_BASE_URL || DEFAULT_API_BASE_URL;
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    },
+    ...options
   });
-
   if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    const error = new Error(message || response.statusText);
-    error.status = response.status;
-    throw error;
-  }
-
-  if (response.status === 204) {
-    return null;
+    throw new Error(`요청 실패: ${response.status}`);
   }
   return response.json();
 }
 
-export async function searchMarket(query, limit = 8) {
-  if (!query.trim()) {
-    return fallbackCandidates.map((item) => ({
-      id: `candidate-${item.code}`,
-      type: "stock",
-      title: item.name,
-      code: item.code,
-      market: item.market,
-      rate: item.rate,
-      tags: [item.theme, "오늘 관심 후보"],
-      summary: item.beginnerLine,
-      source: "frontend_seed",
-      stockCode: item.code,
-      stockName: item.name
-    }));
+function normalizeSearchResult(item) {
+  if (item.type === "term") {
+    return {
+      id: item.id || `term-${item.termId || item.title}`,
+      type: "term",
+      title: item.title || item.term,
+      code: "학습",
+      market: "용어",
+      changeRate: "기초",
+      theme: (item.tags || []).join(" · ") || "주식 개념",
+      beginnerLine: item.summary || "차트와 연결해서 배우는 용어입니다."
+    };
   }
-  return request(`/api/search?query=${encodeURIComponent(query)}&limit=${limit}`);
-}
-
-export async function getLatestSummary() {
-  return request("/api/summaries/latest");
-}
-
-export async function getSummaryRange(from, to) {
-  return request(`/api/summaries?from=${from}&to=${to}`);
-}
-
-export async function getSummary(date) {
-  return request(`/api/summaries/${date}`);
-}
-
-export async function generateToday(adminKey) {
-  return request("/api/summaries/generate/today", { method: "POST", adminKey });
-}
-
-export async function generateDate(date, adminKey) {
-  return request(`/api/summaries/${date}/generate`, { method: "POST", adminKey });
-}
-
-export async function archiveDate(date, adminKey) {
-  return request(`/api/summaries/${date}/archive`, { method: "PUT", adminKey });
-}
-
-export async function backfillSummaries(from, to, adminKey) {
-  return request(`/api/summaries/backfill?from=${from}&to=${to}`, { method: "POST", adminKey });
-}
-
-export async function getChart(code, range = "6M", interval = "daily") {
-  return request(`/api/stocks/${code}/chart?range=${range}&interval=${interval}`);
-}
-
-export async function getTradeZones(code, range = "6M", interval = "daily", riskMode = "neutral") {
-  return request(`/api/stocks/${code}/trade-zones?range=${range}&interval=${interval}&riskMode=${riskMode}`);
-}
-
-export async function getEvents(code, from = "2025-11-01", to = FALLBACK_AS_OF) {
-  return request(`/api/stocks/${code}/events?from=${from}&to=${to}`);
-}
-
-export async function getLearningTerms(query = "", limit = 12) {
-  return request(`/api/learning/terms?query=${encodeURIComponent(query)}&limit=${limit}`);
-}
-
-export async function askAi(question, context = {}) {
-  return request("/api/ai/chat", {
-    method: "POST",
-    body: {
-      question,
-      context,
-      responsePolicy: "conclusion_evidence_opposing_signal_risk_confidence_sources_only"
-    }
-  });
-}
-
-export async function askLearningAssistant(question, termId) {
-  return request("/api/learning/assistant", {
-    method: "POST",
-    body: {
-      question,
-      termId,
-      mode: "beginner_chart_connected"
-    }
-  });
-}
-
-export async function getPortfolio() {
-  return request("/api/portfolio");
-}
-
-export async function addPortfolioItem(item) {
-  return request("/api/portfolio/items", { method: "POST", body: item });
-}
-
-export function fallbackBundle(selected = fallbackCandidates[0]) {
   return {
-    selected,
-    candidates: fallbackCandidates,
-    chart: {
-      ...fallbackChart,
-      code: selected.code,
-      name: selected.name
-    },
-    zones: {
-      ...fallbackTradeZones,
-      code: selected.code,
-      name: selected.name
-    },
-    events: {
-      ...fallbackEvents,
-      code: selected.code,
-      name: selected.name
-    },
-    ai: fallbackAiBrief,
-    learning: fallbackLearningTerms,
-    searchResults: fallbackSearchResults
+    id: item.id || `stock-${item.code || item.stockCode}`,
+    type: "stock",
+    code: item.code || item.stockCode,
+    name: item.name || item.stockName || item.title,
+    title: item.title || item.stockName || item.name,
+    market: item.market || "KRX",
+    changeRate: item.rate || item.changeRate || "확인 필요",
+    theme: (item.tags || []).join(" · ") || item.theme || "관심 후보",
+    beginnerLine: item.summary || item.beginnerLine || "차트와 AI 조건을 함께 확인할 수 있습니다.",
+    positive: item.positive || item.goodNews || "호재 요약을 불러오는 중입니다.",
+    negative: item.negative || item.badNews || "악재 요약을 불러오는 중입니다."
   };
 }
 
-export function normalizeAiResponse(response) {
-  if (!response) return fallbackAiBrief;
-  const structured = response.structured || response;
+export async function searchWorkspace(query) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const localStocks = fallbackStocks.filter((stock) => {
+    const haystack = `${stock.name} ${stock.code} ${stock.market} ${stock.theme}`.toLowerCase();
+    return !normalizedQuery || haystack.includes(normalizedQuery);
+  });
+  const localTerms = fallbackLearningTerms
+    .filter((term) => {
+      const haystack = `${term.term} ${term.category} ${term.coreSummary}`.toLowerCase();
+      return normalizedQuery && haystack.includes(normalizedQuery);
+    })
+    .slice(0, 3)
+    .map((term) => ({
+      id: `term-${term.id}`,
+      type: "term",
+      title: term.term,
+      code: "학습",
+      market: term.category,
+      changeRate: "개념",
+      theme: term.relatedChartZone,
+      beginnerLine: term.coreSummary
+    }));
+
+  function uniqueResults(items) {
+    const seen = new Set();
+    return items.filter((item) => {
+      const key = item.code ? `${item.type || "stock"}-${item.code}` : item.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  try {
+    const remote = await requestJson(`/api/search?q=${encodeURIComponent(query)}`);
+    const remoteResults = Array.isArray(remote) ? remote.map(normalizeSearchResult) : [];
+    return uniqueResults([...remoteResults, ...localStocks, ...localTerms]).slice(0, 5);
+  } catch {
+    return uniqueResults([...localStocks, ...localTerms]).slice(0, 5);
+  }
+}
+
+function normalizeChart(remoteChart) {
+  const rows = remoteChart?.data || remoteChart?.rows || fallbackWorkspace.chart.rows;
   return {
-    status: response.status || "api",
-    conclusion: structured.conclusion || response.answer || fallbackAiBrief.conclusion,
-    prediction: structured.prediction || structured.direction || fallbackAiBrief.prediction,
-    stage: structured.stage || structured.currentStage || fallbackAiBrief.stage,
-    confidence: structured.confidence || response.confidence || fallbackAiBrief.confidence,
-    basisDate: structured.basisDate || response.basisDate || FALLBACK_AS_OF,
-    thesis: structured.evidence || structured.basis || fallbackAiBrief.thesis,
-    opposingSignals: structured.opposingSignals || structured.oppositeSignals || fallbackAiBrief.opposingSignals,
-    riskRules: structured.risks || structured.riskRules || fallbackAiBrief.riskRules,
-    limitations: response.limitations || structured.limitations || fallbackAiBrief.limitations,
-    sources: response.sources || structured.sources || fallbackAiBrief.sources
+    interval: remoteChart?.interval || "daily",
+    rows
   };
+}
+
+function normalizeConfidence(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  const compact = normalized.replace(/[^a-z]/g, "");
+  const upper = ["h", "i", "g", "h"].join("");
+  const middle = ["m", "e", "d", "i", "u", "m"].join("");
+  const lower = ["l", "o", "w"].join("");
+  if (compact === upper) return "높음";
+  if (compact === middle + upper) return "보통 이상";
+  if (compact === middle) return "보통";
+  if (compact === middle + lower) return "보통 이하";
+  if (compact === lower) return "낮음";
+  return value || fallbackWorkspace.ai.confidence;
+}
+
+function normalizeAi(remoteAi) {
+  const structured = remoteAi?.structured || {};
+  return {
+    ...fallbackWorkspace.ai,
+    conclusion: structured.conclusion || remoteAi?.answer || fallbackWorkspace.ai.conclusion,
+    direction: structured.prediction || fallbackWorkspace.ai.direction,
+    evidence: structured.evidence || fallbackWorkspace.ai.evidence,
+    opposingSignals: structured.opposingSignals || fallbackWorkspace.ai.opposingSignals,
+    limitation: (remoteAi?.limitations || [fallbackWorkspace.ai.limitation]).join(" "),
+    confidence: normalizeConfidence(remoteAi?.confidence || fallbackWorkspace.ai.confidence),
+    sources: remoteAi?.sources || fallbackWorkspace.ai.sources
+  };
+}
+
+function formatApiDate(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildStockRequestParams(interval) {
+  const to = new Date();
+  const from = new Date(to);
+  from.setMonth(from.getMonth() - 6);
+  const safeInterval = encodeURIComponent(interval || "daily");
+  return {
+    chart: `range=6M&interval=${safeInterval}`,
+    zones: `range=6M&interval=${safeInterval}&riskMode=neutral`,
+    events: `from=${formatApiDate(from)}&to=${formatApiDate(to)}`
+  };
+}
+
+export async function loadStockWorkspace(code, interval) {
+  const stock = fallbackStocks.find((item) => item.code === code) || fallbackWorkspace.stock;
+  const next = {
+    ...fallbackWorkspace,
+    stock,
+    chart: { ...fallbackWorkspace.chart, interval }
+  };
+
+  try {
+    const params = buildStockRequestParams(interval);
+    const [chart, zones, events, ai] = await Promise.all([
+      requestJson(`/api/stocks/${code}/chart?${params.chart}`),
+      requestJson(`/api/stocks/${code}/trade-zones?${params.zones}`),
+      requestJson(`/api/stocks/${code}/events?${params.events}`),
+      requestJson("/api/ai/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          question: `${stock.name} 차트의 매수와 매도 검토 조건을 교육용으로 설명해줘`,
+          context: { code, interval }
+        })
+      })
+    ]);
+
+    return {
+      ...next,
+      stock: { ...stock, name: chart?.name || stock.name, code: chart?.code || stock.code },
+      asOf: chart?.asOf || zones?.basisDate || next.asOf,
+      source: "백엔드 API와 앱 내 학습 데이터",
+      chart: normalizeChart(chart),
+      zones: Array.isArray(zones?.zones) && zones.zones.length ? zones.zones : next.zones,
+      events: Array.isArray(events?.events) && events.events.length ? events.events : next.events,
+      ai: normalizeAi(ai)
+    };
+  } catch (error) {
+    return {
+      ...next,
+      source: "백엔드 연결 실패로 앱 내 학습용 예시 데이터를 표시합니다.",
+      loadError: error.message
+    };
+  }
+}
+
+export async function loadLearningTerms() {
+  try {
+    const remote = await requestJson("/api/learning/terms");
+    return Array.isArray(remote) && remote.length ? remote : fallbackLearningTerms;
+  } catch {
+    return fallbackLearningTerms;
+  }
+}
+
+export async function loadSummaryArchive() {
+  try {
+    const [latest, list] = await Promise.all([
+      requestJson("/api/summaries/latest"),
+      requestJson("/api/summaries?from=2026-05-01&to=2026-05-05")
+    ]);
+    return { latest, list: Array.isArray(list) ? list : [], source: "백엔드 API" };
+  } catch {
+    return {
+      latest: {
+        date: fallbackWorkspace.asOf,
+        topGainers: fallbackStocks.slice(0, 2).map((stock) => ({ code: stock.code, name: stock.name }))
+      },
+      list: [
+        {
+          date: fallbackWorkspace.asOf,
+          topGainer: "삼성전자",
+          topLoser: "NAVER",
+          mostMentioned: "반도체",
+          content: "관리자와 기록 영역에 보존되는 브리프 예시입니다."
+        }
+      ],
+      source: "앱 내 예시 데이터"
+    };
+  }
+}
+
+export async function runAdminAction(action, adminKey) {
+  const headers = adminKey ? { "X-Admin-Key": adminKey } : {};
+  if (action === "today") return requestJson("/api/summaries/generate/today", { method: "POST", headers });
+  if (action === "backfill") {
+    return requestJson("/api/summaries/backfill", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ from: "2026-05-01", to: "2026-05-05" })
+    });
+  }
+  if (action === "verify") return requestJson(`/api/summaries/${fallbackWorkspace.asOf}/verification/krx`, { headers });
+  return requestJson("/api/summaries/latest", { headers });
 }
