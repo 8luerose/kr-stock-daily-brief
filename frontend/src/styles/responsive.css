@@ -1,0 +1,190 @@
+@media (max-width: 1180px) {
+  .topbar {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .topMeta {
+    justify-self: start;
+  }
+
+  .navTabs {
+    overflow-x: auto;
+  }
+
+  .commandCenter,
+  .homeLayout,
+  .lowerGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .searchResults {
+    grid-column: 1;
+  }
+
+  .aiPanel {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  main {
+    padding: 14px;
+  }
+
+  .topbar {
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .brand strong {
+    font-size: 14px;
+  }
+
+  .navTabs {
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .navTabs button {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  .commandCopy,
+  .searchBox,
+  .candidateSection,
+  .chartWorkspace,
+  .aiPanel,
+  .learningDock,
+  .learningPanel,
+  .architectureNote,
+  .portfolioPanel,
+  .historyPanel,
+  .adminPanel {
+    padding: 14px;
+  }
+
+  .commandCopy h1 {
+    font-size: 31px;
+  }
+
+  .commandCopy p,
+  .searchInput input {
+    font-size: 15px;
+  }
+
+  .searchInput {
+    min-height: 52px;
+  }
+
+  .resultRow {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .resultSide {
+    grid-column: 2;
+    grid-template-columns: auto auto auto;
+    justify-content: start;
+    justify-items: start;
+  }
+
+  .candidateGrid,
+  .chartSummaryGrid,
+  .sourceGrid,
+  .portfolioSummary,
+  .termSections,
+  .pipeline,
+  .historyGrid,
+  .historyFilters {
+    grid-template-columns: 1fr;
+  }
+
+  .candidateGrid button {
+    min-height: 118px;
+  }
+
+  .sectionHead,
+  .chartHeader {
+    display: grid;
+  }
+
+  .sectionHead small,
+  .priceDigest {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .chartFrame {
+    min-height: 470px;
+  }
+
+  .chartNote {
+    max-width: 136px;
+    min-height: 30px;
+    padding: 5px 7px;
+    font-size: 11px;
+  }
+
+  .chartNote:nth-child(2),
+  .chartNote:nth-child(4) {
+    transform: translateX(-18px);
+  }
+
+  .chartTooltip {
+    right: 8px;
+    bottom: 8px;
+    width: calc(100% - 16px);
+    max-height: 48%;
+    padding: 12px;
+  }
+
+  .sandboxControl {
+    grid-template-columns: 1fr auto;
+  }
+
+  .sandboxControl button {
+    grid-column: 1 / -1;
+  }
+
+  .portfolioPanel,
+  .historyPanel,
+  .adminPanel,
+  .learningPanel,
+  .footerNote {
+    width: min(100%, calc(100vw - 28px));
+  }
+
+  .adminActions {
+    display: grid;
+  }
+}
+
+@media (max-width: 410px) {
+  main {
+    padding-inline: 10px;
+  }
+
+  .topbar {
+    padding-inline: 10px;
+  }
+
+  .commandCopy h1 {
+    font-size: 29px;
+  }
+
+  .quickTerms button {
+    min-height: 34px;
+    padding-inline: 9px;
+  }
+
+  .chartFrame {
+    min-height: 450px;
+  }
+
+  .chartNote {
+    max-width: 118px;
+  }
+}
