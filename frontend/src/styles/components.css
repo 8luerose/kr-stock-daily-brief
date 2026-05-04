@@ -119,9 +119,10 @@
 
 .commandCenter {
   display: grid;
-  grid-template-columns: minmax(340px, 0.88fr) minmax(420px, 1.12fr);
-  gap: 18px;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(340px, 1.1fr);
+  gap: 12px;
   align-items: stretch;
+  min-width: 0;
   animation: floatIn var(--speed) ease both;
 }
 
@@ -138,6 +139,7 @@
 .historyPanel,
 .adminPanel,
 .footerNote {
+  min-width: 0;
   border: 1px solid rgba(217, 226, 236, 0.86);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.86);
@@ -145,28 +147,30 @@
 }
 
 .commandCopy {
-  padding: 28px;
+  min-width: 0;
+  padding: 18px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(230, 246, 239, 0.82)),
     var(--surface);
 }
 
 .commandCopy h1 {
-  margin-top: 10px;
-  max-width: 760px;
-  font-size: 38px;
-  line-height: 1.08;
+  margin-top: 8px;
+  max-width: 680px;
+  font-size: 26px;
+  line-height: 1.18;
 }
 
 .commandCopy p {
-  margin-top: 16px;
+  margin-top: 10px;
   max-width: 660px;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .searchBox {
-  padding: 22px;
+  min-width: 0;
+  padding: 16px;
 }
 
 .searchBox label {
@@ -235,6 +239,7 @@
 }
 
 .quickTerms button,
+.emptySuggestions button,
 .termRail button,
 .questionChips a {
   min-height: 36px;
@@ -247,6 +252,7 @@
 }
 
 .quickTerms button:hover,
+.emptySuggestions button:hover,
 .termRail button:hover,
 .termRail button.active,
 .questionChips a:hover {
@@ -256,10 +262,23 @@
 }
 
 .searchResults {
-  grid-column: 2;
+  grid-column: 1 / -1;
   display: grid;
   gap: 10px;
   padding: 12px;
+}
+
+.emptySuggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.emptySuggestions button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
 }
 
 .resultRow {
@@ -349,17 +368,19 @@
   white-space: nowrap;
 }
 
-.homeLayout {
+.homeLayout,
+.productStage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   gap: 18px;
   align-items: start;
-  margin-top: 18px;
 }
 
-.homeMain {
+.homeMain,
+.stageMain {
   display: grid;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-content: start;
   min-width: 0;
 }
@@ -399,18 +420,22 @@
   padding: 18px;
 }
 
+.candidateSection {
+  padding: 14px;
+}
+
 .candidateGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .candidateGrid button {
   display: grid;
   gap: 10px;
-  min-height: 118px;
-  padding: 14px;
+  min-height: 92px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   color: inherit;
@@ -432,7 +457,7 @@
 
 .candidateGrid b {
   color: var(--red);
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .candidateGrid em {
@@ -441,7 +466,11 @@
 }
 
 .chartWorkspace {
+  min-width: 0;
   overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
 }
 
 .chartHeader {
@@ -464,6 +493,36 @@
   white-space: nowrap;
 }
 
+.chartTools {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.timeframeControl {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.timeframeControl button {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  background: transparent;
+  transition: background var(--speed), color var(--speed), transform var(--speed);
+}
+
+.timeframeControl button:hover,
+.timeframeControl button.active {
+  color: var(--text);
+  background: var(--green-soft);
+}
+
 .priceDigest strong {
   font-size: 24px;
 }
@@ -478,7 +537,7 @@
 
 .chartFrame {
   position: relative;
-  min-height: 520px;
+  min-height: 560px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -494,11 +553,16 @@
 }
 
 .zoneLayer,
-.annotationLayer {
+.annotationLayer,
+.eventLayer {
   position: absolute;
   inset: 0;
   z-index: 3;
   pointer-events: none;
+}
+
+.eventLayer {
+  z-index: 4;
 }
 
 .zoneBand {
@@ -553,6 +617,35 @@
   box-shadow: 0 10px 24px rgba(31, 41, 55, 0.11);
   pointer-events: auto;
   transition: transform var(--speed), box-shadow var(--speed), background var(--speed);
+}
+
+.eventPin {
+  position: absolute;
+  z-index: 5;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid rgba(16, 24, 39, 0.10);
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  pointer-events: auto;
+  box-shadow: 0 10px 24px rgba(31, 41, 55, 0.12);
+  transition: transform var(--speed), box-shadow var(--speed);
+}
+
+.eventPin.good {
+  background: var(--green);
+}
+
+.eventPin.bad {
+  background: var(--red);
+}
+
+.eventPin:hover,
+.eventPin:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(31, 41, 55, 0.16);
 }
 
 .chartNote::after {
@@ -648,7 +741,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 0;
   color: var(--muted);
   font-size: 12px;
 }
@@ -660,11 +753,17 @@
 }
 
 .line,
-.band {
+.band,
+.dot {
   display: inline-block;
   width: 18px;
   height: 4px;
   border-radius: 999px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
 }
 
 .line.ma5 {
@@ -685,6 +784,109 @@
 
 .band.risk {
   background: #7a3b00;
+}
+
+.dot.good {
+  background: var(--green);
+}
+
+.dot.bad {
+  background: var(--red);
+}
+
+.indicatorBoard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.indicatorBoard article,
+.decisionBoard article {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.indicatorBoard article {
+  display: grid;
+  gap: 4px;
+  min-height: 112px;
+  padding: 12px;
+}
+
+.indicatorBoard span,
+.indicatorBoard small,
+.decisionBoard small,
+.decisionBoard em,
+.evidenceFooter span {
+  color: var(--muted);
+}
+
+.indicatorBoard strong {
+  font-size: 20px;
+}
+
+.indicatorBoard p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.indicatorBoard .up strong {
+  color: var(--green);
+}
+
+.indicatorBoard .down strong {
+  color: var(--blue);
+}
+
+.indicatorBoard .warn strong {
+  color: #9a5b00;
+}
+
+.decisionBoard {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.decisionBoard article {
+  display: grid;
+  gap: 8px;
+  min-height: 168px;
+  padding: 12px;
+}
+
+.decisionBoard article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.decisionBoard article > div svg {
+  color: var(--green);
+}
+
+.decisionBoard article.sell > div svg {
+  color: var(--red);
+}
+
+.decisionBoard article.split > div svg,
+.decisionBoard article.hold > div svg {
+  color: var(--blue);
+}
+
+.decisionBoard article.risk > div svg {
+  color: #9a5b00;
+}
+
+.decisionBoard p {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.decisionBoard em,
+.decisionBoard small {
+  font-size: 12px;
 }
 
 .chartSummaryGrid,
@@ -751,6 +953,19 @@
   border: 1px solid rgba(17, 132, 91, 0.22);
   border-radius: var(--radius);
   background: linear-gradient(180deg, rgba(230, 246, 239, 0.88), rgba(255, 255, 255, 0.86));
+}
+
+.stagePill {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+  background: #ffffff;
 }
 
 .aiConclusion strong {
@@ -843,6 +1058,28 @@
   border-radius: var(--radius);
   background: #101827;
   color: #ffffff;
+}
+
+.evidenceFooter {
+  display: grid;
+  gap: 8px;
+}
+
+.evidenceFooter div {
+  display: grid;
+  gap: 3px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.evidenceFooter strong {
+  font-size: 13px;
+}
+
+.evidenceFooter span {
+  font-size: 12px;
 }
 
 .aiChecklist h3 {

@@ -14,8 +14,9 @@
 
   .commandCenter,
   .homeLayout,
+  .productStage,
   .lowerGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .searchResults {
@@ -68,7 +69,7 @@
   }
 
   .commandCopy h1 {
-    font-size: 31px;
+    font-size: 25px;
   }
 
   .commandCopy p,
@@ -93,6 +94,8 @@
 
   .candidateGrid,
   .chartSummaryGrid,
+  .indicatorBoard,
+  .decisionBoard,
   .sourceGrid,
   .portfolioSummary,
   .termSections,
@@ -103,7 +106,21 @@
   }
 
   .candidateGrid button {
-    min-height: 118px;
+    min-height: 92px;
+  }
+
+  .candidateGrid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(218px, 78%);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-bottom: 4px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .candidateGrid button {
+    scroll-snap-align: start;
   }
 
   .sectionHead,
@@ -117,8 +134,13 @@
     text-align: left;
   }
 
+  .chartTools {
+    display: grid;
+    justify-items: start;
+  }
+
   .chartFrame {
-    min-height: 470px;
+    min-height: 510px;
   }
 
   .chartNote {
@@ -172,7 +194,7 @@
   }
 
   .commandCopy h1 {
-    font-size: 29px;
+    font-size: 24px;
   }
 
   .quickTerms button {
@@ -181,10 +203,15 @@
   }
 
   .chartFrame {
-    min-height: 450px;
+    min-height: 500px;
   }
 
   .chartNote {
     max-width: 118px;
+  }
+
+  .indicatorBoard article,
+  .decisionBoard article {
+    min-height: auto;
   }
 }

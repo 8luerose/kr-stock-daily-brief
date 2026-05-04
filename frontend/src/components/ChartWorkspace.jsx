@@ -34,6 +34,87 @@ function formatPrice(value) {
   return Number(value).toLocaleString("ko-KR");
 }
 
+function formatVolume(value) {
+  if (!value) return "-";
+  if (value >= 100000000) return `${(value / 100000000).toFixed(1)}억`;
+  if (value >= 10000) return `${Math.round(value / 10000).toLocaleString("ko-KR")}만`;
+  return Number(value).toLocaleString("ko-KR");
+}
+
+function latestMa(rows, period) {
+  const values = ma(rows, period);
+  return values[values.length - 1]?.value || 0;
+}
+
+function calcRsi(rows, period = 14) {
+  if (rows.length < period + 1) return 50;
+  const slice = rows.slice(-period - 1);
+  let gain = 0;
+  let loss = 0;
+  for (let index = 1; index < slice.length; index += 1) {
+    const diff = Number(slice[index].close) - Number(slice[index - 1].close);
+    if (diff >= 0) gain += diff;
+    else loss += Math.abs(diff);
+  }
+  if (!loss) return 74;
+  const rs = gain / loss;
+  return Math.max(0, Math.min(100, 100 - 100 / (1 + rs)));
+}
+
+function calcObv(rows) {
+  return rows.reduce((value, row, index) => {
+    if (index === 0) return 0;
+    const prev = rows[index - 1];
+    if (Number(row.close) > Number(prev.close)) return value + Number(row.volume || 0);
+    if (Number(row.close) < Number(prev.close)) return value - Number(row.volume || 0);
+    return value;
+  }, 0);
+}
+
+function indicatorItems(rows) {
+  if (!rows.length) return [];
+  const latest = rows[rows.length - 1];
+  const previous = rows[rows.length - 2] || latest;
+  const ma5 = latestMa(rows, 5);
+  const ma20 = latestMa(rows, 20);
+  const rsi = calcRsi(rows);
+  const macdLike = ma5 && ma20 ? ((ma5 - ma20) / ma20) * 100 : 0;
+  const volumeRate =
+    previous.volume && latest.volume ? ((Number(latest.volume) - Number(previous.volume)) / Number(previous.volume)) * 100 : 0;
+  const obv = calcObv(rows);
+
+  return [
+    {
+      label: "거래량",
+      value: formatVolume(Number(latest.volume || 0)),
+      helper: `${volumeRate >= 0 ? "+" : ""}${volumeRate.toFixed(1)}%`,
+      tone: volumeRate >= 0 ? "up" : "down",
+      note: "가격 움직임에 실제 참여가 붙었는지 확인합니다."
+    },
+    {
+      label: "RSI",
+      value: rsi.toFixed(1),
+      helper: rsi >= 70 ? "과열 근접" : rsi >= 55 ? "상승 힘 유지" : "중립",
+      tone: rsi >= 70 ? "warn" : "up",
+      note: "높다고 바로 매도하지 말고 추세와 거래량을 같이 봅니다."
+    },
+    {
+      label: "MACD",
+      value: `${macdLike >= 0 ? "+" : ""}${macdLike.toFixed(2)}%`,
+      helper: macdLike >= 0 ? "모멘텀 개선" : "모멘텀 둔화",
+      tone: macdLike >= 0 ? "up" : "down",
+      note: "방향 전환 가능성을 보되, 늦게 반응할 수 있습니다."
+    },
+    {
+      label: "OBV",
+      value: formatVolume(Math.abs(obv)),
+      helper: obv >= 0 ? "수급 우상향" : "수급 약화",
+      tone: obv >= 0 ? "up" : "down",
+      note: "가격이 오를 때 거래량이 같이 붙는지 보는 보조 신호입니다."
+    }
+  ];
+}
+
 function zonePercent(zone, min, max) {
   const top = Math.max(zone.fromPrice || min, zone.toPrice || min);
   const bottom = Math.min(zone.fromPrice || max, zone.toPrice || max);
@@ -44,12 +125,61 @@ function zonePercent(zone, min, max) {
   };
 }
 
+function IndicatorBoard({ rows }) {
+  const items = useMemo(() => indicatorItems(rows), [rows]);
+  return (
+    <div className="indicatorBoard" aria-label="차트 보조지표 요약">
+      {items.map((item) => (
+        <article key={item.label} className={item.tone}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          <small>{item.helper}</small>
+          <p>{item.note}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function DecisionBoard({ zones, meta }) {
+  return (
+    <div className="decisionBoard" aria-label="조건형 매수 매도 검토표">
+      {zones.slice(0, 5).map((zone) => {
+        const metaInfo = zoneMeta[zone.type] || zoneMeta.hold;
+        const Icon = metaInfo.icon || Info;
+        return (
+          <article key={`${zone.type}-${zone.fromPrice}`} className={metaInfo.className}>
+            <div>
+              <Icon size={16} aria-hidden="true" />
+              <strong>{zone.label}</strong>
+              <small>{formatPrice(zone.fromPrice)}원부터 {formatPrice(zone.toPrice)}원</small>
+            </div>
+            <p>{zone.condition}</p>
+            <em>반대 신호: {zone.oppositeSignal}</em>
+            <small>기준일 {zone.basisDate || meta.asOf} · 신뢰도 {zone.confidence || meta.confidence}</small>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ChartWorkspace({ selected, chart, zones, events, meta }) {
   const chartRef = useRef(null);
   const apiRef = useRef(null);
   const [activeNote, setActiveNote] = useState(null);
+  const [timeframe, setTimeframe] = useState("일봉");
 
-  const rows = useMemo(() => chart?.data || [], [chart?.data]);
+  const sourceRows = useMemo(() => chart?.data || [], [chart?.data]);
+  const rows = useMemo(() => {
+    if (timeframe === "주봉") {
+      return sourceRows.filter((_, index) => index % 2 === 0 || index === sourceRows.length - 1);
+    }
+    if (timeframe === "월봉") {
+      return sourceRows.filter((_, index) => index % 4 === 0 || index === sourceRows.length - 1);
+    }
+    return sourceRows;
+  }, [sourceRows, timeframe]);
   const priceRange = useMemo(() => {
     if (!rows.length) return { min: 0, max: 1 };
     return rows.reduce(
@@ -153,6 +283,16 @@ export function ChartWorkspace({ selected, chart, zones, events, meta }) {
     });
   }, [events?.events, zones?.zones]);
 
+  const eventPins = useMemo(
+    () =>
+      (events?.events || []).slice(0, 4).map((event, index) => ({
+        ...event,
+        left: [23, 43, 63, 82][index] || 70,
+        top: event.type === "negative" ? 66 : 47
+      })),
+    [events?.events]
+  );
+
   return (
     <section className="chartWorkspace" aria-labelledby="chart-title">
       <div className="chartHeader">
@@ -163,10 +303,24 @@ export function ChartWorkspace({ selected, chart, zones, events, meta }) {
             <small>{selected.code}</small>
           </h2>
         </div>
-        <div className="priceDigest" aria-label="가격 요약">
-          <strong>{formatPrice(latest?.close)}원</strong>
-          <span className={Number(rate) >= 0 ? "up" : "down"}>{Number(rate) >= 0 ? "+" : ""}{rate}%</span>
-          <small>기준일 {meta.asOf}</small>
+        <div className="chartTools">
+          <div className="timeframeControl" aria-label="차트 기간 선택">
+            {["일봉", "주봉", "월봉"].map((frame) => (
+              <button
+                key={frame}
+                type="button"
+                className={timeframe === frame ? "active" : ""}
+                onClick={() => setTimeframe(frame)}
+              >
+                {frame}
+              </button>
+            ))}
+          </div>
+          <div className="priceDigest" aria-label="가격 요약">
+            <strong>{formatPrice(latest?.close)}원</strong>
+            <span className={Number(rate) >= 0 ? "up" : "down"}>{Number(rate) >= 0 ? "+" : ""}{rate}%</span>
+            <small>기준일 {meta.asOf}</small>
+          </div>
         </div>
       </div>
 
@@ -184,7 +338,7 @@ export function ChartWorkspace({ selected, chart, zones, events, meta }) {
             );
           })}
         </div>
-        <div className="realChart" ref={chartRef} aria-label={`${selected.name} 일봉 차트`} />
+        <div className="realChart" ref={chartRef} aria-label={`${selected.name} ${timeframe} 차트`} />
 
         <div className="annotationLayer">
           {annotations.map((note) => {
@@ -205,6 +359,47 @@ export function ChartWorkspace({ selected, chart, zones, events, meta }) {
               </button>
             );
           })}
+        </div>
+
+        <div className="eventLayer" aria-label="호재 악재 이벤트 마커">
+          {eventPins.map((event) => (
+            <button
+              key={`${event.date}-${event.title}`}
+              type="button"
+              className={`eventPin ${event.type === "negative" ? "bad" : "good"}`}
+              style={{ left: `${event.left}%`, top: `${event.top}%` }}
+              onMouseEnter={() =>
+                setActiveNote({
+                  label: event.type === "negative" ? "악재 마커" : "호재 마커",
+                  condition: event.title,
+                  evidence: event.explanation,
+                  oppositeSignal:
+                    event.type === "negative"
+                      ? "재돌파와 거래대금 회복이 나오면 악재 영향은 줄어들 수 있습니다."
+                      : "호재에도 거래량이 줄고 전고점을 못 넘으면 관망합니다.",
+                  beginnerExplanation: "뉴스만 보지 말고 차트에서 가격과 거래량이 같은 방향으로 확인되는지 봅니다.",
+                  confidence: event.causalScores?.[0]?.confidence || meta.confidence,
+                  basisDate: event.date
+                })
+              }
+              onFocus={() =>
+                setActiveNote({
+                  label: event.type === "negative" ? "악재 마커" : "호재 마커",
+                  condition: event.title,
+                  evidence: event.explanation,
+                  oppositeSignal:
+                    event.type === "negative"
+                      ? "재돌파와 거래대금 회복이 나오면 악재 영향은 줄어들 수 있습니다."
+                      : "호재에도 거래량이 줄고 전고점을 못 넘으면 관망합니다.",
+                  beginnerExplanation: "뉴스만 보지 말고 차트에서 가격과 거래량이 같은 방향으로 확인되는지 봅니다.",
+                  confidence: event.causalScores?.[0]?.confidence || meta.confidence,
+                  basisDate: event.date
+                })
+              }
+            >
+              {event.type === "negative" ? "악재" : "호재"}
+            </button>
+          ))}
         </div>
 
         <div className={`chartTooltip ${activeNote ? "visible" : ""}`} role="tooltip">
@@ -239,13 +434,19 @@ export function ChartWorkspace({ selected, chart, zones, events, meta }) {
         </div>
       </div>
 
+      <IndicatorBoard rows={rows} />
+
       <div className="chartLegend" aria-label="차트 범례">
         <span><i className="line ma5" />5일선</span>
         <span><i className="line ma20" />20일선</span>
         <span><i className="band buy" />매수 검토</span>
         <span><i className="band sell" />매도 검토</span>
         <span><i className="band risk" />리스크 관리</span>
+        <span><i className="dot good" />호재·뉴스</span>
+        <span><i className="dot bad" />악재·공시</span>
       </div>
+
+      <DecisionBoard zones={zones?.zones || []} meta={meta} />
 
       <div className="chartSummaryGrid">
         {(zones?.evidence || []).slice(0, 3).map((item) => (

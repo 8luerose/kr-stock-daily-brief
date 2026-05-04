@@ -15,9 +15,9 @@ export function SearchCommand({ query, setQuery, results, state, onSelect, candi
     <section className="commandCenter" aria-labelledby="search-title">
       <div className="commandCopy">
         <span className="eyebrow">AI가 차트 위에 설명하는 한국 주식 학습</span>
-        <h1 id="search-title">종목, 테마, 용어를 검색하면 매수와 매도 검토 조건까지 한 화면에서 봅니다.</h1>
+        <h1 id="search-title">검색하면 차트 위에서 상승과 하락 이유, 매수와 매도 검토 조건을 바로 봅니다.</h1>
         <p>
-          등락 이유, 호재와 악재, 반대 신호를 차트 위 주석과 교육용 조건으로 정리합니다.
+          초보자가 이해할 수 있도록 호재, 악재, 반대 신호, 리스크를 조건형으로 정리합니다.
         </p>
       </div>
 
@@ -35,7 +35,7 @@ export function SearchCommand({ query, setQuery, results, state, onSelect, candi
           {state.loading ? <span className="pulseDot" aria-label="검색 중" /> : null}
         </div>
         <div className="quickTerms" aria-label="추천 검색어">
-          {["삼성전자", "반도체", "거래량", "RSI"].map((term) => (
+          {["삼성전자", "거래량", "RSI"].map((term) => (
             <button key={term} type="button" onClick={() => setQuery(term)}>
               {term}
             </button>
@@ -53,11 +53,38 @@ export function SearchCommand({ query, setQuery, results, state, onSelect, candi
             />
           ) : null}
           {hasQuery && !visibleResults.length && !state.loading ? (
-            <StateBlock
-              tone="empty"
-              title="검색 결과가 없습니다"
-              description="반도체, 거래량, RSI처럼 종목명이나 용어를 바꿔 검색해 보세요."
-            />
+            <>
+              <StateBlock
+                tone="empty"
+                title="검색 결과가 없습니다"
+                description="추천 검색어를 눌러 차트 해석, 용어 학습, 오늘 관심 후보로 이어갈 수 있습니다."
+              />
+              <div className="emptySuggestions" aria-label="검색 실패 추천">
+                {(candidates || []).slice(0, 3).map((candidate) => (
+                  <button
+                    key={candidate.code}
+                    type="button"
+                    onClick={() =>
+                      onSelect({
+                        id: candidate.code,
+                        type: "stock",
+                        title: candidate.name,
+                        code: candidate.code,
+                        market: candidate.market,
+                        rate: candidate.rate,
+                        tags: [candidate.theme],
+                        summary: candidate.beginnerLine,
+                        stockCode: candidate.code,
+                        stockName: candidate.name
+                      })
+                    }
+                  >
+                    {candidate.name}
+                    <small>{candidate.rate}</small>
+                  </button>
+                ))}
+              </div>
+            </>
           ) : (
             visibleResults.slice(0, 4).map((item) => {
               const Icon = resultIcon(item.type);

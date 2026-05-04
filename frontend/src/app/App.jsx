@@ -16,10 +16,10 @@ function CandidateStrip({ candidates, selected, onSelect }) {
     <section className="candidateSection" aria-labelledby="candidate-title">
       <div className="sectionHead">
         <div>
-          <span className="eyebrow">3개 이하 관심 후보</span>
-          <h2 id="candidate-title">오늘 먼저 볼 종목</h2>
+          <span className="eyebrow">관심 후보 3개 이하</span>
+          <h2 id="candidate-title">검색 전 바로 볼 종목</h2>
         </div>
-        <small>등락률, 거래량, 이벤트 기준 선별</small>
+        <small>등락률, 거래량, 이벤트 기준</small>
       </div>
       <div className="candidateGrid">
         {candidates.slice(0, 3).map((candidate) => (
@@ -96,19 +96,18 @@ function HomePage({
 }) {
   return (
     <>
-      <SearchCommand
-        query={query}
-        setQuery={setQuery}
-        results={searchResults}
-        state={searchState}
-        onSelect={selectSearchResult}
-        candidates={candidates}
-      />
-
-      <div className="homeLayout">
-        <div className="homeMain">
-          <CandidateStrip candidates={candidates} selected={selected} onSelect={setSelected} />
+      <div className="productStage">
+        <div className="stageMain">
+          <SearchCommand
+            query={query}
+            setQuery={setQuery}
+            results={searchResults}
+            state={searchState}
+            onSelect={selectSearchResult}
+            candidates={candidates}
+          />
           <ChartWorkspace selected={selected} chart={chart} zones={zones} events={events} meta={meta} />
+          <CandidateStrip candidates={candidates} selected={selected} onSelect={setSelected} />
         </div>
         <AIPredictionPanel
           selected={selected}

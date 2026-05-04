@@ -26,6 +26,7 @@ export function AIPredictionPanel({ selected, aiBrief, zones, events, meta, data
       </div>
 
       <div className="aiConclusion">
+        <span className="stagePill">{aiBrief.stage || "조건 확인 구간"}</span>
         <strong>{aiBrief.conclusion}</strong>
         <p>{aiBrief.prediction}</p>
         <div className="confidenceMeter" aria-label={`신뢰도 ${meta.confidence}`}>
@@ -119,6 +120,17 @@ export function AIPredictionPanel({ selected, aiBrief, zones, events, meta, data
             <li key={item}>반대 신호: {item}</li>
           ))}
         </ul>
+      </div>
+
+      <div className="evidenceFooter" aria-label="AI 근거와 한계">
+        <div>
+          <strong>근거</strong>
+          <span>{list(aiBrief.sources).join(" · ") || "daily summaries · chart OHLCV · event markers"}</span>
+        </div>
+        <div>
+          <strong>한계</strong>
+          <span>{list(aiBrief.limitations)[0] || "실시간 체결과 공시 원문 반영은 백엔드 연결 상태에 따라 달라질 수 있습니다."}</span>
+        </div>
       </div>
 
       <p className="safetyNote">

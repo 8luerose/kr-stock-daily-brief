@@ -12,6 +12,7 @@ function normalizeTerm(term) {
       term.longExplanation ||
       `${term.term}은 주가를 이해할 때 자주 쓰이는 개념입니다.\n가격 움직임, 거래량, 이벤트와 함께 보면 의미가 더 분명해집니다.\n초보자는 단어 뜻보다 차트에서 어떤 행동 기준이 되는지 먼저 익히면 좋습니다.`,
     chartUsage: term.chartUsage || "차트의 가격, 거래량, 보조지표 영역에서 관련 신호를 확인합니다.",
+    relatedChartZone: term.relatedChartZone || term.chartZone || "차트의 AI 주석, 거래량 막대, 매수와 매도 검토 구간에서 함께 확인합니다.",
     whyItMatters: term.whyItMatters || "매수 검토, 관망, 리스크 관리 조건을 구분하는 데 도움됩니다.",
     beginnerCheck: term.beginnerCheck || "한 지표만 보지 말고 가격과 거래량을 함께 확인합니다.",
     commonMisunderstanding: term.commonMisunderstanding || term.caution || "숫자 하나를 확정 신호로 오해하면 안 됩니다.",
@@ -85,6 +86,10 @@ export function LearningPanel({ terms, compact = false }) {
             <section>
               <h4>차트에서 보는 법</h4>
               <p>{selected.chartUsage}</p>
+            </section>
+            <section>
+              <h4>관련 차트 구간</h4>
+              <p>{selected.relatedChartZone}</p>
             </section>
             <section>
               <h4>왜 중요한지</h4>
