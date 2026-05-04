@@ -30,7 +30,6 @@
 
 .brand,
 .quietNav,
-.homeTrust,
 .adminTrust,
 .modeCard,
 .searchBox,
@@ -69,7 +68,6 @@
 
 .brand small,
 .quietNav a,
-.homeTrust,
 .adminTrust {
   color: var(--muted);
   font-size: 12px;
@@ -99,7 +97,6 @@
   transform: translateY(-1px);
 }
 
-.homeTrust,
 .adminTrust {
   gap: 7px;
   width: min(1180px, calc(100% - 48px));
@@ -204,7 +201,6 @@
 .portfolioSandbox,
 .archivePanel,
 .adminPanel,
-.homeTrust,
 .adminTrust {
   min-width: 0;
   border: 1px solid rgba(217, 226, 239, 0.9);

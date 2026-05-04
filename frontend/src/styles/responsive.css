@@ -21,7 +21,6 @@
   .screen,
   .archivePanel,
   .adminPanel,
-  .homeTrust,
   .adminTrust {
     width: min(100% - 24px, 720px);
   }
