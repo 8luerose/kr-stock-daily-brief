@@ -3,13 +3,13 @@
 DOCKER_SOCK ?= /var/run/docker.sock
 
 up:
-	docker compose up -d --build
+	BUILDX_GIT_INFO=false docker compose up -d --build
 
 down:
 	docker compose down
 
 rebuild:
-	docker compose build --no-cache
+	BUILDX_GIT_INFO=false docker compose build --no-cache
 
 ps:
 	docker compose ps
