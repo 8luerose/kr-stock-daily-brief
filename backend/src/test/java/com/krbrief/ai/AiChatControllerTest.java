@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ class AiChatControllerTest {
 
   @MockBean AiChatClient client;
   @MockBean AiChatContextEnricher enricher;
+  @MockBean AiChatLogService logService;
 
   @Test
   void chat_proxiesAiServiceResponse() throws Exception {
@@ -36,6 +38,8 @@ class AiChatControllerTest {
                 "grounding", Map.of("policy", "retrieval_only_with_explicit_limitations"),
                 "limitations", List.of("교육용 분석 보조입니다."),
                 "oppositeSignals", List.of("거래량 없는 상승")));
+    when(logService.save(anyMap(), anyMap()))
+        .thenReturn(Map.of("saved", true, "id", 7L, "table", "ai_chat_interactions"));
 
     mvc.perform(
             post("/api/ai/chat")
@@ -46,7 +50,9 @@ class AiChatControllerTest {
         .andExpect(jsonPath("$.sources").isArray())
         .andExpect(jsonPath("$.grounding.policy").value("retrieval_only_with_explicit_limitations"))
         .andExpect(jsonPath("$.limitations").isArray())
-        .andExpect(jsonPath("$.oppositeSignals").isArray());
+        .andExpect(jsonPath("$.oppositeSignals").isArray())
+        .andExpect(jsonPath("$.storage.saved").value(true))
+        .andExpect(jsonPath("$.storage.table").value("ai_chat_interactions"));
   }
 
   @Test
@@ -66,5 +72,29 @@ class AiChatControllerTest {
         .andExpect(jsonPath("$.provider").value("openai_compatible"))
         .andExpect(jsonPath("$.configured").value(false))
         .andExpect(jsonPath("$.fallbackMode").value("rag_fallback_rule_based"));
+  }
+
+  @Test
+  void history_returnsSavedAiInteractions() throws Exception {
+    when(logService.history("005930"))
+        .thenReturn(
+            List.of(
+                new AiChatInteractionDto(
+                    7L,
+                    "005930",
+                    "삼성전자",
+                    "매수 검토 조건 알려줘",
+                    "rag_llm",
+                    "anthropic_compatible",
+                    "glm-5-turbo",
+                    "medium",
+                    "2026-05-06",
+                    "조건 확인용 응답입니다.",
+                    Instant.parse("2026-05-06T00:00:00Z"))));
+
+    mvc.perform(get("/api/ai/chat/history?stockCode=005930"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].stockCode").value("005930"))
+        .andExpect(jsonPath("$[0].model").value("glm-5-turbo"));
   }
 }

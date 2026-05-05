@@ -18,8 +18,14 @@ public class AiChatClient {
 
   private final RestClient http;
 
-  public AiChatClient(@Value("${ai.baseUrl:http://ai-service:8100}") String baseUrl) {
-    this.http = RestClient.builder().requestFactory(new SimpleClientHttpRequestFactory()).baseUrl(baseUrl).build();
+  public AiChatClient(
+      @Value("${ai.baseUrl:http://ai-service:8100}") String baseUrl,
+      @Value("${ai.connectTimeoutSeconds:3}") int connectTimeoutSeconds,
+      @Value("${ai.readTimeoutSeconds:28}") int readTimeoutSeconds) {
+    SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+    requestFactory.setConnectTimeout(Math.max(1, connectTimeoutSeconds) * 1000);
+    requestFactory.setReadTimeout(Math.max(1, readTimeoutSeconds) * 1000);
+    this.http = RestClient.builder().requestFactory(requestFactory).baseUrl(baseUrl).build();
   }
 
   public Map<String, Object> chat(Map<String, Object> request) {

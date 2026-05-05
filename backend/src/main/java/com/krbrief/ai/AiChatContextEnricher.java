@@ -1,6 +1,8 @@
 package com.krbrief.ai;
 
 import com.krbrief.learning.LearningTermCatalog;
+import com.krbrief.portfolio.PortfolioItem;
+import com.krbrief.portfolio.PortfolioItemRepository;
 import com.krbrief.search.SearchResultDto;
 import com.krbrief.search.SearchService;
 import com.krbrief.stocks.StockChartDto;
@@ -49,18 +51,21 @@ public class AiChatContextEnricher {
   private final StockResearchClient stockResearchClient;
   private final StockTradeZoneService stockTradeZoneService;
   private final LearningTermCatalog learningTermCatalog;
+  private final PortfolioItemRepository portfolioItemRepository;
 
   public AiChatContextEnricher(
       SearchService searchService,
       DailySummaryService dailySummaryService,
       StockResearchClient stockResearchClient,
       StockTradeZoneService stockTradeZoneService,
-      LearningTermCatalog learningTermCatalog) {
+      LearningTermCatalog learningTermCatalog,
+      PortfolioItemRepository portfolioItemRepository) {
     this.searchService = searchService;
     this.dailySummaryService = dailySummaryService;
     this.stockResearchClient = stockResearchClient;
     this.stockTradeZoneService = stockTradeZoneService;
     this.learningTermCatalog = learningTermCatalog;
+    this.portfolioItemRepository = portfolioItemRepository;
   }
 
   public Map<String, Object> enrich(Map<String, Object> request) {
@@ -102,6 +107,7 @@ public class AiChatContextEnricher {
     if (!stockCode.isBlank()) {
       context.putIfAbsent("stockCode", stockCode);
       enrichStockContext(context, stockCode);
+      enrichPortfolioContext(context, stockCode);
     }
 
     context.putIfAbsent("retrievalPolicy", "backend_auto_enriched_search_summary_chart_events");
@@ -115,6 +121,7 @@ public class AiChatContextEnricher {
     exposeTopLevel(enriched, context, "tradeZones");
     exposeTopLevel(enriched, context, "indicatorSnapshot");
     exposeTopLevel(enriched, context, "currentDecisionSummary");
+    exposeTopLevel(enriched, context, "portfolioContext");
     exposeTopLevel(enriched, context, "terms");
     return enriched;
   }
@@ -209,6 +216,38 @@ public class AiChatContextEnricher {
     out.put("currentDecisionSummary", tradeZones.currentDecisionSummary());
     out.put("evidence", tradeZones.evidence());
     out.put("zones", tradeZones.zones());
+    return out;
+  }
+
+  private void enrichPortfolioContext(LinkedHashMap<String, Object> context, String stockCode) {
+    if (context.containsKey("portfolioContext")) return;
+    portfolioItemRepository.findById(stockCode).ifPresentOrElse(
+        item -> context.put("portfolioContext", portfolioMap(item)),
+        () -> {
+          LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+          out.put("saved", false);
+          out.put("stockCode", stockCode);
+          out.put("storage", "기업 선택은 화면 상태이며 DB 저장이 아닙니다.");
+          out.put("guidance", List.of(
+              "이 종목을 포트폴리오 샌드박스에 담으면 가상 비중 기준으로 리스크를 더 구체적으로 볼 수 있습니다.",
+              "아직 평균단가, 보유기간, 손실 허용 범위는 입력받지 않으므로 AI 판단은 교육용 조건 확인에 머뭅니다."));
+          context.put("portfolioContext", out);
+        });
+  }
+
+  private LinkedHashMap<String, Object> portfolioMap(PortfolioItem item) {
+    LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+    out.put("saved", true);
+    out.put("stockCode", item.getCode());
+    out.put("stockName", item.getName());
+    out.put("group", item.getGroup());
+    out.put("weight", item.getWeight());
+    out.put("recentRate", item.getRate());
+    out.put("mentionCount", item.getCount());
+    out.put("storage", "portfolio_items 테이블에 저장된 포트폴리오 샌드박스 항목입니다.");
+    out.put("guidance", List.of(
+        "AI는 이 가상 비중을 참고해 과도한 집중 여부와 리스크 관리 순서를 더 구체적으로 설명해야 합니다.",
+        "다만 평균단가와 실제 보유수량은 저장되어 있지 않으므로 직접적인 수익률 판단으로 쓰면 안 됩니다."));
     return out;
   }
 

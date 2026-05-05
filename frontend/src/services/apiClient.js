@@ -2,11 +2,27 @@ import { fallbackLearningTerms, fallbackStocks, fallbackWorkspace } from "../dat
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
 const WORKSPACE_INTERVALS = ["daily", "weekly", "monthly"];
+const CORE_WORKSPACE_CACHE_MS = 5 * 60 * 1000;
+const AI_WORKSPACE_CACHE_MS = 2 * 60 * 1000;
 const coreWorkspaceCache = new Map();
 const aiWorkspaceCache = new Map();
 
 function getRuntimeConfig() {
   return window.__CONFIG__ || { API_BASE_URL: DEFAULT_API_BASE_URL, GATE_ENABLED: false };
+}
+
+function getCachedPromise(cache, key) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.promise;
+}
+
+function setCachedPromise(cache, key, promise, ttlMs) {
+  cache.set(key, { promise, expiresAt: Date.now() + ttlMs });
 }
 
 async function requestJson(path, options = {}) {
@@ -222,29 +238,87 @@ function normalizeConfidence(value) {
   return value || fallbackWorkspace.ai.confidence;
 }
 
+function humanizeText(value, fallback = "") {
+  const text = String(value || fallback || "").trim();
+  if (!text) return "";
+  return text
+    .replace(/\bretrieval\b/gi, "근거")
+    .replace(/source grounded/gi, "근거 기반")
+    .replace(/indicator snapshot/gi, "이동평균선 지표")
+    .replace(/grounded generation/gi, "근거 기반 생성")
+    .replace(/\bpositive\b/gi, "좋게 볼 수 있는 이유")
+    .replace(/\bnegative\b/gi, "주의할 이유")
+    .replace(/\bneutral\b/gi, "판단 보류")
+    .replace(/\bmixed\b/gi, "좋은 점과 주의할 점이 함께 있음")
+    .replace(/\babove\b/gi, "20일선 위")
+    .replace(/\bbelow\b/gi, "20일선 아래")
+    .replace(/\bnear\b/gi, "20일선 근처")
+    .replace(/uptrend_extension/gi, "상승 흐름이 이어지는 구간")
+    .replace(/uptrend_pullback/gi, "상승 흐름 안에서 눌림을 확인하는 구간")
+    .replace(/downtrend_rebound/gi, "하락 후 반등을 확인하는 구간")
+    .replace(/\bdowntrend\b/gi, "하락 흐름을 조심할 구간")
+    .replace(/\bsideways\b/gi, "방향 확인이 필요한 횡보 구간")
+    .replace(/\bnormal\b/gi, "평균 수준")
+    .replace(/\bstrong\b/gi, "평소보다 강함")
+    .replace(/\bweak\b/gi, "평소보다 약함");
+}
+
+function humanizeList(items, fallback = []) {
+  const list = Array.isArray(items) ? items : fallback;
+  return list.map((item) => humanizeText(item)).filter(Boolean);
+}
+
+function conciseAnswer(answer) {
+  const lines = String(answer || "")
+    .split("\n")
+    .map((line) => line.replace(/^[-*\s]+/, "").trim())
+    .filter(Boolean);
+  const candidate = lines.find((line) => !line.startsWith("기준일:") && !line.startsWith("대상:") && !line.startsWith("분석 범위:"));
+  if (!candidate) return "";
+  return candidate.length > 140 ? `${candidate.slice(0, 137)}...` : candidate;
+}
+
+function aiRuntime(remoteAi) {
+  const llm = remoteAi?.retrieval?.llm || {};
+  const used = Boolean(llm.used || remoteAi?.mode === "rag_llm");
+  return {
+    responseMode: remoteAi?.mode || (used ? "rag_llm" : "rag_fallback_rule_based"),
+    modeLabel: used ? "실시간 LLM 답변" : "규칙형 근거 기반 답변",
+    llmModel: llm.model || "",
+    llmProvider: llm.provider || "",
+    llmUsed: used
+  };
+}
+
 function normalizeAi(remoteAi) {
   const structured = remoteAi?.structured || {};
   const positives = structured.positives || structured.positiveFactors || fallbackWorkspace.ai.positives;
   const negatives = structured.negatives || structured.negativeFactors || fallbackWorkspace.ai.negatives;
+  const runtime = aiRuntime(remoteAi);
+  const limitations = structured.limitations || remoteAi?.limitations || [fallbackWorkspace.ai.limitation];
   return {
     ...fallbackWorkspace.ai,
-    conclusion: structured.conclusion || remoteAi?.answer || fallbackWorkspace.ai.conclusion,
-    direction: structured.prediction || structured.chartState?.summary || fallbackWorkspace.ai.direction,
-    movingAverageExplanation: structured.movingAverageExplanation || fallbackWorkspace.ai.movingAverageExplanation,
+    conclusion: humanizeText(structured.conclusion || conciseAnswer(remoteAi?.answer) || fallbackWorkspace.ai.conclusion),
+    direction: humanizeText(structured.prediction || structured.chartState?.summary || fallbackWorkspace.ai.direction),
+    movingAverageExplanation: humanizeText(structured.movingAverageExplanation || fallbackWorkspace.ai.movingAverageExplanation),
     chartState: structured.chartState || fallbackWorkspace.ai.chartState,
-    buyCondition: structured.buyCondition || structured.buyReview || fallbackWorkspace.ai.buyCondition,
-    sellCondition: structured.sellCondition || structured.sellReview || fallbackWorkspace.ai.sellCondition,
-    waitCondition: structured.waitCondition || structured.watchReview || fallbackWorkspace.ai.waitCondition,
-    riskCondition: structured.riskCondition || structured.riskManagement || fallbackWorkspace.ai.riskCondition,
-    positives,
-    negatives,
-    beginnerExplanation: structured.beginnerExplanation || fallbackWorkspace.ai.beginnerExplanation,
-    checklist: structured.beginnerChecklist || structured.nextChecklist || fallbackWorkspace.ai.checklist,
-    evidence: structured.evidence || fallbackWorkspace.ai.evidence,
-    opposingSignals: structured.opposingSignals || fallbackWorkspace.ai.opposingSignals,
-    limitation: (remoteAi?.limitations || [fallbackWorkspace.ai.limitation]).join(" "),
+    buyCondition: humanizeText(structured.buyCondition || structured.buyReview || fallbackWorkspace.ai.buyCondition),
+    sellCondition: humanizeText(structured.sellCondition || structured.sellReview || fallbackWorkspace.ai.sellCondition),
+    waitCondition: humanizeText(structured.waitCondition || structured.watchReview || fallbackWorkspace.ai.waitCondition),
+    riskCondition: humanizeText(structured.riskCondition || structured.riskManagement || fallbackWorkspace.ai.riskCondition),
+    positives: humanizeList(positives, fallbackWorkspace.ai.positives),
+    negatives: humanizeList(negatives, fallbackWorkspace.ai.negatives),
+    beginnerExplanation: humanizeText(structured.beginnerExplanation || fallbackWorkspace.ai.beginnerExplanation),
+    checklist: humanizeList(structured.beginnerChecklist || structured.nextChecklist, fallbackWorkspace.ai.checklist),
+    evidence: humanizeList(structured.evidence, fallbackWorkspace.ai.evidence),
+    opposingSignals: humanizeList(structured.opposingSignals, fallbackWorkspace.ai.opposingSignals),
+    limitation: humanizeText(limitations.join(" ")),
     confidence: normalizeConfidence(remoteAi?.confidence || fallbackWorkspace.ai.confidence),
-    sources: remoteAi?.sources || fallbackWorkspace.ai.sources
+    sources: remoteAi?.sources || fallbackWorkspace.ai.sources,
+    sourceTitles: (remoteAi?.sources || structured.sources || []).map((source) => humanizeText(source?.title || source?.type || source)).filter(Boolean),
+    portfolioGuidance: structured.portfolioGuidance || null,
+    storage: remoteAi?.storage || null,
+    ...runtime
   };
 }
 
@@ -276,12 +350,13 @@ export async function loadStockWorkspace(code, interval) {
 
 export async function loadStockCoreWorkspace(code, interval) {
   const key = `${code}:${interval || "daily"}`;
-  if (coreWorkspaceCache.has(key)) {
-    return coreWorkspaceCache.get(key);
+  const cached = getCachedPromise(coreWorkspaceCache, key);
+  if (cached) {
+    return cached;
   }
 
   const promise = loadStockCoreWorkspaceRemote(code, interval);
-  coreWorkspaceCache.set(key, promise);
+  setCachedPromise(coreWorkspaceCache, key, promise, CORE_WORKSPACE_CACHE_MS);
   try {
     return await promise;
   } catch (error) {
@@ -373,8 +448,9 @@ function compactEventsForAi(events = []) {
 
 export async function loadStockAi(workspace, interval) {
   const key = `${workspace?.stock?.code || "unknown"}:${interval || workspace?.chart?.interval || "daily"}:${workspace?.asOf || ""}`;
-  if (aiWorkspaceCache.has(key)) {
-    return aiWorkspaceCache.get(key);
+  const cached = getCachedPromise(aiWorkspaceCache, key);
+  if (cached) {
+    return cached;
   }
 
   const promise = requestJson("/api/ai/chat", {
@@ -400,7 +476,7 @@ export async function loadStockAi(workspace, interval) {
     })
   }).then(normalizeAi);
 
-  aiWorkspaceCache.set(key, promise);
+  setCachedPromise(aiWorkspaceCache, key, promise, AI_WORKSPACE_CACHE_MS);
   try {
     return await promise;
   } catch (error) {

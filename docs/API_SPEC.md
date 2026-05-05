@@ -794,6 +794,8 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
   "modelConfigured": true,
   "model": "glm-4.6",
   "baseUrl": "https://api.z.ai/api/anthropic",
+  "timeoutSeconds": 20,
+  "maxTokens": 650,
   "availableProviders": {
     "openaiCompatible": {
       "apiKeySet": false,
@@ -819,7 +821,7 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
 
 ### `POST /api/ai/chat`
 
-차트, 이벤트, 브리프, 용어 사전 컨텍스트를 받아 AI 분석 응답 형식으로 반환한다. `ai-service`는 요청에 포함된 검색/브리프/차트/이벤트/용어를 retrieval 문서로 정리하고, OpenAI-compatible 또는 Anthropic-compatible model 설정이 있으면 해당 LLM adapter를 호출한다. LLM 설정이 없거나 실패하면 규칙형 RAG fallback 응답을 반환한다.
+차트, 이벤트, 브리프, 용어 사전, 포트폴리오 샌드박스 컨텍스트를 받아 AI 분석 응답 형식으로 반환한다. `ai-service`는 요청에 포함된 검색/브리프/차트/이벤트/용어/포트폴리오 맥락을 근거 문서로 정리하고, OpenAI-compatible 또는 Anthropic-compatible model 설정이 있으면 해당 LLM adapter를 호출한다. LLM 설정이 없거나 실패하면 규칙형 근거 기반 fallback 응답을 반환한다. backend는 응답 생성 직후 `ai_chat_interactions`에 감사 로그를 저장한다.
 
 #### 요청 예시
 
@@ -828,8 +830,13 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
   "question": "삼성전자 차트와 이벤트를 초보자 관점으로 설명해줘",
   "contextDate": "2026-04-30",
   "stockCode": "005930",
-  "stockName": "삼성전자",
-  "focus": "neutral",
+    "stockName": "삼성전자",
+    "focus": "neutral",
+    "portfolioContext": {
+      "saved": true,
+      "weight": 25,
+      "storage": "portfolio_items 테이블에 저장된 포트폴리오 샌드박스 항목입니다."
+    },
   "events": [
     {
       "date": "2026-04-30",
@@ -862,11 +869,17 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
     "basisDate": "2026-04-30",
     "limitations": ["투자 지시가 아니라 교육용 분석 보조입니다."]
   },
+  "storage": {
+    "saved": true,
+    "id": 15,
+    "table": "ai_chat_interactions",
+    "note": "AI 응답은 생성 직후 DB에 감사 로그로 저장됩니다. 기업 선택 자체와 차트 데이터는 저장하지 않습니다."
+  },
   "sources": [
     { "title": "종목 차트 API", "type": "ohlcv", "url": "/api/stocks/005930/chart" }
   ],
   "grounding": {
-    "policy": "retrieval_only_with_explicit_limitations",
+    "policy": "provided_evidence_only_with_explicit_limitations",
     "basisDate": "2026-04-30",
     "sourceCoverage": {
       "chart": 1,
@@ -885,7 +898,7 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
       }
     ],
     "missingEvidence": [
-      "실제 LLM grounded generation 미사용: 선택된 LLM provider 설정이 완료되지 않았습니다."
+      "실시간 LLM 생성 미사용: 선택된 LLM provider 설정이 완료되지 않았습니다."
     ],
     "confidence": "medium",
     "llmUsed": false
@@ -921,7 +934,7 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
     }
   },
   "limitations": [
-    "LLM 응답은 제공된 retrieval 근거 안에서 생성되도록 제한했습니다.",
+    "LLM 응답은 제공된 근거 안에서만 생성되도록 제한했습니다.",
     "투자 지시가 아니라 교육용 분석 보조입니다."
   ],
   "oppositeSignals": ["거래량 없는 상승"],
@@ -932,13 +945,38 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
 #### 응답 정책
 
 - 반드시 기준일, 출처, 신뢰도, 한계, 반대 신호를 포함한다.
-- `retrieval.documents`에는 답변 생성에 사용한 검색/브리프/차트/이벤트/이벤트 evidence/원인 점수/용어 근거를 남긴다.
-- `grounding`은 retrieval 근거만 사용한다는 정책, 근거 유형별 커버리지, 지원 가능한 주장, 부족한 근거를 노출한다.
+- `retrieval.documents`에는 답변 생성에 사용한 검색/브리프/차트/이벤트/이벤트 evidence/원인 점수/용어/포트폴리오 근거를 남긴다.
+- `storage.saved=true`이면 `ai_chat_interactions`에 질문, 종목, 응답 모드, 모델, 답변 요약이 저장된 것이다.
+- `grounding`은 제공된 근거만 사용한다는 정책, 근거 유형별 커버리지, 지원 가능한 주장, 부족한 근거를 노출한다.
 - 선택된 provider의 model 또는 API key가 없으면 `mode=rag_fallback_rule_based`로 동작한다.
 - Anthropic-compatible provider는 `ANTHROPIC_AUTH_TOKEN` 또는 `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` 또는 `ANTHROPIC_DEFAULT_*_MODEL`, `ANTHROPIC_BASE_URL`을 사용한다.
 - live LLM 품질은 `make llm-benchmark`로 반복 검증한다. 이 벤치마크는 3개 고정 프롬프트에서 `mode=rag_llm`, `retrieval.llm.used=true`, `grounding.llmUsed=true`, 최소 source/claim 수, retrieval 문서 id 인용, 금지 투자문구 미포함을 확인한다.
 - “지금 사라/팔아라”가 아니라 조건, 리스크, 대안 시나리오로 설명한다.
 - 개인화 투자 조언이나 수익 보장을 하지 않는다.
+
+### `GET /api/ai/chat/history?stockCode=005930`
+
+최근 AI 응답 저장 기록을 조회한다. `stockCode`가 없으면 최근 20건, 있으면 해당 종목 최근 20건을 반환한다.
+
+#### 성공 응답 (200)
+
+```json
+[
+  {
+    "id": 15,
+    "stockCode": "005930",
+    "stockName": "삼성전자",
+    "question": "삼성전자 차트의 매수·매도 검토 조건을 교육용으로 설명해줘",
+    "responseMode": "rag_llm",
+    "provider": "anthropic_compatible",
+    "model": "glm-5-turbo",
+    "confidence": "medium",
+    "basisDate": "2026-05-06",
+    "answerPreview": "기준일: 2026-05-06 대상: 삼성전자...",
+    "createdAt": "2026-05-06T12:00:00Z"
+  }
+]
+```
 
 ---
 

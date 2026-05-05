@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle, ShieldAlert, Clock3 } from 'lucide-react';
+import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle, ShieldAlert, Clock3, Database, Info } from 'lucide-react';
 import clsx from 'clsx';
 import styles from './FloatingAiCard.module.css';
 
@@ -33,8 +33,24 @@ export default function FloatingAiCard({ ai, events, asOf }) {
       {/* Expanded View (Conditions & News) */}
       {expanded && (
         <div className={styles.details}>
+          <div className={styles.runtimeNotice}>
+            <Info size={15} />
+            <span>
+              {ai.modeLabel || '근거 기반 답변'}{ai.llmModel ? ` · ${ai.llmModel}` : ''}. 조건 확인용이며 평균단가와 실제 보유 수량은 아직 반영하지 않습니다.
+            </span>
+          </div>
+
+          {ai.storage && (
+            <div className={styles.storageNotice}>
+              <Database size={15} />
+              <span>
+                {ai.storage.saved ? `AI 답변 저장 완료: ${ai.storage.table}` : 'AI 답변은 저장되지 않았습니다.'}
+              </span>
+            </div>
+          )}
+
           <div className={styles.section}>
-            <h4 className={styles.sectionTitle}>매매 검토 시점</h4>
+            <h4 className={styles.sectionTitle}>조건별 확인 순서</h4>
             <div className={styles.conditionGrid}>
               <div className={styles.conditionBox}>
                 <CheckCircle2 size={16} className={styles.posIcon} />
@@ -66,18 +82,32 @@ export default function FloatingAiCard({ ai, events, asOf }) {
           </div>
 
           <div className={styles.section}>
-            <h4 className={styles.sectionTitle}>주요 모멘텀</h4>
+            <h4 className={styles.sectionTitle}>좋게 볼 이유와 주의할 이유</h4>
             <div className={styles.newsGrid}>
               <div className={styles.newsBox}>
-                <h5>호재 ({ai.positives?.length || 0})</h5>
+                <h5>좋게 볼 수 있는 이유 ({ai.positives?.length || 0})</h5>
                 {ai.positives?.map((n, i) => <div key={i} className={styles.newsItem}>{n}</div>)}
               </div>
               <div className={styles.newsBox}>
-                <h5>악재/리스크 ({ai.negatives?.length || 0})</h5>
+                <h5>주의할 이유 ({ai.negatives?.length || 0})</h5>
                 {ai.negatives?.map((n, i) => <div key={i} className={styles.newsItem}>{n}</div>)}
               </div>
             </div>
           </div>
+
+          {ai.portfolioGuidance && (
+            <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>내 샌드박스 기준</h4>
+              <p className={styles.limitNote}>{ai.portfolioGuidance.summary}</p>
+              {ai.portfolioGuidance.checklist?.length > 0 && (
+                <ul className={styles.checklist}>
+                  {ai.portfolioGuidance.checklist.slice(0, 4).map((item, index) => (
+                    <li key={`${item}-${index}`}>{item}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {ai.checklist?.length > 0 && (
             <div className={styles.section}>
@@ -87,6 +117,18 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                   <li key={`${item}-${index}`}>{item}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {(ai.limitation || ai.sourceTitles?.length > 0) && (
+            <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>근거와 한계</h4>
+              {ai.limitation && <p className={styles.limitNote}>{ai.limitation}</p>}
+              {ai.sourceTitles?.length > 0 && (
+                <div className={styles.sourceList}>
+                  {ai.sourceTitles.slice(0, 4).map((source) => <span key={source}>{source}</span>)}
+                </div>
+              )}
             </div>
           )}
           

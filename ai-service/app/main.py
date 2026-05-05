@@ -27,6 +27,7 @@ class ChatRequest(BaseModel):
     indicatorSnapshot: dict[str, Any] | None = None
     tradeZones: dict[str, Any] | None = None
     currentDecisionSummary: dict[str, Any] | None = None
+    portfolioContext: dict[str, Any] | None = None
     events: list[dict[str, Any]] = Field(default_factory=list)
     terms: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -34,6 +35,33 @@ class ChatRequest(BaseModel):
 def _clean(value: Any, fallback: str = "-") -> str:
     text = str(value or "").strip()
     return text if text else fallback
+
+
+def _label(value: Any) -> str:
+    return {
+        "above": "20일선 위",
+        "below": "20일선 아래",
+        "near": "20일선 근처",
+        "positive": "좋게 볼 수 있는 이유",
+        "negative": "주의할 이유",
+        "neutral": "판단 보류",
+        "mixed": "좋은 점과 주의할 점이 함께 있음",
+        "buy_review": "매수 검토 구간",
+        "sell_review": "매도 검토 구간",
+        "risk_management": "리스크 관리 구간",
+        "watch": "관망 구간",
+        "uptrend_extension": "상승 흐름이 이어지는 구간",
+        "uptrend_pullback": "상승 흐름 안에서 눌림을 확인하는 구간",
+        "downtrend": "하락 흐름을 조심할 구간",
+        "downtrend_rebound": "하락 후 반등을 확인하는 구간",
+        "sideways": "방향을 더 확인해야 하는 횡보 구간",
+        "strong": "평소보다 강한 거래량",
+        "normal": "평균 수준",
+        "weak": "평소보다 약한 편",
+        "rising": "상승 중",
+        "falling": "하락 중",
+        "flat": "큰 변화 없음",
+    }.get(str(value or "").strip().lower(), _clean(value, "확인 필요"))
 
 
 def _compact(value: Any, limit: int = 420) -> str:
@@ -50,11 +78,11 @@ def _compact(value: Any, limit: int = 420) -> str:
 def _event_lines(events: list[dict[str, Any]]) -> list[str]:
     lines: list[str] = []
     for event in events[:5]:
-        sentiment = _clean(event.get("sentimentForPrice") or event.get("sentiment"), "확인 필요")
+        sentiment = _label(event.get("sentimentForPrice") or event.get("sentiment"))
         positive = event.get("positiveReasons") or []
         negative = event.get("negativeReasons") or []
-        positive_text = f" 호재 후보: {_clean(positive[0], '')}" if isinstance(positive, list) and positive else ""
-        negative_text = f" 악재/리스크 후보: {_clean(negative[0], '')}" if isinstance(negative, list) and negative else ""
+        positive_text = f" 좋게 볼 이유: {_clean(positive[0], '')}" if isinstance(positive, list) and positive else ""
+        negative_text = f" 주의할 이유: {_clean(negative[0], '')}" if isinstance(negative, list) and negative else ""
         lines.append(
             f"- {event.get('date', '-')}: {event.get('title', '이벤트')} "
             f"({event.get('severity', 'unknown')}, {sentiment}) - {event.get('explanation', '설명 없음')}"
@@ -150,6 +178,15 @@ def _build_retrieval_documents(req: ChatRequest, subject: str, code: str, topic_
             "basisDate": basis_date,
         })
 
+    if req.portfolioContext:
+        documents.append({
+            "id": "portfolio-context",
+            "type": "portfolio_context",
+            "title": f"{subject} 포트폴리오 샌드박스 맥락",
+            "text": _compact(req.portfolioContext),
+            "basisDate": basis_date,
+        })
+
     for index, event in enumerate((req.events or [])[:6], start=1):
         event_date = _clean(event.get("date"), basis_date)
         event_title = _clean(event.get("title"), "이벤트")
@@ -236,9 +273,10 @@ def _build_grounding_report(
 
     add_claim("검색 결과 요약을 근거로 사용", ["search-result"])
     add_claim("저장 브리프 요약을 근거로 사용", ["daily-summary"])
-    add_claim("차트 snapshot을 근거로 사용", ["chart-snapshot"])
-    add_claim("이동평균선 indicator snapshot을 근거로 사용", ["indicator-snapshot"])
+    add_claim("차트 최근값을 근거로 사용", ["chart-snapshot"])
+    add_claim("이동평균선 지표를 근거로 사용", ["indicator-snapshot"])
     add_claim("조건형 매수/매도 검토 구간을 근거로 사용", ["trade-zones", "current-decision-summary"])
+    add_claim("포트폴리오 샌드박스 가상 비중을 근거로 사용", ["portfolio-context"])
     event_ids = sorted(doc_id for doc_id in ids if doc_id.startswith("event-") and "-evidence-" not in doc_id and "-causal-" not in doc_id)
     evidence_ids = sorted(doc_id for doc_id in ids if "-evidence-" in doc_id)
     causal_ids = sorted(doc_id for doc_id in ids if "-causal-" in doc_id)
@@ -250,11 +288,11 @@ def _build_grounding_report(
 
     missing: list[str] = []
     if not documents:
-        missing.append("retrieval 문서가 없어 답변 근거가 제한적입니다.")
+        missing.append("근거 문서가 없어 답변 근거가 제한적입니다.")
     if req.stockCode and "chart-snapshot" not in ids:
-        missing.append("차트 snapshot이 요청에 포함되지 않았습니다.")
+        missing.append("차트 최근값이 요청에 포함되지 않았습니다.")
     if req.stockCode and "indicator-snapshot" not in ids:
-        missing.append("이동평균선 indicator snapshot이 요청에 포함되지 않았습니다.")
+        missing.append("이동평균선 지표가 요청에 포함되지 않았습니다.")
     if req.stockCode and "trade-zones" not in ids:
         missing.append("조건형 매수/매도 검토 구간이 요청에 포함되지 않았습니다.")
     if req.stockCode and not event_ids:
@@ -263,10 +301,10 @@ def _build_grounding_report(
         missing.append("이벤트 원인 후보의 뉴스/공시/DART evidence가 요청에 포함되지 않았습니다.")
     if not used_llm:
         reason = _clean(llm_meta.get("fallbackReason"), "LLM 설정 또는 호출 실패")
-        missing.append(f"실제 LLM grounded generation 미사용: {reason}")
+        missing.append(f"실시간 LLM 생성 미사용: {reason}")
 
     return {
-        "policy": "retrieval_only_with_explicit_limitations",
+        "policy": "provided_evidence_only_with_explicit_limitations",
         "basisDate": basis_date,
         "sourceCoverage": _count_documents_by_type(documents),
         "supportedClaims": supported_claims,
@@ -286,9 +324,9 @@ def _build_llm_prompt(req: ChatRequest, subject: str, code: str, topic_type: str
         "반드시 제공된 검색/브리프/차트/이벤트/용어 근거 안에서만 답하고, "
         "매수 또는 매도를 지시하지 말고 조건/검토/시나리오 표현만 사용한다. "
         "출처가 부족하면 부족하다고 말한다. "
-        "근거 문장에는 반드시 최소 2개의 retrieval 문서 id를 대괄호 형식으로 함께 언급한다. "
+        "근거 문장에는 반드시 최소 2개의 근거 문서 id를 대괄호 형식으로 함께 언급한다. "
         "답변 구조는 한 줄 결론, 이동평균선 해석, 매수 검토 조건, 관망 조건, 매도 검토 조건, 리스크 관리, "
-        "호재/악재 후보 이유, 반대 신호, 초보자 체크리스트, 다음 확인 순서로 작성한다."
+        "좋게 볼 이유와 주의할 이유, 반대 신호, 초보자 체크리스트, 포트폴리오 맥락, 다음 확인 순서로 작성한다."
     )
     user = (
         f"질문: {_clean(req.question, '시장과 차트 해석')}\n"
@@ -305,11 +343,12 @@ def _moving_average_explanation(indicator: dict[str, Any] | None) -> str:
         return "이동평균선 근거가 부족합니다. 5일선은 단기, 20일선은 약 한 달, 60일선은 중기 흐름을 보는 기준입니다."
     moving = indicator.get("movingAverages") or {}
     price_vs = indicator.get("priceVsMa20") or {}
+    position = _label(price_vs.get("position"))
     return (
         f"5일선은 단기 흐름({ _clean(moving.get('ma5')) }), "
         f"20일선은 약 한 달 평균 흐름({ _clean(moving.get('ma20')) }), "
         f"60일선은 중기 흐름({ _clean(moving.get('ma60')) })입니다. "
-        f"현재가는 20일선 대비 { _clean(price_vs.get('position'), 'unknown') } 상태이고 "
+        f"현재가는 {position}이고 "
         f"거리는 { _clean(price_vs.get('distanceRate'), '-') }%입니다. "
         "이동평균선 위라고 무조건 좋거나 아래라고 무조건 나쁜 것은 아니며 거래량, 지지선, 저항선, 이벤트를 함께 봐야 합니다."
     )
@@ -356,6 +395,37 @@ def _event_factors(events: list[dict[str, Any]], key: str, fallback: str) -> lis
     return values or [fallback]
 
 
+def _portfolio_guidance(portfolio: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(portfolio, dict):
+        return {
+            "saved": False,
+            "summary": "포트폴리오 샌드박스 맥락이 없어 개인 비중은 반영하지 않았습니다.",
+            "checklist": [
+                "이 종목을 샌드박스에 담으면 가상 비중 기준 리스크를 더 구체적으로 볼 수 있습니다.",
+                "평균단가, 보유기간, 손실 허용 범위는 아직 별도로 입력해야 합니다.",
+            ],
+        }
+    saved = bool(portfolio.get("saved"))
+    weight = portfolio.get("weight")
+    weight_text = f"{weight}%" if weight is not None else "확인 필요"
+    guidance = portfolio.get("guidance") or []
+    if isinstance(guidance, str):
+        guidance = [guidance]
+    checklist = [str(item) for item in guidance[:3] if str(item).strip()]
+    if saved:
+        summary = f"포트폴리오 샌드박스에 저장된 가상 비중 {weight_text}을 참고했습니다."
+        checklist.append("비중이 높다면 새 매수보다 리스크 관리 가격과 반대 신호를 먼저 확인하세요.")
+    else:
+        summary = "기업 선택은 저장되지 않았고, 포트폴리오 샌드박스에 담긴 개인 비중도 아직 없습니다."
+        checklist.append("저장하려면 포트폴리오 샌드박스에 담고 비중을 입력하세요.")
+    return {
+        "saved": saved,
+        "summary": summary,
+        "weight": weight,
+        "checklist": checklist[:4],
+    }
+
+
 def _beginner_checklist(zones: list[dict[str, Any]], decision: dict[str, Any] | None) -> list[str]:
     checklist: list[str] = []
     if isinstance(decision, dict):
@@ -393,6 +463,7 @@ def _build_structured_answer(
     events = req.events or []
     indicator = req.indicatorSnapshot if isinstance(req.indicatorSnapshot, dict) else None
     decision = req.currentDecisionSummary if isinstance(req.currentDecisionSummary, dict) else None
+    portfolio = _portfolio_guidance(req.portfolioContext if isinstance(req.portfolioContext, dict) else None)
     zones = _trade_zones(req)
     buy_zone = _zone_by_type(zones, "buy_review", "buy")
     split_zone = _zone_by_type(zones, "split_buy", "split")
@@ -424,11 +495,13 @@ def _build_structured_answer(
         evidence.append(
             f"이벤트: {event.get('date', basis_date)} {event.get('title', '이벤트')} "
             f"등락률 {_clean(event.get('priceChangeRate'))}%, 거래량 {_clean(event.get('volumeChangeRate'))}%, "
-            f"해석 {_clean(event.get('sentimentForPrice'), '확인 필요')}"
+            f"해석 {_label(event.get('sentimentForPrice'))}"
         )
 
     if indicator:
         evidence.append("지표: " + _clean(indicator.get("beginnerSummary"), "이동평균선 근거가 전달되었습니다."))
+    if portfolio:
+        evidence.append("포트폴리오: " + portfolio["summary"])
 
     if not evidence:
         evidence.append("제공된 검색, 브리프, 차트, 이벤트 근거가 제한적입니다.")
@@ -495,10 +568,11 @@ def _build_structured_answer(
         "beginnerExplanation": beginner_explanation,
         "beginnerChecklist": beginner_checklist,
         "nextChecklist": beginner_checklist,
+        "portfolioGuidance": portfolio,
         "tradeZones": zones,
         "evidence": evidence[:5],
         "risks": [
-            "개인 보유 비중과 투자 기간을 반영하지 않습니다.",
+            "포트폴리오 샌드박스 가상 비중 외 평균단가와 투자 기간은 반영하지 않습니다.",
             "차트 이벤트는 원인 후보이며 확정 원인이 아닙니다.",
             "투자 지시가 아니라 교육용 분석 보조입니다.",
         ],
@@ -535,7 +609,7 @@ def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | N
     model = os.getenv("LLM_MODEL", "").strip()
     base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     api_key = _openai_compatible_api_key(base_url)
-    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "45"))
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "20"))
 
     if not api_key or not model:
         return None, {
@@ -543,6 +617,7 @@ def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | N
             "provider": "openai_compatible",
             "model": model or "",
             "fallbackReason": "LLM_API_KEY/OPENAI_API_KEY 또는 LLM_MODEL이 설정되지 않았습니다.",
+            "timeoutSeconds": timeout,
         }
 
     payload = json.dumps({
@@ -571,12 +646,14 @@ def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | N
                 "provider": "openai_compatible",
                 "model": model,
                 "fallbackReason": "LLM 응답에 content가 없습니다.",
+                "timeoutSeconds": timeout,
             }
         return content, {
             "enabled": True,
             "provider": "openai_compatible",
             "model": model,
             "fallbackReason": "",
+            "timeoutSeconds": timeout,
         }
     except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
         return None, {
@@ -584,6 +661,7 @@ def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | N
             "provider": "openai_compatible",
             "model": model,
             "fallbackReason": f"LLM 호출 실패: {type(exc).__name__}",
+            "timeoutSeconds": timeout,
         }
 
 
@@ -630,7 +708,7 @@ def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str 
     )
     base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
     version = os.getenv("ANTHROPIC_VERSION", "2023-06-01").strip()
-    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", os.getenv("ANTHROPIC_TIMEOUT_SECONDS", "45")))
+    timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", os.getenv("ANTHROPIC_TIMEOUT_SECONDS", "20")))
 
     if not api_key or not model:
         return None, {
@@ -638,6 +716,7 @@ def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str 
             "provider": "anthropic_compatible",
             "model": model or "",
             "fallbackReason": "ANTHROPIC_AUTH_TOKEN/ANTHROPIC_API_KEY 또는 ANTHROPIC_MODEL이 설정되지 않았습니다.",
+            "timeoutSeconds": timeout,
         }
 
     system, chat_messages = _anthropic_messages(messages)
@@ -672,12 +751,14 @@ def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str 
                 "provider": "anthropic_compatible",
                 "model": model,
                 "fallbackReason": "LLM 응답에 text content가 없습니다.",
+                "timeoutSeconds": timeout,
             }
         return content, {
             "enabled": True,
             "provider": "anthropic_compatible",
             "model": model,
             "fallbackReason": "",
+            "timeoutSeconds": timeout,
         }
     except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
         return None, {
@@ -685,6 +766,7 @@ def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str 
             "provider": "anthropic_compatible",
             "model": model,
             "fallbackReason": f"LLM 호출 실패: {type(exc).__name__}",
+            "timeoutSeconds": timeout,
         }
 
 
@@ -746,6 +828,8 @@ def _llm_status() -> dict[str, Any]:
             },
         },
         "fallbackMode": "rag_fallback_rule_based",
+        "timeoutSeconds": float(os.getenv("LLM_TIMEOUT_SECONDS", "20")),
+        "maxTokens": int(os.getenv("LLM_MAX_TOKENS", "650")),
     }
 
 
@@ -805,6 +889,14 @@ def chat(req: ChatRequest):
     if term_lines:
         answer_parts += ["", "초보자 용어 연결", *term_lines]
 
+    portfolio = _portfolio_guidance(req.portfolioContext if isinstance(req.portfolioContext, dict) else None)
+    answer_parts += [
+        "",
+        "포트폴리오 맥락",
+        f"- {portfolio['summary']}",
+        *[f"- {item}" for item in portfolio["checklist"][:3]],
+    ]
+
     answer_parts += [
         "",
         "검토 조건",
@@ -823,6 +915,7 @@ def chat(req: ChatRequest):
         {"title": "앱 저장 일간 브리프", "type": "daily_summary", "url": "/api/summaries/latest"},
         {"title": "통합 검색 API", "type": "search", "url": "/api/search"},
         {"title": "초보자 용어 사전", "type": "internal_glossary", "url": "/api/learning/terms"},
+        {"title": "포트폴리오 샌드박스", "type": "portfolio_context", "url": "/api/portfolio"},
     ]
     if code:
         sources.insert(1, {"title": "종목 차트 API", "type": "ohlcv", "url": f"/api/stocks/{code}/chart"})
@@ -836,12 +929,12 @@ def chat(req: ChatRequest):
 
     limitations = [
         "투자 지시가 아니라 교육용 분석 보조입니다.",
-        "개인 재무 상황, 보유 비중, 투자 기간을 반영하지 않습니다.",
+        "평균단가, 실제 보유 수량, 투자 기간, 손실 허용 범위는 아직 반영하지 않습니다.",
     ]
     if not used_llm:
-        limitations.insert(0, "LLM 설정 또는 호출 실패로 규칙형 RAG fallback 응답을 제공합니다.")
+        limitations.insert(0, "LLM 설정 또는 호출 실패로 규칙형 근거 기반 응답을 제공합니다.")
     else:
-        limitations.insert(0, "LLM 응답은 제공된 retrieval 근거 안에서 생성되도록 제한했습니다.")
+        limitations.insert(0, "LLM 응답은 제공된 근거 안에서만 생성되도록 제한했습니다.")
 
     confidence = "medium" if retrieval_documents else "low-medium"
     structured = _build_structured_answer(req, subject, code, basis_date, confidence, sources, limitations)

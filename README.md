@@ -120,6 +120,8 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 - `GET /api/learning/terms/{id}`
 - `POST /api/learning/assistant`
 - `POST /api/ai/chat`
+- `GET /api/ai/chat/history?stockCode=005930`
+- `GET /api/ai/status`
 
 종목 리서치:
 - `GET /api/stocks/{code}/chart?range=1M|3M|6M|1Y|3Y&interval=daily|weekly|monthly`
@@ -131,6 +133,7 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 - 이미 존재하는 날짜의 재생성은 admin만 허용(일반 요청은 409)
 - 학습 도우미는 투자 지시가 아니라 용어 설명/체크리스트/주의점 제공 목적이다.
 - 종목 판단 패널은 교육용 분석 보조이며 “지금 사라/팔아라”가 아니라 조건, 리스크, 반대 신호를 제공한다.
+- 기업 선택은 React 화면 상태만 바꾸며 DB에 저장하지 않는다. AI 답변은 생성 직후 `ai_chat_interactions`에 감사 로그로 저장되고, 포트폴리오 샌드박스 입력은 `portfolio_items`에 저장된다.
 
 ---
 
@@ -191,9 +194,51 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `MARKETDATA_BASE_URL` | No | Market data service URL (Docker internal) |
 | `AI_SERVICE_BASE_URL` | No | AI service URL (Docker internal) |
 | `QDRANT_URL` | No | Vector store URL for future RAG indexing |
+| `LLM_PROVIDER` | No | `anthropic_compatible`, `openai_compatible`, `anthropic`, or `openai` |
+| `LLM_MODEL` | No | OpenAI-compatible model name |
+| `LLM_BASE_URL` | No | OpenAI-compatible API base URL |
+| `LLM_API_KEY` | No | Generic LLM API key. Never commit real values |
+| `OPENAI_API_KEY` | No | OpenAI-compatible fallback key. Never commit real values |
+| `ZAI_API_KEY` | No | Z.ai OpenAI-compatible fallback key. Never commit real values |
+| `ANTHROPIC_AUTH_TOKEN` | No | Anthropic-compatible API key. Never commit real values |
+| `ANTHROPIC_API_KEY` | No | Anthropic-compatible fallback key. Never commit real values |
+| `ANTHROPIC_MODEL` | No | Anthropic-compatible model override |
+| `ANTHROPIC_DEFAULT_SONNET_MODEL` | No | Docker default is `glm-5-turbo` |
+| `ANTHROPIC_BASE_URL` | No | Docker default is `https://api.z.ai/api/anthropic` |
+| `ANTHROPIC_VERSION` | No | Anthropic API version header |
+| `LLM_TIMEOUT_SECONDS` | No | AI service live LLM wait time before rule-based fallback |
+| `LLM_MAX_TOKENS` | No | Max live LLM response tokens |
+| `AI_CLIENT_CONNECT_TIMEOUT_SECONDS` | No | Backend connection timeout to ai-service |
+| `AI_CLIENT_READ_TIMEOUT_SECONDS` | No | Backend read timeout to ai-service |
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
 | `ADMIN_KEY` | Recommended | Admin key for protected operations |
 | `APP_ADMIN_TRUSTED_CIDRS` | No | Comma-separated CIDRs for trusted admin bypass |
+
+### LLM 모델 변경
+
+모델은 코드 수정 없이 `.env` 또는 배포 secret에서 환경변수만 바꾸면 된다. 로컬 `.env`는 commit하지 않는다.
+
+Anthropic-compatible 예:
+```bash
+LLM_PROVIDER=anthropic_compatible
+ANTHROPIC_AUTH_TOKEN=...
+ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5-turbo
+ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
+docker compose up -d --build ai-service backend
+curl http://localhost:8080/api/ai/status
+```
+
+OpenAI-compatible 예:
+```bash
+LLM_PROVIDER=openai_compatible
+LLM_MODEL=<openai-compatible-model-name>
+LLM_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=...
+docker compose up -d --build ai-service backend
+curl http://localhost:8080/api/ai/status
+```
+
+`/api/ai/status`에서 `provider`, `configured`, `model`, `baseUrl`, `timeoutSeconds`를 확인한다. live LLM이 느리거나 실패하면 `/api/ai/chat`은 규칙형 근거 기반 응답으로 돌아간다.
 
 ---
 

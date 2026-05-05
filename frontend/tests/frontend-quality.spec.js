@@ -291,6 +291,7 @@ for (const viewport of [
     await expect(stockPanel).toContainText("KOSPI 픽");
     await expect(stockPanel).toContainText("KOSDAQ 픽");
     await expect(stockPanel).toContainText("최다 언급");
+    await expect(stockPanel).toContainText("DB에 저장하려면 포트폴리오 샌드박스에 담아야 합니다");
     await expect(stockPanel.getByRole("option")).toHaveCount(9);
     await page.mouse.click(viewport.width - 20, viewport.height - 20);
     await expect(page.getByTestId("stock-selector-panel")).toHaveCount(0);
@@ -309,12 +310,13 @@ for (const viewport of [
     await expect(conditionPanel.getByText("관망", { exact: true })).toBeVisible();
     await expect(conditionPanel.getByText("매도 검토", { exact: true })).toBeVisible();
     await expect(conditionPanel.getByText("리스크 관리", { exact: true })).toBeVisible();
+    await expect(conditionPanel).toContainText("교육용 보조");
 
     await expect(page.locator('button[aria-label="AI 요약 펼치기"]')).toBeVisible();
     await expect(page.locator('text=매매 검토 시점')).toHaveCount(0);
     await page.click('button[aria-label="AI 요약 펼치기"]');
-    await expect(page.locator('text=매매 검토 시점')).toBeVisible();
-    await expect(page.locator('text=주요 모멘텀')).toBeVisible();
+    await expect(page.locator('text=조건별 확인 순서')).toBeVisible();
+    await expect(page.locator('text=좋게 볼 이유와 주의할 이유')).toBeVisible();
     await expect(page.locator('text=신뢰도: 86%')).toBeVisible();
     await expect(page.locator('button[aria-label="Open Portfolio"]')).toBeVisible();
   });

@@ -6,6 +6,18 @@
 
 `/Users/rose/Desktop/git/kr-stock-daily-brief`
 
+## 후속 구현 완료 노트
+
+이 문서는 원래 다른 AI에게 전달하기 위한 기준 프롬프트였고, 아래 코드블록 안에는 당시 부족했던 점이 그대로 남아 있다.
+
+2026-05-06 후속 구현에서 아래 항목은 실제 코드에 반영되었다.
+
+- 기업 선택 자체는 여전히 DB에 저장하지 않는다.
+- `/api/ai/chat` 응답은 생성 직후 `ai_chat_interactions` 테이블에 감사 로그로 저장한다.
+- 최근 AI 저장 기록은 `GET /api/ai/chat/history?stockCode=005930`로 확인한다.
+- 포트폴리오 샌드박스에 저장된 가상 비중은 AI context의 `portfolioContext`로 전달된다.
+- LLM 타임아웃과 backend read timeout은 환경변수로 조절한다.
+
 ## 다른 AI에게 전달할 요청 명령어
 
 ```text

@@ -115,6 +115,63 @@
   color: var(--color-text-secondary);
 }
 
+.chartContextSection {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+
+.chartContextHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: var(--spacing-3);
+}
+
+.chartContextHeader span {
+  color: var(--color-positive);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.chartContextHeader strong {
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.chartContextSection p {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.chartMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-2);
+  margin: var(--spacing-3) 0;
+}
+
+.chartMetricGrid span {
+  min-width: 0;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--color-text-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: var(--spacing-2);
+  overflow-wrap: anywhere;
+}
+
+.contextNote {
+  color: var(--color-text-muted) !important;
+}
+
 .gridSection {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -187,6 +244,10 @@
 
 @media (max-width: 768px) {
   .gridSection {
+    grid-template-columns: 1fr;
+  }
+
+  .chartMetricGrid {
     grid-template-columns: 1fr;
   }
 }

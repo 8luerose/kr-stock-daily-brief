@@ -46,10 +46,53 @@ make llm-benchmark
 정상 기준:
 - `/api/ai/status`가 `configured=true`를 반환한다.
 - 3개 고정 케이스가 모두 `mode=rag_llm`으로 응답한다.
-- 각 응답이 retrieval 문서 id를 2개 이상 인용한다.
+- 각 응답이 근거 문서 id를 2개 이상 인용한다.
 - 직접 매수/매도 지시나 수익 보장 표현이 없다.
+- `/api/ai/chat` 응답의 `storage.saved=true`면 `ai_chat_interactions`에 감사 로그가 저장된 것이다.
 
 자세한 기준은 `docs/LLM_QUALITY_BENCHMARK.md`에 기록한다.
+
+## AI 답변 저장과 모델 변경
+
+기업 선택은 DB에 저장하지 않는다. 사용자가 기업을 고르면 프론트 상태가 바뀌고 차트, 이벤트, 거래 구간, AI 설명을 다시 조회한다.
+
+저장되는 것은 두 가지다.
+
+- `portfolio_items`: 포트폴리오 샌드박스에서 종목을 담거나 비중을 바꿀 때 저장된다.
+- `ai_chat_interactions`: `/api/ai/chat` 응답이 생성된 직후 질문, 종목, 응답 모드, 모델명, 답변 요약을 감사 로그로 저장한다.
+
+최근 AI 기록 확인:
+
+```bash
+curl 'http://localhost:8080/api/ai/chat/history?stockCode=005930'
+```
+
+모델은 코드 수정 없이 환경변수로 바꾼다. 로컬 `.env`와 secret 값은 commit하지 않는다.
+
+Anthropic-compatible 기본 흐름:
+
+```bash
+LLM_PROVIDER=anthropic_compatible
+ANTHROPIC_AUTH_TOKEN=...
+ANTHROPIC_DEFAULT_SONNET_MODEL=glm-5-turbo
+ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic
+docker compose up -d --build ai-service backend
+curl http://localhost:8080/api/ai/status
+```
+
+OpenAI-compatible 흐름:
+
+```bash
+LLM_PROVIDER=openai_compatible
+LLM_MODEL=<openai-compatible-model-name>
+LLM_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=...
+docker compose up -d --build ai-service backend
+curl http://localhost:8080/api/ai/status
+```
+
+응답 속도 조절은 `LLM_TIMEOUT_SECONDS`, `LLM_MAX_TOKENS`, `AI_CLIENT_READ_TIMEOUT_SECONDS`로 한다.
+`LLM_TIMEOUT_SECONDS`가 지나면 ai-service가 규칙형 근거 기반 응답으로 돌아가고, backend는 `AI_CLIENT_READ_TIMEOUT_SECONDS` 안에 응답을 받아야 한다.
 
 ## 원격 배포 smoke
 

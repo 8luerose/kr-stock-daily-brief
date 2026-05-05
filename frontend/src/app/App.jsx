@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { loadLearningTerms, loadStockOptions } from '../services/apiClient';
 import ImmersiveChart from '../components/ImmersiveChart';
@@ -27,6 +27,26 @@ function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
   const [stockOptions, setStockOptions] = useState([]);
+
+  const chartContext = useMemo(() => {
+    if (!data) return null;
+    const latest = data.chart?.rows?.[data.chart.rows.length - 1] || null;
+    return {
+      stockName: data.stock?.name,
+      code: data.stock?.code,
+      asOf: data.asOf,
+      interval,
+      latestClose: latest?.close,
+      latestVolume: latest?.volume,
+      ma20: data.indicatorSnapshot?.movingAverages?.ma20,
+      supportLevel: data.indicatorSnapshot?.supportLevel,
+      resistanceLevel: data.indicatorSnapshot?.resistanceLevel,
+      priceVsMa20: data.indicatorSnapshot?.priceVsMa20,
+      summary: data.currentDecisionSummary?.summary,
+      buyCondition: data.currentDecisionSummary?.buyReviewCondition,
+      riskCondition: data.currentDecisionSummary?.riskCondition
+    };
+  }, [data, interval]);
 
   useEffect(() => {
     let mounted = true;
@@ -135,6 +155,7 @@ function App() {
         isOpen={learningSheetOpen} 
         onClose={() => setLearningSheetOpen(false)} 
         termData={termData}
+        chartContext={chartContext}
       />
 
       <PortfolioSandbox 

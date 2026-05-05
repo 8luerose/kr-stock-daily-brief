@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import styles from './ImmersiveChart.module.css';
 
 function formatCurrency(value) {
+  if (value === null || value === undefined || value === '') return '확인 필요';
   if (!Number.isFinite(Number(value))) return '확인 필요';
   return `${Math.round(Number(value)).toLocaleString()}원`;
 }
@@ -323,6 +324,9 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                 <div className={styles.stockPanelHeader}>
                   <span>기준 기업</span>
                   <strong>{stock.name} ({stock.code})</strong>
+                  <p className={styles.stockSaveNotice}>
+                    기업 선택은 화면의 차트와 AI 설명만 바꿉니다. DB에 저장하려면 포트폴리오 샌드박스에 담아야 합니다.
+                  </p>
                 </div>
                 <div className={styles.stockList}>
                   {normalizedStockOptions.map((option) => {
@@ -388,6 +392,20 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
 
                   {guideTab === 'beginner' && (
                     <section className={styles.beginnerSection}>
+                      <div className={styles.chartCueGrid}>
+                        <button type="button" onClick={() => onTermClick?.('이동평균선')}>
+                          20일선 {formatCurrency(latestMa20)}
+                        </button>
+                        <button type="button" onClick={() => onTermClick?.('지지선')}>
+                          지지선 {formatCurrency(indicatorSnapshot?.supportLevel)}
+                        </button>
+                        <button type="button" onClick={() => onTermClick?.('저항선')}>
+                          저항선 {formatCurrency(indicatorSnapshot?.resistanceLevel)}
+                        </button>
+                        <button type="button" onClick={() => onTermClick?.('거래량')}>
+                          거래량 {Number(latestPoint?.volume || 0).toLocaleString()}
+                        </button>
+                      </div>
                       <ol className={styles.beginnerList}>
                         {beginnerChecklist.map((item) => <li key={item}>{item}</li>)}
                       </ol>
@@ -429,6 +447,9 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
             </button>
             {activePanel === 'ai' && (
               <div className={clsx(styles.dropdownPanel, styles.dropdownRight)} data-testid="chart-ai-condition-panel">
+                <p className={styles.conditionNotice}>
+                  직접 사라·팔아라가 아니라, 내 기준에서 확인할 조건을 나누어 보여주는 교육용 보조입니다.
+                </p>
                 <div className={styles.conditionGrid}>
                   {conditionRows.map((row) => (
                     <article key={row.type} className={clsx(styles.conditionItem, styles[`condition-${row.type}`])}>

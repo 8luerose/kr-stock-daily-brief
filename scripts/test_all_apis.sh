@@ -319,6 +319,7 @@ contains_field /tmp/krbrief_resp.json structured || fail "ai chat missing struct
 contains_field /tmp/krbrief_resp.json conclusion || fail "ai chat missing structured conclusion"
 contains_field /tmp/krbrief_resp.json risks || fail "ai chat missing structured risks"
 contains_field /tmp/krbrief_resp.json retrieval || fail "ai chat missing retrieval"
+contains_field /tmp/krbrief_resp.json storage || fail "ai chat missing storage"
 contains_field /tmp/krbrief_resp.json sourceCount || fail "ai chat missing retrieval sourceCount"
 contains_field /tmp/krbrief_resp.json grounding || fail "ai chat missing grounding"
 contains_field /tmp/krbrief_resp.json sourceCoverage || fail "ai chat missing grounding sourceCoverage"
@@ -332,6 +333,11 @@ if [[ "$AI_CONFIGURED" == "true" ]]; then
   grep -q '"used":true' /tmp/krbrief_resp.json || fail "ai chat configured LLM was not used"
 fi
 pass "POST /api/ai/chat"
+
+code=$(status_code GET "$BASE_URL/api/ai/chat/history?stockCode=005930")
+[[ "$code" == "200" ]] || fail "ai chat history expected 200, got $code"
+grep -q '"stockCode":"005930"' /tmp/krbrief_resp.json || fail "ai chat history missing 005930 saved entry"
+pass "GET /api/ai/chat/history"
 
 cat > /tmp/krbrief_ai_chat_minimal_payload.json <<JSON
 {
