@@ -11,14 +11,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/ai")
 public class AiChatController {
   private final AiChatClient client;
+  private final AiChatContextEnricher enricher;
 
-  public AiChatController(AiChatClient client) {
+  public AiChatController(AiChatClient client, AiChatContextEnricher enricher) {
     this.client = client;
+    this.enricher = enricher;
   }
 
   @PostMapping("/chat")
   public Map<String, Object> chat(@RequestBody(required = false) Map<String, Object> request) {
-    return client.chat(request == null ? Map.of() : request);
+    return client.chat(enricher.enrich(request == null ? Map.of() : request));
   }
 
   @GetMapping("/status")

@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import { 
-  ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ReferenceDot, ReferenceArea, ReferenceLine, Label 
+  ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ReferenceDot, ReferenceArea, Label 
 } from 'recharts';
 import clsx from 'clsx';
 import styles from './ImmersiveChart.module.css';
 
-function CustomTooltip({ active, payload, learningMode }) {
+function CustomTooltip({ active, payload, learningMode, onTermClick }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -17,19 +17,31 @@ function CustomTooltip({ active, payload, learningMode }) {
         <div className={styles.tooltipVolume}>
           거래량 {data.volume.toLocaleString()}
           {learningMode && (
-            <div className={styles.learningTooltip}>
-              <strong>거래량이란?</strong> 주식이 거래된 수량. 급증하면 추세 변화 신호일 수 있습니다.
+            <div 
+              className={styles.learningTooltip} 
+              onClick={() => onTermClick('거래량')}
+              style={{ cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              <strong>거래량이란?</strong> 주식이 거래된 수량. 급증하면 추세 변화 신호일 수 있습니다. (자세히 보기)
             </div>
           )}
         </div>
         
+        {data.ma20 && (
+          <div className={styles.tooltipMa}>
+            20일선: {Math.round(data.ma20).toLocaleString()}원
+          </div>
+        )}
+
         {data.event && (
           <div className={styles.tooltipEvent}>
             <span className={clsx(styles.eventBadge, data.event.type === 'positive' ? styles.badgePos : styles.badgeNeg)}>
               {data.event.type === 'positive' ? '호재' : '악재'}
             </span>
             <strong>{data.event.title}</strong>
-            <p>{data.event.desc}</p>
+            <p>{data.event.reason || data.event.desc}</p>
+            {data.event.opposite && <p className={styles.oppositeSignal}>반대 신호: {data.event.opposite}</p>}
+            {data.event.confidence && <p className={styles.confidenceInfo}>{data.event.confidence}</p>}
           </div>
         )}
       </div>
@@ -38,11 +50,38 @@ function CustomTooltip({ active, payload, learningMode }) {
   return null;
 }
 
-export default function ImmersiveChart({ stock, chart, zones, events, ai, interval, onChangeInterval, learningMode }) {
+// "86,000~88,500원" -> [86000, 88500]
+// "90,000원 이상" -> [90000, 999999]
+// "82,000원 이탈" -> [0, 82000]
+function parsePriceRange(priceStr) {
+  if (!priceStr) return null;
+  const numbers = priceStr.replace(/,/g, '').match(/\d+/g);
+  if (!numbers) return null;
+  
+  if (priceStr.includes('이상')) return [parseInt(numbers[0], 10), 9999999];
+  if (priceStr.includes('이하') || priceStr.includes('이탈')) return [0, parseInt(numbers[0], 10)];
+  if (numbers.length >= 2) return [parseInt(numbers[0], 10), parseInt(numbers[1], 10)];
+  
+  const val = parseInt(numbers[0], 10);
+  return [val - val * 0.02, val + val * 0.02]; // fallback 2% band
+}
+
+export default function ImmersiveChart({ stock, chart, zones, events, ai, interval, onChangeInterval, learningMode, onTermClick }) {
   
   const chartData = useMemo(() => {
     if (!chart?.rows) return [];
-    return chart.rows.map(row => {
+    
+    // Compute MA20
+    let temp = chart.rows.map(row => ({ ...row }));
+    for (let i = 0; i < temp.length; i++) {
+      if (i >= 19) {
+        let sum = 0;
+        for (let j = 0; j < 20; j++) sum += temp[i - j].close;
+        temp[i].ma20 = sum / 20;
+      }
+    }
+
+    return temp.map(row => {
       const event = events?.find(e => e.date === row.date);
       return {
         ...row,
@@ -57,10 +96,11 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
   const maxPrice = Math.max(...chartData.map(d => d.close));
   const padding = (maxPrice - minPrice) * 0.2;
 
-  // Mock annotations if zones not fully provided
-  const buyZoneStart = chartData.length > 20 ? chartData[chartData.length - 15].date : null;
-  const buyZoneEnd = chartData.length > 5 ? chartData[chartData.length - 5].date : null;
-  const resistancePrice = maxPrice - (maxPrice - minPrice) * 0.1;
+  const getZoneColor = (type) => {
+    if (type === 'buy' || type === 'split') return 'var(--color-positive)';
+    if (type === 'sell' || type === 'risk') return 'var(--color-negative)';
+    return 'var(--color-warning)'; // watch
+  };
 
   return (
     <div className={styles.container}>
@@ -71,33 +111,59 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
               <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.4}/>
               <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0.0}/>
             </linearGradient>
-            <linearGradient id="buyZoneGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-positive)" stopOpacity={0.15}/>
-              <stop offset="100%" stopColor="var(--color-positive)" stopOpacity={0.05}/>
-            </linearGradient>
           </defs>
           <XAxis dataKey="date" hide />
           <YAxis domain={[minPrice - padding, maxPrice + padding]} hide />
           
           <Tooltip 
-            content={<CustomTooltip learningMode={learningMode} />} 
+            content={<CustomTooltip learningMode={learningMode} onTermClick={onTermClick} />} 
             cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }}
             isAnimationActive={false}
           />
 
-          {/* AI Annotations: Reference Areas */}
-          {buyZoneStart && buyZoneEnd && (
-            <ReferenceArea x1={buyZoneStart} x2={buyZoneEnd} fill="url(#buyZoneGradient)" strokeOpacity={0}>
-               <Label value="매수 검토 구간" position="insideTopLeft" fill="var(--color-positive)" fontSize={12} fontWeight="bold" offset={10} />
-            </ReferenceArea>
-          )}
-
-          {/* AI Annotations: Reference Lines */}
-          <ReferenceLine y={resistancePrice} stroke="var(--color-warning)" strokeDasharray="3 3" strokeOpacity={0.5}>
-            <Label value="단기 저항선" position="insideTopLeft" fill="var(--color-warning)" fontSize={11} offset={5} />
-          </ReferenceLine>
+          {/* AI Zones as Horizontal Bands */}
+          {zones && zones.map((zone, idx) => {
+            const range = parsePriceRange(zone.price);
+            if (!range) return null;
+            const color = getZoneColor(zone.type);
+            // Limit Y values so they don't paint over the entire screen infinitely
+            const safeY1 = Math.max(range[0], minPrice - padding);
+            const safeY2 = Math.min(range[1], maxPrice + padding);
+            
+            return (
+              <ReferenceArea 
+                key={idx} 
+                y1={safeY1} 
+                y2={safeY2} 
+                fill={color} 
+                fillOpacity={0.05} 
+                strokeOpacity={0}
+              >
+                <Label 
+                  value={zone.label} 
+                  position="insideLeft" 
+                  fill={color} 
+                  fontSize={11} 
+                  fontWeight="bold" 
+                  offset={10} 
+                  opacity={0.8}
+                />
+              </ReferenceArea>
+            );
+          })}
           
           <Area type="monotone" dataKey="close" stroke="none" fill="url(#chartGradient)" />
+          
+          {/* MA20 Line */}
+          <Line 
+            type="monotone" 
+            dataKey="ma20" 
+            stroke="var(--color-text-secondary)" 
+            strokeWidth={1} 
+            strokeDasharray="3 3"
+            dot={false} 
+          />
+
           <Line 
             type="monotone" 
             dataKey="close" 

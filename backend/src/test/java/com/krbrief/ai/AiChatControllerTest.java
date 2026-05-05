@@ -21,9 +21,11 @@ class AiChatControllerTest {
   @Autowired MockMvc mvc;
 
   @MockBean AiChatClient client;
+  @MockBean AiChatContextEnricher enricher;
 
   @Test
   void chat_proxiesAiServiceResponse() throws Exception {
+    when(enricher.enrich(anyMap())).thenAnswer(invocation -> invocation.getArgument(0));
     when(client.chat(anyMap()))
         .thenReturn(
             Map.of(

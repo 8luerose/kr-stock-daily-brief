@@ -3,13 +3,10 @@ import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle } from 'lucide-react
 import clsx from 'clsx';
 import styles from './FloatingAiCard.module.css';
 
-export default function FloatingAiCard({ ai, events, stock }) {
-  const [expanded, setExpanded] = useState(false);
+export default function FloatingAiCard({ ai, events, asOf }) {
+  const [expanded, setExpanded] = useState(true);
 
   if (!ai) return null;
-
-  const goodNews = events?.filter(e => e.type === 'positive') || [];
-  const badNews = events?.filter(e => e.type === 'negative') || [];
 
   return (
     <div className={clsx(styles.container, expanded && styles.expanded, 'animate-slide-up')}>
@@ -35,16 +32,16 @@ export default function FloatingAiCard({ ai, events, stock }) {
             <div className={styles.conditionGrid}>
               <div className={styles.conditionBox}>
                 <CheckCircle2 size={16} className={styles.posIcon} />
-                <p>{ai.evidence?.buyCondition || '확인된 매수 조건 없음'}</p>
+                <p><strong>매수 검토:</strong> {ai.buyCondition || '확인된 매수 조건 없음'}</p>
               </div>
               <div className={styles.conditionBox}>
                 <XCircle size={16} className={styles.negIcon} />
-                <p>{ai.evidence?.sellCondition || '확인된 매도 조건 없음'}</p>
+                <p><strong>매도 검토:</strong> {ai.sellCondition || '확인된 매도 조건 없음'}</p>
               </div>
             </div>
-            {ai.opposingSignals && (
+            {(ai.waitCondition || ai.opposingSignals?.length > 0) && (
               <p className={styles.neutralNote}>
-                <strong>관망 시나리오:</strong> {ai.opposingSignals}
+                <strong>관망 시나리오:</strong> {ai.waitCondition || ai.opposingSignals?.[0]}
               </p>
             )}
           </div>
@@ -53,18 +50,18 @@ export default function FloatingAiCard({ ai, events, stock }) {
             <h4 className={styles.sectionTitle}>주요 모멘텀</h4>
             <div className={styles.newsGrid}>
               <div className={styles.newsBox}>
-                <h5>호재 ({goodNews.length})</h5>
-                {goodNews.map((n, i) => <div key={i} className={styles.newsItem}>{n.title}</div>)}
+                <h5>호재 ({ai.positives?.length || 0})</h5>
+                {ai.positives?.map((n, i) => <div key={i} className={styles.newsItem}>{n}</div>)}
               </div>
               <div className={styles.newsBox}>
-                <h5>악재/리스크 ({badNews.length})</h5>
-                {badNews.map((n, i) => <div key={i} className={styles.newsItem}>{n.title}</div>)}
+                <h5>악재/리스크 ({ai.negatives?.length || 0})</h5>
+                {ai.negatives?.map((n, i) => <div key={i} className={styles.newsItem}>{n}</div>)}
               </div>
             </div>
           </div>
           
           <div className={styles.footer}>
-            <span>기준일: {stock?.asOf}</span>
+            <span>기준일: {asOf}</span>
             <span>신뢰도: {ai.confidence}</span>
           </div>
         </div>

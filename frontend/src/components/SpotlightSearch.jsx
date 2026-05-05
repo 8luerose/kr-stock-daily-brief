@@ -3,7 +3,7 @@ import { Search, Loader2, TrendingUp, TrendingDown, BookOpen, MessageSquare, Zap
 import clsx from 'clsx';
 import styles from './SpotlightSearch.module.css';
 
-export default function SpotlightSearch({ onSearch, results, isSearching, onSelect }) {
+export default function SpotlightSearch({ onSearch, results, isSearching, onSelect, onSelectTerm }) {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef(null);
@@ -30,7 +30,17 @@ export default function SpotlightSearch({ onSearch, results, isSearching, onSele
       onSelect(item.code);
       setQuery('');
       setIsFocused(false);
+    } else if (item.type === 'term') {
+      onSelectTerm(item.title);
+      setQuery('');
+      setIsFocused(false);
     }
+  };
+
+  const handleAiAsk = () => {
+    onSelectTerm(query || '이동평균선');
+    setQuery('');
+    setIsFocused(false);
   };
 
   const showResults = query.length > 0 && results?.length > 0;
@@ -90,11 +100,11 @@ export default function SpotlightSearch({ onSearch, results, isSearching, onSele
                 <div className={styles.chips}>
                   <button className={styles.chip} onClick={() => { setQuery('반도체'); onSearch('반도체'); }}>반도체 장비</button>
                   <button className={styles.chip} onClick={() => { setQuery('이차전지'); onSearch('이차전지'); }}>이차전지</button>
-                  <button className={styles.chip} onClick={() => { setQuery('005930'); onSelect('005930'); setIsFocused(false); }}>삼성전자</button>
+                  <button className={styles.chip} onClick={() => { onSelect('005930'); setIsFocused(false); }}>삼성전자</button>
                 </div>
               </div>
               <div className={styles.askAiSection}>
-                <button className={styles.askAiBtn}>
+                <button className={styles.askAiBtn} onClick={handleAiAsk}>
                   <MessageSquare size={16} /> AI에게 '{query || '주식 기초'}'에 대해 물어보기
                 </button>
               </div>

@@ -183,3 +183,20 @@
 
 .warnIcon { color: var(--color-warning); flex-shrink: 0; }
 .posIcon { color: var(--color-positive); flex-shrink: 0; }
+
+.sandboxWarning {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  background: rgba(255, 255, 255, 0.05);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-4);
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.sandboxWarning strong {
+  color: var(--color-text);
+}
