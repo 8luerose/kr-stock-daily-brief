@@ -87,7 +87,7 @@ function parsePriceRange(priceStr) {
   return [val - val * 0.02, val + val * 0.02]; // fallback 2% band
 }
 
-export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, learningMode, onTermClick }) {
+export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, learningMode, onTermClick, children }) {
   const [activePanel, setActivePanel] = useState('none'); // 'none', 'guide', 'ai'
   const [guideTab, setGuideTab] = useState('ma'); // 'ma', 'beginner', 'event'
 
@@ -291,7 +291,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
               className={clsx(styles.actionBtn, activePanel === 'guide' && styles.actionBtnActive)}
               onClick={() => setActivePanel(activePanel === 'guide' ? 'none' : 'guide')}
             >
-              <span>💡</span> 차트 가이드
+              <span>💡</span> 차트 가이드 <span className={styles.chevron}>▼</span>
             </button>
             {activePanel === 'guide' && (
               <div className={styles.dropdownPanel}>
@@ -338,7 +338,11 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                             </span>
                             <strong>{event.title}</strong>
                           </div>
-                          <p className={styles.subtext}>{event.reason || '가격 반응과 거래량을 함께 확인해야 합니다.'}</p>
+                          <p className={styles.subtext}>
+                            <strong>{event.type === 'positive' ? '호재 판단 이유: ' : event.type === 'negative' ? '악재 판단 이유: ' : '판단 이유: '}</strong>
+                            {event.reason || event.desc || 'AI가 시장 반응과 거래량을 종합해 주요 이벤트로 판단했습니다.'}
+                          </p>
+                          {event.opposite && <p className={styles.subtext} style={{marginTop: 4, opacity: 0.8}}>반대 해석: {event.opposite}</p>}
                         </article>
                       ))}
                     </section>
@@ -353,7 +357,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
               className={clsx(styles.actionBtn, activePanel === 'ai' && styles.actionBtnActive)}
               onClick={() => setActivePanel(activePanel === 'ai' ? 'none' : 'ai')}
             >
-              <span>🤖</span> AI 검토 조건
+              <span>🤖</span> AI 검토 조건 <span className={styles.chevron}>▼</span>
             </button>
             {activePanel === 'ai' && (
               <div className={clsx(styles.dropdownPanel, styles.dropdownRight)}>
@@ -371,6 +375,9 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
               </div>
             )}
           </div>
+          
+          {/* External unified controls (Learning Mode, Portfolio, etc.) */}
+          {children}
         </div>
       </div>
 

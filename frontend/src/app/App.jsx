@@ -84,7 +84,19 @@ function App() {
             onChangeInterval={changeInterval}
             learningMode={learningMode}
             onTermClick={handleSelectTerm}
-          />
+          >
+            <FloatingLearningMode 
+              isActive={learningMode} 
+              onToggle={handleToggleLearningMode} 
+            />
+            <button 
+              className={styles.floatingIconBtn}
+              onClick={() => setPortfolioOpen(true)}
+              aria-label="Open Portfolio"
+            >
+              <Briefcase size={20} />
+            </button>
+          </ImmersiveChart>
         )}
       </div>
 
@@ -115,21 +127,6 @@ function App() {
         {data && !loading && (
           <FloatingAiCard ai={data.ai} events={data.events} asOf={data.asOf} />
         )}
-
-        <div className={styles.rightActionGroup}>
-          <FloatingLearningMode 
-            isActive={learningMode} 
-            onToggle={handleToggleLearningMode} 
-          />
-
-          <button 
-            className={styles.floatingIconBtn}
-            onClick={() => setPortfolioOpen(true)}
-            aria-label="Open Portfolio"
-          >
-            <Briefcase size={20} />
-          </button>
-        </div>
       </div>
 
       <DeepDiveLearningSheet 

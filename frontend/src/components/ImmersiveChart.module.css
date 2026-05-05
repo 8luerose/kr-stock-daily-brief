@@ -150,6 +150,12 @@
   border-color: var(--color-accent);
 }
 
+.chevron {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
 .dropdownPanel {
   position: absolute;
   top: calc(100% + 12px);

@@ -191,7 +191,7 @@ public class SearchService {
   }
 
   private String normalize(String value) {
-    return safe(value).trim().toLowerCase(Locale.ROOT);
+    return safe(value).trim().toLowerCase(Locale.ROOT).replace(" ", "");
   }
 
   private String safe(String value) {
