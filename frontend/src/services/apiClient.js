@@ -99,6 +99,52 @@ function normalizeChart(remoteChart) {
   };
 }
 
+function formatPriceBand(zone) {
+  if (zone.price) return zone.price;
+  const from = Number(zone.fromPrice);
+  const to = Number(zone.toPrice);
+  if (Number.isFinite(from) && Number.isFinite(to)) {
+    if (from === 0) return `${to.toLocaleString()}원 이하`;
+    if (to >= 9_000_000) return `${from.toLocaleString()}원 이상`;
+    return `${from.toLocaleString()}~${to.toLocaleString()}원`;
+  }
+  return "가격 확인 필요";
+}
+
+function normalizeZoneType(type) {
+  if (type === "buy_review") return "buy";
+  if (type === "split_buy") return "split";
+  if (type === "sell_review") return "sell";
+  if (type === "risk_management") return "risk";
+  return type || "watch";
+}
+
+function normalizeTradeZones(remoteZones, fallbackZones) {
+  const zones = Array.isArray(remoteZones?.zones) && remoteZones.zones.length ? remoteZones.zones : fallbackZones;
+  return zones.map((zone) => ({
+    ...zone,
+    type: normalizeZoneType(zone.type),
+    rawType: zone.type,
+    price: formatPriceBand(zone),
+    beginner: zone.beginner || zone.beginnerExplanation,
+    invalidationSignal: zone.invalidationSignal || zone.oppositeSignal
+  }));
+}
+
+function normalizeEvent(remoteEvent = {}) {
+  const sentiment = remoteEvent.sentimentForPrice || remoteEvent.sentiment || remoteEvent.type;
+  const normalizedType =
+    sentiment === "positive" ? "positive" : sentiment === "negative" ? "negative" : sentiment === "mixed" ? "mixed" : "neutral";
+  return {
+    ...remoteEvent,
+    type: normalizedType,
+    rawType: remoteEvent.type,
+    reason: remoteEvent.reason || remoteEvent.whyItMatters || remoteEvent.explanation,
+    opposite: remoteEvent.opposite || remoteEvent.oppositeInterpretation,
+    confidence: remoteEvent.confidence || remoteEvent.evidenceLevel || remoteEvent.severity || "확인 필요"
+  };
+}
+
 function normalizeConfidence(value) {
   const normalized = String(value || "").trim().toLowerCase();
   const compact = normalized.replace(/[^a-z]/g, "");
@@ -115,10 +161,22 @@ function normalizeConfidence(value) {
 
 function normalizeAi(remoteAi) {
   const structured = remoteAi?.structured || {};
+  const positives = structured.positives || structured.positiveFactors || fallbackWorkspace.ai.positives;
+  const negatives = structured.negatives || structured.negativeFactors || fallbackWorkspace.ai.negatives;
   return {
     ...fallbackWorkspace.ai,
     conclusion: structured.conclusion || remoteAi?.answer || fallbackWorkspace.ai.conclusion,
-    direction: structured.prediction || fallbackWorkspace.ai.direction,
+    direction: structured.prediction || structured.chartState?.summary || fallbackWorkspace.ai.direction,
+    movingAverageExplanation: structured.movingAverageExplanation || fallbackWorkspace.ai.movingAverageExplanation,
+    chartState: structured.chartState || fallbackWorkspace.ai.chartState,
+    buyCondition: structured.buyCondition || structured.buyReview || fallbackWorkspace.ai.buyCondition,
+    sellCondition: structured.sellCondition || structured.sellReview || fallbackWorkspace.ai.sellCondition,
+    waitCondition: structured.waitCondition || structured.watchReview || fallbackWorkspace.ai.waitCondition,
+    riskCondition: structured.riskCondition || structured.riskManagement || fallbackWorkspace.ai.riskCondition,
+    positives,
+    negatives,
+    beginnerExplanation: structured.beginnerExplanation || fallbackWorkspace.ai.beginnerExplanation,
+    checklist: structured.beginnerChecklist || structured.nextChecklist || fallbackWorkspace.ai.checklist,
     evidence: structured.evidence || fallbackWorkspace.ai.evidence,
     opposingSignals: structured.opposingSignals || fallbackWorkspace.ai.opposingSignals,
     limitation: (remoteAi?.limitations || [fallbackWorkspace.ai.limitation]).join(" "),
@@ -172,8 +230,10 @@ export async function loadStockWorkspace(code, interval) {
       asOf: chart?.asOf || zones?.basisDate || next.asOf,
       source: "백엔드 API와 앱 내 학습 데이터",
       chart: normalizeChart(chart),
-      zones: Array.isArray(zones?.zones) && zones.zones.length ? zones.zones : next.zones,
-      events: Array.isArray(events?.events) && events.events.length ? events.events : next.events,
+      zones: normalizeTradeZones(zones, next.zones),
+      events: Array.isArray(events?.events) && events.events.length ? events.events.map(normalizeEvent) : next.events,
+      indicatorSnapshot: zones?.indicatorSnapshot || ai?.structured?.chartState?.indicatorSnapshot || next.indicatorSnapshot,
+      currentDecisionSummary: zones?.currentDecisionSummary || ai?.structured?.chartState || next.currentDecisionSummary,
       ai: normalizeAi(ai)
     };
   } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { 
-  ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ReferenceDot, ReferenceArea, Label 
+import {
+  ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ReferenceDot, ReferenceArea, Label
 } from 'recharts';
 import clsx from 'clsx';
 import styles from './ImmersiveChart.module.css';
@@ -17,8 +17,8 @@ function CustomTooltip({ active, payload, learningMode, onTermClick }) {
         <div className={styles.tooltipVolume}>
           거래량 {data.volume.toLocaleString()}
           {learningMode && (
-            <div 
-              className={styles.learningTooltip} 
+            <div
+              className={styles.learningTooltip}
               onClick={() => onTermClick('거래량')}
               style={{ cursor: 'pointer', textDecoration: 'underline' }}
             >
@@ -26,17 +26,24 @@ function CustomTooltip({ active, payload, learningMode, onTermClick }) {
             </div>
           )}
         </div>
-        
-        {data.ma20 && (
+
+        {(data.ma5 || data.ma20 || data.ma60) && (
           <div className={styles.tooltipMa}>
-            20일선: {Math.round(data.ma20).toLocaleString()}원
+            {data.ma5 && <span>5일선 {Math.round(data.ma5).toLocaleString()}원</span>}
+            {data.ma20 && <span>20일선 {Math.round(data.ma20).toLocaleString()}원</span>}
+            {data.ma60 && <span>60일선 {Math.round(data.ma60).toLocaleString()}원</span>}
+            {learningMode && (
+              <button type="button" className={styles.termLink} onClick={() => onTermClick('이동평균선')}>
+                이동평균선 자세히
+              </button>
+            )}
           </div>
         )}
 
         {data.event && (
           <div className={styles.tooltipEvent}>
-            <span className={clsx(styles.eventBadge, data.event.type === 'positive' ? styles.badgePos : styles.badgeNeg)}>
-              {data.event.type === 'positive' ? '호재' : '악재'}
+            <span className={clsx(styles.eventBadge, data.event.type === 'positive' ? styles.badgePos : data.event.type === 'negative' ? styles.badgeNeg : styles.badgeNeutral)}>
+              {data.event.type === 'positive' ? '호재' : data.event.type === 'negative' ? '악재' : '확인 필요'}
             </span>
             <strong>{data.event.title}</strong>
             <p>{data.event.reason || data.event.desc}</p>
@@ -57,27 +64,37 @@ function parsePriceRange(priceStr) {
   if (!priceStr) return null;
   const numbers = priceStr.replace(/,/g, '').match(/\d+/g);
   if (!numbers) return null;
-  
+
   if (priceStr.includes('이상')) return [parseInt(numbers[0], 10), 9999999];
   if (priceStr.includes('이하') || priceStr.includes('이탈')) return [0, parseInt(numbers[0], 10)];
   if (numbers.length >= 2) return [parseInt(numbers[0], 10), parseInt(numbers[1], 10)];
-  
+
   const val = parseInt(numbers[0], 10);
   return [val - val * 0.02, val + val * 0.02]; // fallback 2% band
 }
 
-export default function ImmersiveChart({ stock, chart, zones, events, ai, interval, onChangeInterval, learningMode, onTermClick }) {
-  
+export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, interval, onChangeInterval, learningMode, onTermClick }) {
+
   const chartData = useMemo(() => {
     if (!chart?.rows) return [];
-    
-    // Compute MA20
+
+    // Compute moving averages used by the visual chart layer.
     let temp = chart.rows.map(row => ({ ...row }));
     for (let i = 0; i < temp.length; i++) {
+      if (i >= 4) {
+        let sum = 0;
+        for (let j = 0; j < 5; j++) sum += temp[i - j].close;
+        temp[i].ma5 = sum / 5;
+      }
       if (i >= 19) {
         let sum = 0;
         for (let j = 0; j < 20; j++) sum += temp[i - j].close;
         temp[i].ma20 = sum / 20;
+      }
+      if (i >= 59) {
+        let sum = 0;
+        for (let j = 0; j < 60; j++) sum += temp[i - j].close;
+        temp[i].ma60 = sum / 60;
       }
     }
 
@@ -114,9 +131,9 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
           </defs>
           <XAxis dataKey="date" hide />
           <YAxis domain={[minPrice - padding, maxPrice + padding]} hide />
-          
-          <Tooltip 
-            content={<CustomTooltip learningMode={learningMode} onTermClick={onTermClick} />} 
+
+          <Tooltip
+            content={<CustomTooltip learningMode={learningMode} onTermClick={onTermClick} />}
             cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }}
             isAnimationActive={false}
           />
@@ -125,65 +142,82 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
           {zones && zones.map((zone, idx) => {
             const range = parsePriceRange(zone.price);
             if (!range) return null;
-            const color = getZoneColor(zone.type);
+              const color = getZoneColor(zone.type);
             // Limit Y values so they don't paint over the entire screen infinitely
             const safeY1 = Math.max(range[0], minPrice - padding);
             const safeY2 = Math.min(range[1], maxPrice + padding);
-            
+
             return (
-              <ReferenceArea 
-                key={idx} 
-                y1={safeY1} 
-                y2={safeY2} 
-                fill={color} 
-                fillOpacity={0.05} 
+              <ReferenceArea
+                key={idx}
+                y1={safeY1}
+                y2={safeY2}
+                fill={color}
+                fillOpacity={0.05}
                 strokeOpacity={0}
               >
-                <Label 
-                  value={zone.label} 
-                  position="insideLeft" 
-                  fill={color} 
-                  fontSize={11} 
-                  fontWeight="bold" 
-                  offset={10} 
+                <Label
+                  value={zone.label}
+                  position="insideLeft"
+                  fill={color}
+                  fontSize={11}
+                  fontWeight="bold"
+                  offset={10}
                   opacity={0.8}
                 />
               </ReferenceArea>
             );
           })}
-          
+
           <Area type="monotone" dataKey="close" stroke="none" fill="url(#chartGradient)" />
-          
-          {/* MA20 Line */}
-          <Line 
-            type="monotone" 
-            dataKey="ma20" 
-            stroke="var(--color-text-secondary)" 
-            strokeWidth={1} 
-            strokeDasharray="3 3"
-            dot={false} 
+
+          {/* Moving Average Lines */}
+          <Line
+            type="monotone"
+            dataKey="ma5"
+            stroke="rgba(255,255,255,0.7)"
+            strokeWidth={1}
+            dot={false}
           />
 
-          <Line 
-            type="monotone" 
-            dataKey="close" 
-            stroke="var(--color-accent)" 
-            strokeWidth={3} 
-            dot={false} 
-            activeDot={{ r: 8, fill: 'var(--color-accent)', stroke: 'var(--color-bg-base)', strokeWidth: 3 }} 
+          <Line
+            type="monotone"
+            dataKey="ma20"
+            stroke="var(--color-text-secondary)"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            dot={false}
+          />
+
+          <Line
+            type="monotone"
+            dataKey="ma60"
+            stroke="rgba(245, 158, 11, 0.85)"
+            strokeWidth={1}
+            strokeDasharray="6 5"
+            dot={false}
+          />
+
+          <Line
+            type="monotone"
+            dataKey="close"
+            stroke="var(--color-accent)"
+            strokeWidth={3}
+            dot={false}
+            activeDot={{ r: 8, fill: 'var(--color-accent)', stroke: 'var(--color-bg-base)', strokeWidth: 3 }}
           />
 
           {/* Event Dots */}
           {chartData.map((entry, idx) => {
             if (entry.event) {
-              const color = entry.event.type === 'positive' ? 'var(--color-positive)' : 'var(--color-negative)';
+              const color = entry.event.type === 'positive' ? 'var(--color-positive)' : entry.event.type === 'negative' ? 'var(--color-negative)' : 'var(--color-warning)';
               return (
-                <ReferenceDot 
-                  key={idx} 
-                  x={entry.date} 
-                  y={entry.close} 
-                  r={6} 
-                  fill={color} 
+                <ReferenceDot
+                  key={idx}
+                  x={entry.date}
+                  y={entry.close}
+                  r={6}
+                  fill={color}
                   stroke="var(--color-bg-base)"
                   strokeWidth={2}
                 />
@@ -197,7 +231,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
       {/* Interval Selector Overlaid on Chart */}
       <div className={styles.intervalSelector}>
         {['daily', 'weekly', 'monthly'].map(intv => (
-          <button 
+          <button
             key={intv}
             className={clsx(styles.intervalBtn, interval === intv && styles.intervalActive)}
             onClick={() => onChangeInterval(intv)}
@@ -220,6 +254,12 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
           {stock.changeRate}
         </div>
       </div>
+
+      {indicatorSnapshot?.beginnerSummary && (
+        <button type="button" className={styles.indicatorSummary} onClick={() => onTermClick('이동평균선')}>
+          {indicatorSnapshot.beginnerSummary}
+        </button>
+      )}
     </div>
   );
 }

@@ -103,7 +103,7 @@ public class StockController {
     if (from.isAfter(to)) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "from_must_be_on_or_before_to");
     }
-    return client.events(safeCode, from, to);
+    return client.events(safeCode, from, to).withDerivedNarratives();
   }
 
   private static String validateCode(String code) {

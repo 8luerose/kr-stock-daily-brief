@@ -24,6 +24,9 @@ class ChatRequest(BaseModel):
     focus: str | None = None
     summary: dict[str, Any] | None = None
     chart: dict[str, Any] | None = None
+    indicatorSnapshot: dict[str, Any] | None = None
+    tradeZones: dict[str, Any] | None = None
+    currentDecisionSummary: dict[str, Any] | None = None
     events: list[dict[str, Any]] = Field(default_factory=list)
     terms: list[dict[str, Any]] = Field(default_factory=list)
 
@@ -47,9 +50,15 @@ def _compact(value: Any, limit: int = 420) -> str:
 def _event_lines(events: list[dict[str, Any]]) -> list[str]:
     lines: list[str] = []
     for event in events[:5]:
+        sentiment = _clean(event.get("sentimentForPrice") or event.get("sentiment"), "확인 필요")
+        positive = event.get("positiveReasons") or []
+        negative = event.get("negativeReasons") or []
+        positive_text = f" 호재 후보: {_clean(positive[0], '')}" if isinstance(positive, list) and positive else ""
+        negative_text = f" 악재/리스크 후보: {_clean(negative[0], '')}" if isinstance(negative, list) and negative else ""
         lines.append(
             f"- {event.get('date', '-')}: {event.get('title', '이벤트')} "
-            f"({event.get('severity', 'unknown')}) - {event.get('explanation', '설명 없음')}"
+            f"({event.get('severity', 'unknown')}, {sentiment}) - {event.get('explanation', '설명 없음')}"
+            f"{positive_text}{negative_text}"
         )
     return lines
 
@@ -112,6 +121,33 @@ def _build_retrieval_documents(req: ChatRequest, subject: str, code: str, topic_
             "title": f"{subject}{f'({code})' if code else ''} 차트 스냅샷",
             "text": _compact(req.chart),
             "basisDate": _clean(req.chart.get("asOf"), basis_date) if isinstance(req.chart, dict) else basis_date,
+        })
+
+    if req.indicatorSnapshot:
+        documents.append({
+            "id": "indicator-snapshot",
+            "type": "indicator_snapshot",
+            "title": f"{subject} 이동평균선과 지지/저항 분석",
+            "text": _compact(req.indicatorSnapshot),
+            "basisDate": _clean(req.indicatorSnapshot.get("basisDate"), basis_date),
+        })
+
+    if req.tradeZones:
+        documents.append({
+            "id": "trade-zones",
+            "type": "trade_zones",
+            "title": f"{subject} 조건형 매수/매도 검토 구간",
+            "text": _compact(req.tradeZones),
+            "basisDate": _clean(req.tradeZones.get("basisDate"), basis_date),
+        })
+
+    if req.currentDecisionSummary:
+        documents.append({
+            "id": "current-decision-summary",
+            "type": "decision_summary",
+            "title": f"{subject} 현재 검토 조건 요약",
+            "text": _compact(req.currentDecisionSummary),
+            "basisDate": basis_date,
         })
 
     for index, event in enumerate((req.events or [])[:6], start=1):
@@ -201,6 +237,8 @@ def _build_grounding_report(
     add_claim("검색 결과 요약을 근거로 사용", ["search-result"])
     add_claim("저장 브리프 요약을 근거로 사용", ["daily-summary"])
     add_claim("차트 snapshot을 근거로 사용", ["chart-snapshot"])
+    add_claim("이동평균선 indicator snapshot을 근거로 사용", ["indicator-snapshot"])
+    add_claim("조건형 매수/매도 검토 구간을 근거로 사용", ["trade-zones", "current-decision-summary"])
     event_ids = sorted(doc_id for doc_id in ids if doc_id.startswith("event-") and "-evidence-" not in doc_id and "-causal-" not in doc_id)
     evidence_ids = sorted(doc_id for doc_id in ids if "-evidence-" in doc_id)
     causal_ids = sorted(doc_id for doc_id in ids if "-causal-" in doc_id)
@@ -215,6 +253,10 @@ def _build_grounding_report(
         missing.append("retrieval 문서가 없어 답변 근거가 제한적입니다.")
     if req.stockCode and "chart-snapshot" not in ids:
         missing.append("차트 snapshot이 요청에 포함되지 않았습니다.")
+    if req.stockCode and "indicator-snapshot" not in ids:
+        missing.append("이동평균선 indicator snapshot이 요청에 포함되지 않았습니다.")
+    if req.stockCode and "trade-zones" not in ids:
+        missing.append("조건형 매수/매도 검토 구간이 요청에 포함되지 않았습니다.")
     if req.stockCode and not event_ids:
         missing.append("차트 이벤트 후보가 요청에 포함되지 않았습니다.")
     if req.events and not evidence_ids and not causal_ids:
@@ -245,7 +287,8 @@ def _build_llm_prompt(req: ChatRequest, subject: str, code: str, topic_type: str
         "매수 또는 매도를 지시하지 말고 조건/검토/시나리오 표현만 사용한다. "
         "출처가 부족하면 부족하다고 말한다. "
         "근거 문장에는 반드시 최소 2개의 retrieval 문서 id를 대괄호 형식으로 함께 언급한다. "
-        "답변 구조는 한 줄 결론, 근거, 반대 신호, 리스크, 다음 확인 순서로 작성한다."
+        "답변 구조는 한 줄 결론, 이동평균선 해석, 매수 검토 조건, 관망 조건, 매도 검토 조건, 리스크 관리, "
+        "호재/악재 후보 이유, 반대 신호, 초보자 체크리스트, 다음 확인 순서로 작성한다."
     )
     user = (
         f"질문: {_clean(req.question, '시장과 차트 해석')}\n"
@@ -255,6 +298,87 @@ def _build_llm_prompt(req: ChatRequest, subject: str, code: str, topic_type: str
         f"검색된 근거:\n{context or '제공된 근거가 없습니다.'}"
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _moving_average_explanation(indicator: dict[str, Any] | None) -> str:
+    if not indicator:
+        return "이동평균선 근거가 부족합니다. 5일선은 단기, 20일선은 약 한 달, 60일선은 중기 흐름을 보는 기준입니다."
+    moving = indicator.get("movingAverages") or {}
+    price_vs = indicator.get("priceVsMa20") or {}
+    return (
+        f"5일선은 단기 흐름({ _clean(moving.get('ma5')) }), "
+        f"20일선은 약 한 달 평균 흐름({ _clean(moving.get('ma20')) }), "
+        f"60일선은 중기 흐름({ _clean(moving.get('ma60')) })입니다. "
+        f"현재가는 20일선 대비 { _clean(price_vs.get('position'), 'unknown') } 상태이고 "
+        f"거리는 { _clean(price_vs.get('distanceRate'), '-') }%입니다. "
+        "이동평균선 위라고 무조건 좋거나 아래라고 무조건 나쁜 것은 아니며 거래량, 지지선, 저항선, 이벤트를 함께 봐야 합니다."
+    )
+
+
+def _decision_field(decision: dict[str, Any] | None, key: str, fallback: str) -> str:
+    if isinstance(decision, dict):
+        value = decision.get(key)
+        if value:
+            return str(value)
+    return fallback
+
+
+def _trade_zones(req: ChatRequest) -> list[dict[str, Any]]:
+    if not isinstance(req.tradeZones, dict):
+        return []
+    zones = req.tradeZones.get("zones") or []
+    return [zone for zone in zones if isinstance(zone, dict)]
+
+
+def _zone_by_type(zones: list[dict[str, Any]], *types: str) -> dict[str, Any]:
+    wanted = set(types)
+    for zone in zones:
+        if zone.get("type") in wanted:
+            return zone
+    return {}
+
+
+def _zone_condition(zone: dict[str, Any], fallback: str) -> str:
+    return _clean(zone.get("condition") or zone.get("summary"), fallback)
+
+
+def _event_factors(events: list[dict[str, Any]], key: str, fallback: str) -> list[str]:
+    values: list[str] = []
+    for event in events[:5]:
+        raw = event.get(key) or []
+        if isinstance(raw, str):
+            raw = [raw]
+        if isinstance(raw, list):
+            for item in raw[:3]:
+                text = _clean(item, "")
+                if text and text not in values:
+                    values.append(text)
+    return values or [fallback]
+
+
+def _beginner_checklist(zones: list[dict[str, Any]], decision: dict[str, Any] | None) -> list[str]:
+    checklist: list[str] = []
+    if isinstance(decision, dict):
+        why = decision.get("why") or []
+        if isinstance(why, list):
+            checklist.extend(str(item) for item in why[:4] if str(item).strip())
+    for zone in zones[:5]:
+        raw = zone.get("beginnerChecklist") or []
+        if isinstance(raw, list):
+            checklist.extend(str(item) for item in raw[:2] if str(item).strip())
+    fallback = [
+        "20일선 위/아래 위치를 먼저 확인합니다.",
+        "거래량이 20일 평균보다 많은지 봅니다.",
+        "지지선과 저항선을 가격 기준으로 적어 둡니다.",
+        "호재/악재 뉴스가 실제 가격 반응으로 이어졌는지 확인합니다.",
+    ]
+    seen: set[str] = set()
+    result = []
+    for item in checklist + fallback:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result[:8]
 
 
 def _build_structured_answer(
@@ -267,6 +391,14 @@ def _build_structured_answer(
     limitations: list[str],
 ) -> dict[str, Any]:
     events = req.events or []
+    indicator = req.indicatorSnapshot if isinstance(req.indicatorSnapshot, dict) else None
+    decision = req.currentDecisionSummary if isinstance(req.currentDecisionSummary, dict) else None
+    zones = _trade_zones(req)
+    buy_zone = _zone_by_type(zones, "buy_review", "buy")
+    split_zone = _zone_by_type(zones, "split_buy", "split")
+    watch_zone = _zone_by_type(zones, "watch")
+    sell_zone = _zone_by_type(zones, "sell_review", "sell")
+    risk_zone = _zone_by_type(zones, "risk_management", "risk")
     evidence: list[str] = []
 
     if req.searchResult:
@@ -291,27 +423,80 @@ def _build_structured_answer(
     for event in events[:3]:
         evidence.append(
             f"이벤트: {event.get('date', basis_date)} {event.get('title', '이벤트')} "
-            f"등락률 {_clean(event.get('priceChangeRate'))}%, 거래량 {_clean(event.get('volumeChangeRate'))}%"
+            f"등락률 {_clean(event.get('priceChangeRate'))}%, 거래량 {_clean(event.get('volumeChangeRate'))}%, "
+            f"해석 {_clean(event.get('sentimentForPrice'), '확인 필요')}"
         )
+
+    if indicator:
+        evidence.append("지표: " + _clean(indicator.get("beginnerSummary"), "이동평균선 근거가 전달되었습니다."))
 
     if not evidence:
         evidence.append("제공된 검색, 브리프, 차트, 이벤트 근거가 제한적입니다.")
 
-    if code and events:
+    if code and decision:
+        conclusion = f"{subject}({code})은(는) {basis_date} 기준 {_clean(decision.get('summary'), '조건부 검토가 필요합니다.')}"
+    elif code and events:
         conclusion = f"{subject}({code})은(는) {basis_date} 기준 차트 이벤트가 있어 가격과 거래량을 함께 확인해야 합니다."
     elif code:
         conclusion = f"{subject}({code})은(는) {basis_date} 기준 차트/검색 근거로 조건부 검토가 필요합니다."
     else:
         conclusion = f"{subject}은(는) {basis_date} 기준 검색/브리프 근거로 시장 맥락을 먼저 확인해야 합니다."
 
+    buy_review = _decision_field(
+        decision,
+        "buyReviewCondition",
+        _zone_condition(buy_zone, "가격 회복, 거래량 증가, 주요 지지선 방어가 함께 나올 때만 매수 검토합니다."),
+    )
+    sell_review = _decision_field(
+        decision,
+        "sellReviewCondition",
+        _zone_condition(sell_zone, "급등 후 거래량 둔화, 긴 윗꼬리, 직전 고점 돌파 실패가 겹치면 매도 검토합니다."),
+    )
+    watch_review = _decision_field(
+        decision,
+        "watchCondition",
+        _zone_condition(watch_zone, "가격과 거래량 신호가 엇갈리거나 근거 링크가 부족하면 새 데이터가 쌓일 때까지 기다립니다."),
+    )
+    risk_management = _decision_field(
+        decision,
+        "riskCondition",
+        _zone_condition(risk_zone, "전저점 이탈이나 하락일 거래량 급증 시 손실 허용 기준을 다시 세웁니다."),
+    )
+    positive_factors = _event_factors(events, "positiveReasons", "가격/거래량 조합상 호재 후보가 있으면 공시와 뉴스 원문으로 확인합니다.")
+    negative_factors = _event_factors(events, "negativeReasons", "하락 거래량, 저항선 실패, 출처 부족은 악재 또는 리스크 후보입니다.")
+    opposing_signals = _event_factors(events, "oppositeSignals", _decision_field(decision, "oppositeSignal", "거래량 없는 상승, 20일선 재이탈, 출처 부족을 반대 신호로 봅니다."))
+    beginner_checklist = _beginner_checklist(zones, decision)
+    beginner_explanation = _clean(
+        (indicator or {}).get("beginnerExplanation") or (decision or {}).get("beginnerExplanation"),
+        "초보자는 5일선, 20일선, 60일선의 역할을 나누어 보고 거래량, 지지선, 저항선, 이벤트를 함께 확인해야 합니다.",
+    )
+
     return {
         "conclusion": conclusion,
+        "movingAverageExplanation": _moving_average_explanation(indicator),
+        "chartState": {
+            "state": _clean((decision or {}).get("state"), "watch"),
+            "summary": _clean((decision or {}).get("summary"), conclusion),
+            "indicatorSnapshot": indicator or {},
+        },
+        "buyReview": buy_review,
+        "sellReview": sell_review,
+        "watchReview": watch_review,
+        "riskManagement": risk_management,
+        "buyCondition": buy_review,
+        "sellCondition": sell_review,
+        "waitCondition": watch_review,
+        "riskCondition": risk_management,
+        "positiveFactors": positive_factors,
+        "negativeFactors": negative_factors,
+        "positives": positive_factors,
+        "negatives": negative_factors,
+        "opposingSignals": opposing_signals,
+        "beginnerExplanation": beginner_explanation,
+        "beginnerChecklist": beginner_checklist,
+        "nextChecklist": beginner_checklist,
+        "tradeZones": zones,
         "evidence": evidence[:5],
-        "opposingSignals": [
-            "가격은 오르지만 거래량이 줄어드는 경우",
-            "하락일 거래량 급증",
-            "공시, 뉴스, 재무 근거가 부족한 경우",
-        ],
         "risks": [
             "개인 보유 비중과 투자 기간을 반영하지 않습니다.",
             "차트 이벤트는 원인 후보이며 확정 원인이 아닙니다.",
@@ -608,6 +793,9 @@ def chat(req: ChatRequest):
     else:
         answer_parts += ["", "시장/테마 근거", "- 개별 종목 차트가 아닌 검색 맥락과 저장된 브리프를 우선 근거로 사용했습니다."]
 
+    if req.indicatorSnapshot:
+        answer_parts += ["", "이동평균선 해석", f"- {_moving_average_explanation(req.indicatorSnapshot)}"]
+
     if term_lines:
         answer_parts += ["", "초보자 용어 연결", *term_lines]
 
@@ -633,6 +821,7 @@ def chat(req: ChatRequest):
     if code:
         sources.insert(1, {"title": "종목 차트 API", "type": "ohlcv", "url": f"/api/stocks/{code}/chart"})
         sources.insert(2, {"title": "종목 이벤트 API", "type": "events", "url": f"/api/stocks/{code}/events"})
+        sources.insert(3, {"title": "조건형 거래 구간 API", "type": "trade_zones", "url": f"/api/stocks/{code}/trade-zones"})
 
     llm_answer, llm_meta = _call_configured_llm(
         _build_llm_prompt(req, subject, code, topic_type, basis_date, retrieval_documents)

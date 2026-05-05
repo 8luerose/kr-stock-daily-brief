@@ -6,6 +6,8 @@ import com.krbrief.search.SearchService;
 import com.krbrief.stocks.StockChartDto;
 import com.krbrief.stocks.StockEventsDto;
 import com.krbrief.stocks.StockResearchClient;
+import com.krbrief.stocks.StockTradeZoneService;
+import com.krbrief.stocks.StockTradeZonesDto;
 import com.krbrief.summaries.DailySummaryService;
 import com.krbrief.summaries.SummaryDto;
 import java.time.LocalDate;
@@ -45,16 +47,19 @@ public class AiChatContextEnricher {
   private final SearchService searchService;
   private final DailySummaryService dailySummaryService;
   private final StockResearchClient stockResearchClient;
+  private final StockTradeZoneService stockTradeZoneService;
   private final LearningTermCatalog learningTermCatalog;
 
   public AiChatContextEnricher(
       SearchService searchService,
       DailySummaryService dailySummaryService,
       StockResearchClient stockResearchClient,
+      StockTradeZoneService stockTradeZoneService,
       LearningTermCatalog learningTermCatalog) {
     this.searchService = searchService;
     this.dailySummaryService = dailySummaryService;
     this.stockResearchClient = stockResearchClient;
+    this.stockTradeZoneService = stockTradeZoneService;
     this.learningTermCatalog = learningTermCatalog;
   }
 
@@ -66,6 +71,7 @@ public class AiChatContextEnricher {
         firstNonBlank(
             text(context.get("query")),
             text(context.get("ticker")),
+            text(context.get("code")),
             text(enriched.get("topicTitle")),
             text(enriched.get("stockName")),
             detectKeyword(question));
@@ -90,6 +96,7 @@ public class AiChatContextEnricher {
     String stockCode =
         firstNonBlank(
             text(context.get("stockCode")),
+            text(context.get("code")),
             text(enriched.get("stockCode")),
             firstStockCode(searchResults));
     if (!stockCode.isBlank()) {
@@ -105,6 +112,9 @@ public class AiChatContextEnricher {
     exposeTopLevel(enriched, context, "stockName");
     exposeTopLevel(enriched, context, "chart");
     exposeTopLevel(enriched, context, "events");
+    exposeTopLevel(enriched, context, "tradeZones");
+    exposeTopLevel(enriched, context, "indicatorSnapshot");
+    exposeTopLevel(enriched, context, "currentDecisionSummary");
     exposeTopLevel(enriched, context, "terms");
     return enriched;
   }
@@ -136,9 +146,14 @@ public class AiChatContextEnricher {
       context.putIfAbsent("chart", chartMap);
       context.putIfAbsent("stockName", chart.name());
 
+      StockTradeZonesDto tradeZones = stockTradeZoneService.tradeZones(stockCode, "6M", "daily", "neutral");
+      context.putIfAbsent("tradeZones", tradeZoneMap(tradeZones));
+      context.putIfAbsent("indicatorSnapshot", tradeZones.indicatorSnapshot());
+      context.putIfAbsent("currentDecisionSummary", tradeZones.currentDecisionSummary());
+
       LocalDate to = LocalDate.now(KST);
       LocalDate from = to.minusDays(120);
-      StockEventsDto events = stockResearchClient.events(stockCode, from, to);
+      StockEventsDto events = stockResearchClient.events(stockCode, from, to).withDerivedNarratives();
       context.putIfAbsent("events", (events.events() == null ? List.<StockEventsDto.StockEventDto>of() : events.events()).stream()
           .limit(5)
           .map(event -> {
@@ -150,12 +165,39 @@ public class AiChatContextEnricher {
             out.put("explanation", event.explanation());
             out.put("priceChangeRate", event.priceChangeRate());
             out.put("volumeChangeRate", event.volumeChangeRate());
+            out.put("sentimentForPrice", event.sentimentForPrice());
+            out.put("positiveReasons", event.positiveReasons());
+            out.put("negativeReasons", event.negativeReasons());
+            out.put("neutralReasons", event.neutralReasons());
+            out.put("whyItMatters", event.whyItMatters());
+            out.put("oppositeInterpretation", event.oppositeInterpretation());
+            out.put("oppositeSignals", event.oppositeSignals());
+            out.put("evidenceLevel", event.evidenceLevel());
+            out.put("sourceLimitations", event.sourceLimitations());
+            out.put("whyItMoved", event.whyItMoved());
+            out.put("verificationChecklist", event.verificationChecklist());
+            out.put("evidenceSources", event.evidenceSources());
+            out.put("causalScores", event.causalScores());
             return out;
           })
           .toList());
     } catch (RuntimeException e) {
       context.putIfAbsent("stockContextWarning", "stock_context_unavailable");
     }
+  }
+
+  private LinkedHashMap<String, Object> tradeZoneMap(StockTradeZonesDto tradeZones) {
+    LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+    out.put("code", tradeZones.code());
+    out.put("name", tradeZones.name());
+    out.put("basisDate", tradeZones.basisDate());
+    out.put("riskMode", tradeZones.riskMode());
+    out.put("confidence", tradeZones.confidence());
+    out.put("indicatorSnapshot", tradeZones.indicatorSnapshot());
+    out.put("currentDecisionSummary", tradeZones.currentDecisionSummary());
+    out.put("evidence", tradeZones.evidence());
+    out.put("zones", tradeZones.zones());
+    return out;
   }
 
   private LinkedHashMap<String, Object> summaryMap(SummaryDto summary) {

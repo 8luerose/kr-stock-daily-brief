@@ -28,6 +28,7 @@ export default function DeepDiveLearningSheet({ isOpen, onClose, termData }) {
           <div className={styles.detailSection}>
             <h3>📖 쉬운 설명</h3>
             <p>{termData.longExplanation}</p>
+            {termData.whyItMatters && <p style={{ marginTop: '8px' }}><strong>왜 중요한가요?</strong> {termData.whyItMatters}</p>}
             <p style={{ marginTop: '8px' }}><strong>어디서 보나요?</strong> {termData.chartUsage}</p>
           </div>
 
@@ -45,6 +46,13 @@ export default function DeepDiveLearningSheet({ isOpen, onClose, termData }) {
           </div>
 
           <div className={styles.actionSection}>
+            {termData.relatedQuestions?.length > 0 && (
+              <div className={styles.questionList}>
+                {termData.relatedQuestions.slice(0, 3).map((question) => (
+                  <span key={question}>{question}</span>
+                ))}
+              </div>
+            )}
             <button className={styles.aiAskBtn}>
               {termData.askEntry} <ExternalLink size={16} />
             </button>

@@ -143,10 +143,42 @@ export const fallbackWorkspace = {
       confidence: "신뢰도 78%"
     }
   ],
+  indicatorSnapshot: {
+    basisDate: "2026-05-05",
+    latestClose: 89500,
+    movingAverages: { ma5: 86980, ma20: 77685, ma60: null },
+    priceVsMa20: {
+      position: "above",
+      distanceRate: 15.21,
+      beginnerExplanation: "현재가는 20일선 위에 있지만 저항선과 거래량을 함께 확인해야 합니다."
+    },
+    ma20Slope: "rising",
+    ma60Slope: "unknown",
+    trendStage: "uptrend_extension",
+    volumeStrength: "strong",
+    supportLevel: 80700,
+    resistanceLevel: 90200,
+    beginnerExplanation: "5일선은 단기 흐름, 20일선은 약 한 달 평균 흐름, 60일선은 중기 흐름입니다.",
+    beginnerSummary: "20일선 위 추세는 유지되지만 저항선 근처라 추격보다 확인이 필요한 구간입니다.",
+    caution: "이동평균선 위라고 무조건 좋은 것은 아니며 거래량, 지지선, 저항선, 이벤트를 함께 봐야 합니다."
+  },
+  currentDecisionSummary: {
+    state: "buy_review",
+    summary: "20일선 위지만 저항선에 가까워 추격보다 확인이 필요한 구간입니다.",
+    buyReviewCondition: "20일선 위 종가 유지, 거래량 재확대, 저항선 돌파 후 유지가 함께 보일 때 검토합니다.",
+    sellReviewCondition: "급등 후 거래량 둔화와 긴 윗꼬리가 반복되면 일부 차익 실현을 검토합니다.",
+    watchCondition: "호재가 있어도 전고점 돌파가 확인되지 않으면 관망합니다.",
+    riskCondition: "82,000원 지지선이 무너지면 리스크 관리 기준을 먼저 확인합니다."
+  },
   ai: {
     phase: "상승 추세 유지 속 단기 조정",
     direction: "20일선 지지와 거래량 재확대가 함께 확인되면 관심 후보로 유지할 수 있습니다.",
     conclusion: "가격 흐름은 우상향이지만, 전고점 부근에서는 속도 조절을 확인해야 합니다.",
+    movingAverageExplanation: "5일선은 단기 흐름, 20일선은 약 한 달 평균 흐름, 60일선은 중기 흐름입니다. 현재는 20일선 위지만 저항선과 거래량을 함께 봐야 합니다.",
+    chartState: {
+      state: "buy_review",
+      summary: "20일선 위지만 저항선에 가까워 추격보다 확인이 필요한 구간입니다."
+    },
     buyCondition: "20일선 지지, 거래량 증가, 전고점 재돌파가 함께 보이면 매수 검토 조건이 됩니다.",
     sellCondition: "급등 이후 거래량 둔화와 긴 윗꼬리가 반복되면 매도 검토 조건이 됩니다.",
     waitCondition: "뉴스는 좋지만 전고점을 넘지 못하면 관망이 더 적절할 수 있습니다.",

@@ -28,14 +28,17 @@ class StockTradeZoneServiceTest {
     when(client.chart("005930", "6M", "daily"))
         .thenReturn(new StockChartDto("005930", "삼성전자", "daily", "6M", "close", false, "2026-04-25", rows));
 
-    StockTradeZoneService service = new StockTradeZoneService(client);
+    StockTradeZoneService service = new StockTradeZoneService(client, new StockIndicatorService());
     StockTradeZonesDto res = service.tradeZones("005930", "6M", "daily", "neutral");
 
     assertFalse(res.zones().isEmpty());
+    assertTrue(res.indicatorSnapshot().beginnerSummary().contains("20일선"));
+    assertTrue(res.currentDecisionSummary().buyReviewCondition().contains("매수 검토"));
     assertTrue(res.evidence().stream().anyMatch(line -> line.startsWith("최근 지지선:")));
     assertTrue(res.evidence().stream().anyMatch(line -> line.startsWith("최근 저항선:")));
     assertTrue(res.evidence().stream().anyMatch(line -> line.startsWith("거래량 강도:")));
     assertTrue(res.zones().stream().allMatch(zone -> zone.fromPrice() <= zone.toPrice()));
     assertTrue(res.zones().stream().anyMatch(zone -> zone.evidence().contains("거래량 강도")));
+    assertTrue(res.zones().stream().allMatch(zone -> !zone.goodScenario().isBlank()));
   }
 }

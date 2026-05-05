@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle } from 'lucide-react';
+import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle, ShieldAlert, Clock3 } from 'lucide-react';
 import clsx from 'clsx';
 import styles from './FloatingAiCard.module.css';
 
@@ -44,7 +44,20 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                 <XCircle size={16} className={styles.negIcon} />
                 <p><strong>매도 검토:</strong> {ai.sellCondition || '확인된 매도 조건 없음'}</p>
               </div>
+              <div className={styles.conditionBox}>
+                <Clock3 size={16} className={styles.waitIcon} />
+                <p><strong>관망:</strong> {ai.waitCondition || '방향이 엇갈리면 다음 신호 확인'}</p>
+              </div>
+              <div className={styles.conditionBox}>
+                <ShieldAlert size={16} className={styles.negIcon} />
+                <p><strong>리스크 관리:</strong> {ai.riskCondition || '전저점 이탈과 하락 거래량 확인'}</p>
+              </div>
             </div>
+            {ai.movingAverageExplanation && (
+              <p className={styles.maNote}>
+                <strong>이동평균선:</strong> {ai.movingAverageExplanation}
+              </p>
+            )}
             {(ai.waitCondition || ai.opposingSignals?.length > 0) && (
               <p className={styles.neutralNote}>
                 <strong>관망 시나리오:</strong> {ai.waitCondition || ai.opposingSignals?.[0]}
@@ -65,6 +78,17 @@ export default function FloatingAiCard({ ai, events, asOf }) {
               </div>
             </div>
           </div>
+
+          {ai.checklist?.length > 0 && (
+            <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>초보자 확인 순서</h4>
+              <ul className={styles.checklist}>
+                {ai.checklist.slice(0, 5).map((item, index) => (
+                  <li key={`${item}-${index}`}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           
           <div className={styles.footer}>
             <span>기준일: {asOf}</span>

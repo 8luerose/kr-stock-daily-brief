@@ -99,7 +99,12 @@ class StockControllerTest {
         .andExpect(jsonPath("$.events[0].causalScores[0].causalDirection").value("positive"))
         .andExpect(jsonPath("$.events[0].causalScores[0].evidenceLevel").value("market_data"))
         .andExpect(jsonPath("$.events[0].causalScores[0].signalOrigins[0]").value("article_body"))
-        .andExpect(jsonPath("$.events[0].causalScores[0].signalUrls[0]").value("https://www.digitaltoday.co.kr/news/articleView.html?idxno=619374"));
+        .andExpect(jsonPath("$.events[0].causalScores[0].signalUrls[0]").value("https://www.digitaltoday.co.kr/news/articleView.html?idxno=619374"))
+        .andExpect(jsonPath("$.events[0].sentimentForPrice").value("positive"))
+        .andExpect(jsonPath("$.events[0].positiveReasons").isArray())
+        .andExpect(jsonPath("$.events[0].negativeReasons").isArray())
+        .andExpect(jsonPath("$.events[0].oppositeInterpretation").isNotEmpty())
+        .andExpect(jsonPath("$.events[0].sourceLimitations").isNotEmpty());
   }
 
   @Test

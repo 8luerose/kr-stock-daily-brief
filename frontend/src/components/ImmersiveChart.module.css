@@ -40,6 +40,27 @@
 .heroRate.pos { color: var(--color-positive); }
 .heroRate.neg { color: var(--color-negative); }
 
+.indicatorSummary {
+  position: absolute;
+  left: clamp(32px, 5vw, 72px);
+  bottom: calc(var(--spacing-6) + env(safe-area-inset-bottom, 0px));
+  max-width: min(420px, calc(50vw - 96px));
+  padding: var(--spacing-3) var(--spacing-4);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: var(--radius-lg);
+  background: rgba(5, 10, 18, 0.62);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  text-align: left;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  box-shadow: var(--shadow-float);
+  z-index: 9;
+}
+
 /* Custom Tooltip */
 .tooltip {
   background: var(--glass-bg);
@@ -102,6 +123,25 @@
 
 .badgePos { background: var(--color-positive); color: #fff; }
 .badgeNeg { background: var(--color-negative); color: #fff; }
+.badgeNeutral { background: var(--color-warning); color: #111; }
+
+.tooltipMa {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--spacing-2);
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.termLink {
+  margin-top: 4px;
+  width: fit-content;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: underline;
+}
 
 .tooltipEvent strong {
   display: block;
@@ -118,7 +158,7 @@
 /* Interval Selector */
 .intervalSelector {
   position: absolute;
-  top: 104px;
+  top: 152px;
   right: clamp(32px, 5vw, 72px);
   display: flex;
   background: var(--glass-bg);
@@ -169,5 +209,14 @@
     top: calc(var(--spacing-3) + 64px);
     right: auto;
     left: var(--spacing-3);
+  }
+
+  .indicatorSummary {
+    left: var(--spacing-3);
+    right: var(--spacing-3);
+    bottom: 116px;
+    max-width: none;
+    font-size: 0.78rem;
+    padding: var(--spacing-2) var(--spacing-3);
   }
 }

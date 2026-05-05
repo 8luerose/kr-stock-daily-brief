@@ -94,10 +94,10 @@
   top: var(--spacing-6);
   right: clamp(32px, 5vw, 72px);
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   gap: var(--spacing-2);
   z-index: 1000;
-  align-items: center;
+  align-items: flex-end;
   pointer-events: auto;
 }
 

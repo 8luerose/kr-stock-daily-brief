@@ -78,6 +78,7 @@ function App() {
             zones={data.zones} 
             events={data.events}
             ai={data.ai}
+            indicatorSnapshot={data.indicatorSnapshot}
             interval={interval}
             onChangeInterval={changeInterval}
             learningMode={learningMode}
