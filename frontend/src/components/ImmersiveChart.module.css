@@ -118,8 +118,8 @@
 /* Interval Selector */
 .intervalSelector {
   position: absolute;
-  top: 148px;
-  right: 5%;
+  top: 104px;
+  right: clamp(32px, 5vw, 72px);
   display: flex;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);

@@ -77,6 +77,55 @@ async function openApp(page) {
   await page.waitForSelector('input[placeholder="종목명, 테마, 용어 검색..."]');
 }
 
+function intersects(a, b) {
+  if (!a || !b) return false;
+  return !(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y);
+}
+
+async function readResponsiveMetrics(page) {
+  return page.evaluate(() => {
+    const rect = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        x: Math.round(r.x),
+        y: Math.round(r.y),
+        width: Math.round(r.width),
+        height: Math.round(r.height)
+      };
+    };
+    const byButtonText = (text) => Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === text);
+    const searchInput = document.querySelector('input[placeholder="종목명, 테마, 용어 검색..."]');
+    const aiButton = document.querySelector('button[aria-label="AI 요약 펼치기"], button[aria-label="AI 요약 접기"]');
+    const dropdown = document.querySelector('ul')?.closest('[class*="dropdown"]');
+    const visibleElements = Array.from(document.querySelectorAll('body *')).filter((el) => {
+      const r = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return r.width > 1 && r.height > 1 && style.display !== 'none' && style.visibility !== 'hidden';
+    });
+    const textOverflow = visibleElements.filter((el) => {
+      const style = getComputedStyle(el);
+      return style.whiteSpace === 'nowrap' && el.scrollWidth > el.clientWidth + 1;
+    });
+    const viewportOverflow = visibleElements.filter((el) => {
+      const r = el.getBoundingClientRect();
+      const isChartPaint = ['g', 'circle', 'path', 'rect'].includes(el.tagName.toLowerCase()) && el.closest('.recharts-wrapper');
+      return !isChartPaint && (r.left < -1 || r.top < -1 || r.right > window.innerWidth + 1 || r.bottom > window.innerHeight + 1);
+    });
+
+    return {
+      search: rect(searchInput?.closest('[class*="container"]')),
+      dropdown: rect(dropdown),
+      aiCard: rect(aiButton?.parentElement),
+      learning: rect(document.querySelector('button[aria-label="Toggle Learning Mode"]')),
+      portfolio: rect(document.querySelector('button[aria-label="Open Portfolio"]')),
+      interval: rect(byButtonText('1일')?.parentElement),
+      textOverflowCount: textOverflow.length,
+      viewportOverflowCount: viewportOverflow.length
+    };
+  });
+}
+
 for (const viewport of [
   { name: "desktop", width: 1440, height: 1000 },
   { name: "mobile", width: 390, height: 900 }
@@ -115,6 +164,31 @@ test("search results display correctly and open learning sheet", async ({ page }
   await expect(page.locator('h2', { hasText: '거래량' })).toBeVisible();
   await expect(page.locator('text=핵심 한 줄:')).toBeVisible();
 });
+
+for (const viewport of [
+  { name: "desktop-1440", width: 1440, height: 1000 },
+  { name: "desktop-1280", width: 1280, height: 900 },
+  { name: "tablet-1024", width: 1024, height: 768 },
+  { name: "mobile-390", width: 390, height: 900 }
+]) {
+  test(`responsive layout has no clipping or action overlap on ${viewport.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await openApp(page);
+
+    await page.fill('input[placeholder="종목명, 테마, 용어 검색..."]', "삼성");
+    await expect(page.locator('li', { hasText: '삼성전자' })).toBeVisible();
+
+    const metrics = await readResponsiveMetrics(page);
+    expect(metrics.textOverflowCount).toBe(0);
+    expect(metrics.viewportOverflowCount).toBe(0);
+    expect(intersects(metrics.learning, metrics.portfolio)).toBe(false);
+    expect(intersects(metrics.learning, metrics.interval)).toBe(false);
+    expect(intersects(metrics.portfolio, metrics.interval)).toBe(false);
+    expect(intersects(metrics.search, metrics.learning)).toBe(false);
+    expect(intersects(metrics.search, metrics.portfolio)).toBe(false);
+    expect(intersects(metrics.dropdown, metrics.aiCard)).toBe(false);
+  });
+}
 
 test("portfolio sandbox opens and works", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });

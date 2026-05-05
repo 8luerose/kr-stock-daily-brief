@@ -1,9 +1,8 @@
 .container {
   position: fixed;
   bottom: calc(var(--spacing-6) + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translate3d(-50%, 0, 0);
-  width: min(640px, calc(100vw - var(--spacing-6) - var(--spacing-6)));
+  right: clamp(32px, 5vw, 72px);
+  width: min(420px, calc(100vw - 520px));
   max-height: calc(100vh - 160px);
   background: var(--glass-bg);
   backdrop-filter: blur(24px);
@@ -15,7 +14,7 @@
   display: flex;
   flex-direction: column;
   transition: width var(--transition-normal), max-height var(--transition-normal), border-color var(--transition-normal);
-  animation: floatingCardIn var(--transition-normal) forwards;
+  animation: floatingCardInDesktop var(--transition-normal) forwards;
   z-index: 1000;
 }
 
@@ -64,9 +63,11 @@
   font-size: 0.95rem;
   font-weight: 500;
   color: var(--color-text-primary);
-  white-space: nowrap;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .expanded .conclusion {
@@ -199,7 +200,18 @@
   overflow-wrap: anywhere;
 }
 
-@keyframes floatingCardIn {
+@keyframes floatingCardInDesktop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes floatingCardInMobile {
   0% {
     opacity: 0;
     transform: translate3d(-50%, 20px, 0) scale(0.98);
@@ -213,8 +225,11 @@
 @media (max-width: 768px) {
   .container {
     bottom: calc(var(--spacing-4) + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    right: auto;
     width: calc(100vw - var(--spacing-3) - var(--spacing-3));
     max-height: calc(100vh - 128px);
+    animation-name: floatingCardInMobile;
   }
 
   .header {
@@ -232,5 +247,21 @@
 
   .footer span {
     flex-basis: 100%;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1120px) {
+  .container {
+    width: min(380px, calc(100vw - 520px));
+  }
+
+  .header {
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+  }
+
+  .iconWrapper {
+    width: 42px;
+    height: 42px;
   }
 }

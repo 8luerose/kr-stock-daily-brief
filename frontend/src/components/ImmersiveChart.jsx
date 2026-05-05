@@ -105,7 +105,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
   return (
     <div className={styles.container}>
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={chartData} margin={{ top: 100, right: 0, left: 0, bottom: 50 }}>
+        <ComposedChart data={chartData} margin={{ top: 112, right: 28, left: 28, bottom: 56 }}>
           <defs>
             <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.4}/>

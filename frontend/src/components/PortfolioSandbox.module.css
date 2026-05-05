@@ -6,10 +6,12 @@
   height: 100%;
   z-index: 9999;
   pointer-events: none;
+  visibility: hidden;
 }
 
 .overlay.open {
   pointer-events: auto;
+  visibility: visible;
 }
 
 .backdrop {
