@@ -4,7 +4,11 @@ import SpotlightSearch from '../components/SpotlightSearch';
 import ImmersiveChart from '../components/ImmersiveChart';
 import FloatingAiCard from '../components/FloatingAiCard';
 import FloatingLearningMode from '../components/FloatingLearningMode';
+import DeepDiveLearningSheet from '../components/DeepDiveLearningSheet';
 import HiddenAdminSheet from '../components/HiddenAdminSheet';
+import PortfolioSandbox from '../components/PortfolioSandbox';
+import { Briefcase } from 'lucide-react';
+import clsx from 'clsx';
 import styles from './App.module.css';
 
 function App() {
@@ -22,7 +26,19 @@ function App() {
   } = useWorkspace();
 
   const [learningMode, setLearningMode] = useState(false);
+  const [learningSheetOpen, setLearningSheetOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [portfolioOpen, setPortfolioOpen] = useState(false);
+
+  const handleToggleLearningMode = () => {
+    if (!learningMode) {
+      setLearningMode(true);
+      setLearningSheetOpen(true);
+    } else {
+      setLearningMode(false);
+      setLearningSheetOpen(false);
+    }
+  };
 
   return (
     <div className={styles.appContainer}>
@@ -64,9 +80,28 @@ function App() {
 
         <FloatingLearningMode 
           isActive={learningMode} 
-          onToggle={() => setLearningMode(!learningMode)} 
+          onToggle={handleToggleLearningMode} 
         />
+
+        <button 
+          className={clsx(styles.floatingIconBtn, styles.portfolioBtn)}
+          onClick={() => setPortfolioOpen(true)}
+          aria-label="Open Portfolio"
+        >
+          <Briefcase size={20} />
+        </button>
       </div>
+
+      <DeepDiveLearningSheet 
+        isOpen={learningSheetOpen} 
+        onClose={() => setLearningSheetOpen(false)} 
+      />
+
+      <PortfolioSandbox 
+        isOpen={portfolioOpen} 
+        onClose={() => setPortfolioOpen(false)} 
+        activeCode={activeCode} 
+      />
 
       <HiddenAdminSheet isOpen={adminOpen} onClose={() => setAdminOpen(false)} asOf={data?.asOf} />
 

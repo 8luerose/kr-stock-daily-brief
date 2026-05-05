@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { 
-  ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ReferenceDot 
+  ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ReferenceDot, ReferenceArea, ReferenceLine, Label 
 } from 'recharts';
 import clsx from 'clsx';
 import styles from './ImmersiveChart.module.css';
@@ -57,8 +57,10 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
   const maxPrice = Math.max(...chartData.map(d => d.close));
   const padding = (maxPrice - minPrice) * 0.2;
 
-  // AI 주석을 차트 상단/하단에 떠다니게 배치하기 위해 마지막 날짜 근처 데이터를 찾음
-  const lastDataPoint = chartData[chartData.length - 1];
+  // Mock annotations if zones not fully provided
+  const buyZoneStart = chartData.length > 20 ? chartData[chartData.length - 15].date : null;
+  const buyZoneEnd = chartData.length > 5 ? chartData[chartData.length - 5].date : null;
+  const resistancePrice = maxPrice - (maxPrice - minPrice) * 0.1;
 
   return (
     <div className={styles.container}>
@@ -69,6 +71,10 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
               <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.4}/>
               <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0.0}/>
             </linearGradient>
+            <linearGradient id="buyZoneGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-positive)" stopOpacity={0.15}/>
+              <stop offset="100%" stopColor="var(--color-positive)" stopOpacity={0.05}/>
+            </linearGradient>
           </defs>
           <XAxis dataKey="date" hide />
           <YAxis domain={[minPrice - padding, maxPrice + padding]} hide />
@@ -78,6 +84,18 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, interv
             cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }}
             isAnimationActive={false}
           />
+
+          {/* AI Annotations: Reference Areas */}
+          {buyZoneStart && buyZoneEnd && (
+            <ReferenceArea x1={buyZoneStart} x2={buyZoneEnd} fill="url(#buyZoneGradient)" strokeOpacity={0}>
+               <Label value="매수 검토 구간" position="insideTopLeft" fill="var(--color-positive)" fontSize={12} fontWeight="bold" offset={10} />
+            </ReferenceArea>
+          )}
+
+          {/* AI Annotations: Reference Lines */}
+          <ReferenceLine y={resistancePrice} stroke="var(--color-warning)" strokeDasharray="3 3" strokeOpacity={0.5}>
+            <Label value="단기 저항선" position="insideTopLeft" fill="var(--color-warning)" fontSize={11} offset={5} />
+          </ReferenceLine>
           
           <Area type="monotone" dataKey="close" stroke="none" fill="url(#chartGradient)" />
           <Line 

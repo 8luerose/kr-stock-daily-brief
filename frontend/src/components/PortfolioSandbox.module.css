@@ -1,0 +1,185 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.overlay.open {
+  pointer-events: auto;
+}
+
+.backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.open .backdrop {
+  opacity: 1;
+}
+
+.sheet {
+  position: absolute;
+  top: 0;
+  right: -400px;
+  width: 400px;
+  max-width: 80%;
+  height: 100%;
+  background: var(--color-bg-base);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -20px 0 40px rgba(0, 0, 0, 0.5);
+  transition: transform var(--transition-normal);
+  display: flex;
+  flex-direction: column;
+}
+
+.open .sheet {
+  transform: translateX(-400px);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.icon {
+  color: var(--color-accent);
+}
+
+.header h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.closeBtn {
+  color: var(--color-text-secondary);
+}
+
+.closeBtn:hover {
+  color: var(--color-text-primary);
+}
+
+.content {
+  padding: var(--spacing-4);
+  overflow-y: auto;
+}
+
+.desc {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-4);
+}
+
+.addSection {
+  background: var(--color-bg-elevated);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.stockInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.code {
+  font-size: 0.8rem;
+  color: var(--color-text-tertiary);
+}
+
+.name {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.weightControl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.weightControl label {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.weightVal {
+  text-align: right;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.addBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  background: var(--color-text-primary);
+  color: var(--color-bg-base);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+}
+
+.addedBtn {
+  background: var(--color-positive);
+  color: #fff;
+}
+
+.aiReviewSection {
+  margin-top: var(--spacing-5);
+  animation: fadeIn var(--transition-normal) forwards;
+}
+
+.aiReviewSection h3 {
+  font-size: 1rem;
+  margin-bottom: var(--spacing-3);
+}
+
+.reviewCard {
+  display: flex;
+  gap: var(--spacing-3);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-2);
+}
+
+.reviewCard h4 {
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.reviewCard p {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.warnIcon { color: var(--color-warning); flex-shrink: 0; }
+.posIcon { color: var(--color-positive); flex-shrink: 0; }

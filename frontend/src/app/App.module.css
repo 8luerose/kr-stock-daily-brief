@@ -67,3 +67,32 @@
   opacity: 0;
   cursor: default;
 }
+
+.floatingIconBtn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-float);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-normal);
+  z-index: 1000;
+}
+
+.floatingIconBtn:hover {
+  color: var(--color-text-primary);
+  background: rgba(30, 30, 30, 0.8);
+  transform: translateY(-2px);
+}
+
+.portfolioBtn {
+  bottom: calc(var(--spacing-6) + 60px);
+  right: 5%;
+}

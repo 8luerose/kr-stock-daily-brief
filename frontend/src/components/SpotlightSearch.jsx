@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, TrendingUp, TrendingDown, BookOpen } from 'lucide-react';
+import { Search, Loader2, TrendingUp, TrendingDown, BookOpen, MessageSquare, Zap } from 'lucide-react';
 import clsx from 'clsx';
 import styles from './SpotlightSearch.module.css';
 
@@ -33,6 +33,9 @@ export default function SpotlightSearch({ onSearch, results, isSearching, onSele
     }
   };
 
+  const showResults = query.length > 0 && results?.length > 0;
+  const showEmptyState = isFocused && !showResults;
+
   return (
     <div className={styles.container} ref={containerRef}>
       <div className={clsx(styles.searchBar, isFocused && styles.focused, 'animate-slide-down')}>
@@ -47,9 +50,9 @@ export default function SpotlightSearch({ onSearch, results, isSearching, onSele
         {isSearching && <Loader2 className={clsx(styles.icon, styles.spin)} size={20} />}
       </div>
 
-      {isFocused && (query.length > 0 || results?.length > 0) && (
+      {isFocused && (
         <div className={styles.dropdown}>
-          {results && results.length > 0 ? (
+          {showResults ? (
             <ul className={styles.list}>
               {results.map(item => (
                 <li key={item.id} className={styles.item} onClick={() => handleSelect(item)}>
@@ -77,11 +80,26 @@ export default function SpotlightSearch({ onSearch, results, isSearching, onSele
                 </li>
               ))}
             </ul>
-          ) : (
-            !isSearching && query.length > 0 && (
-              <div className={styles.empty}>검색 결과가 없습니다.</div>
-            )
-          )}
+          ) : showEmptyState ? (
+            <div className={styles.emptyState}>
+              {!isSearching && query.length > 0 && (
+                <div className={styles.emptyMessage}>'{query}'에 대한 검색 결과가 없습니다.</div>
+              )}
+              <div className={styles.recommendationSection}>
+                <h4 className={styles.recTitle}><Zap size={14} /> 오늘 움직인 테마 & 종목</h4>
+                <div className={styles.chips}>
+                  <button className={styles.chip} onClick={() => { setQuery('반도체'); onSearch('반도체'); }}>반도체 장비</button>
+                  <button className={styles.chip} onClick={() => { setQuery('이차전지'); onSearch('이차전지'); }}>이차전지</button>
+                  <button className={styles.chip} onClick={() => { setQuery('005930'); onSelect('005930'); setIsFocused(false); }}>삼성전자</button>
+                </div>
+              </div>
+              <div className={styles.askAiSection}>
+                <button className={styles.askAiBtn}>
+                  <MessageSquare size={16} /> AI에게 '{query || '주식 기초'}'에 대해 물어보기
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
