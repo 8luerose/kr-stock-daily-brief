@@ -24,12 +24,12 @@ function ModeActions({ compact = false, setRoute }) {
       <a className="modeCard learn" href="#learn" onClick={() => setRoute("learn")}>
         <BookOpen size={18} />
         <strong>학습</strong>
-        <span>차트 이유</span>
+        <span>차트 이유부터</span>
       </a>
       <a className="modeCard practice" href="#practice" onClick={() => setRoute("practice")}>
         <LineChart size={18} />
         <strong>실전</strong>
-        <span>검토 조건</span>
+        <span>조건 점검</span>
       </a>
     </div>
   );
@@ -39,7 +39,7 @@ function EvidenceRibbon({ workspace }) {
   return (
     <div className="evidenceRibbon" aria-label="데이터 근거">
       <span>기준일 {workspace.asOf}</span>
-      <span>{workspace.ai.confidence}</span>
+      <span>신뢰도 {workspace.ai.confidence}</span>
       <span>{workspace.source}</span>
     </div>
   );
@@ -58,17 +58,18 @@ function HomeSurface({
   workspace
 }) {
   return (
-    <section className="screen homeScreen" aria-label="AI 주식 학습 첫 화면">
-      <div className="heroBar">
-        <div>
-          <span className="eyebrow">AI가 차트 위에서 설명하는 한국 주식</span>
-          <h1>검색하고, 차트에서 바로 배웁니다.</h1>
-          <p>가격 흐름, 거래량, 호재와 악재, 매수와 매도 검토 조건을 한 화면에서 짧게 확인합니다.</p>
+    <section className="screen homeScreen studioScreen" aria-label="AI 주식 학습 첫 화면">
+      <div className="studioHero">
+        <div className="studioCopy">
+          <span className="eyebrow">차트 위에 바로 붙는 AI 해석</span>
+          <h1>종목을 검색하면, 왜 움직였는지 차트에서 배웁니다.</h1>
+          <p>매수와 매도는 지시하지 않고, 확인해야 할 조건과 반대 신호만 짧게 보여줍니다.</p>
         </div>
-        <ModeActions compact setRoute={setRoute} />
+        <div className="studioActions">
+          <ModeActions compact setRoute={setRoute} />
+          <EvidenceRibbon workspace={workspace} />
+        </div>
       </div>
-
-      <SearchCommand candidates={candidates} onOpenLearning={onOpenLearning} onSelectStock={onSelectStock} />
 
       {status === "fallback" ? (
         <div className="statePill warning">
@@ -76,12 +77,13 @@ function HomeSurface({
         </div>
       ) : null}
 
-      <div className="primaryGrid">
-        <ChartWorkspace interval={interval} mode="home" onIntervalChange={onIntervalChange} workspace={workspace} />
+      <div className="marketStudio">
+        <div className="studioMain">
+          <SearchCommand candidates={candidates} onOpenLearning={onOpenLearning} onSelectStock={onSelectStock} />
+          <ChartWorkspace interval={interval} mode="home" onIntervalChange={onIntervalChange} workspace={workspace} />
+        </div>
         <AIPredictionPanel mode="home" workspace={workspace} />
       </div>
-
-      <EvidenceRibbon workspace={workspace} />
 
       <div className="supportDeck">
         <LearningPanel compact terms={terms} onAsk={onAskLearning} />
@@ -105,8 +107,8 @@ function LearnSurface({
     <section className="screen learnScreen" aria-label="학습 화면">
       <div className="pageHero">
         <span className="eyebrow">학습</span>
-        <h1>용어를 외우지 말고 차트에서 확인합니다.</h1>
-        <p>초보자가 자주 놓치는 거래량, 지지선, 전고점, 보조지표를 실제 흐름과 함께 봅니다.</p>
+        <h1>용어를 외우지 말고, 가격 위에서 확인합니다.</h1>
+        <p>거래량, 지지선, 전고점, 보조지표를 실제 흐름과 연결해 봅니다.</p>
       </div>
       <SearchCommand candidates={candidates} onOpenLearning={onOpenLearning} onSelectStock={onSelectStock} />
       <div className="learningGrid">
@@ -135,7 +137,7 @@ function PracticeSurface({
       <div className="pageHero">
         <span className="eyebrow">실전</span>
         <h1>조건이 보일 때만 검토합니다.</h1>
-        <p>매수, 분할매수, 관망, 매도, 리스크 관리 구간을 차트 위에서 조건형으로 확인합니다.</p>
+        <p>매수, 분할매수, 관망, 매도, 리스크 관리 구간을 시나리오로 나눠 봅니다.</p>
       </div>
       <SearchCommand candidates={candidates} onOpenLearning={onOpenLearning} onSelectStock={onSelectStock} />
       <div className="primaryGrid">

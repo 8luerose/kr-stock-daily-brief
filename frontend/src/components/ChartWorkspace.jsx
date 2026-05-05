@@ -36,6 +36,16 @@ function polyline(points) {
   return points.map((point) => `${point.x},${point.y}`).join(" ");
 }
 
+function indicatorLine(points, top, height, phase = 0) {
+  return points
+    .map((point, index) => {
+      const wave = Math.sin(index * 0.78 + phase) * height * 0.24;
+      const drift = (index / Math.max(points.length - 1, 1)) * height * 0.16;
+      return `${point.x},${top + height / 2 + wave - drift}`;
+    })
+    .join(" ");
+}
+
 function zoneText(zone) {
   return zone.price || `${zone.fromPrice?.toLocaleString("ko-KR")}~${zone.toPrice?.toLocaleString("ko-KR")}원`;
 }
@@ -43,8 +53,8 @@ function zoneText(zone) {
 export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) {
   const [activeNote, setActiveNote] = useState("rise");
   const rows = workspace.chart.rows;
-  const width = 980;
-  const height = 560;
+  const width = 1120;
+  const height = 700;
   const points = useMemo(() => buildPoints(rows, width, height), [rows]);
   const ma20 = useMemo(() => buildPoints(movingAverage(rows, 5), width, height), [rows]);
   const ma60 = useMemo(() => buildPoints(movingAverage(rows, 9), width, height), [rows]);
@@ -61,8 +71,8 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
   const notes = [
     {
       id: "rise",
-      x: 65,
-      y: 24,
+      x: 62,
+      y: 18,
       label: "왜 올랐나",
       title: "가격 돌파와 거래량 증가",
       body: "상승 구간에서 가격만 오른 것이 아니라 거래량 막대도 함께 커졌습니다. 초보자는 이 조합을 먼저 확인합니다.",
@@ -70,8 +80,8 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
     },
     {
       id: "pause",
-      x: 48,
-      y: 47,
+      x: 46,
+      y: 38,
       label: "왜 쉬었나",
       title: "전고점 앞 속도 조절",
       body: "상단 가격대에서 거래량이 줄면 좋은 뉴스가 있어도 잠시 쉬는 흐름이 나올 수 있습니다.",
@@ -79,8 +89,8 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
     },
     {
       id: "bad",
-      x: 82,
-      y: 37,
+      x: 80,
+      y: 30,
       label: "악재 확인",
       title: "호재 반영 뒤 반대 신호",
       body: "기대가 이미 가격에 반영된 뒤에는 긴 윗꼬리와 거래량 둔화를 악재처럼 함께 봅니다.",
@@ -88,8 +98,8 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
     },
     {
       id: "risk",
-      x: 24,
-      y: 66,
+      x: 23,
+      y: 52,
       label: "리스크",
       title: "지지선 이탈 기준",
       body: "주요 지지선 아래에서 종가가 반복되면 수익보다 방어 기준을 먼저 세워야 합니다.",
@@ -116,7 +126,7 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
         <div>
           <span className="eyebrow">AI 차트 주석</span>
           <h2>{workspace.stock.name}</h2>
-          <p>{workspace.ai.conclusion}</p>
+          <p>기준일 {workspace.asOf} 차트와 거래량을 함께 확인합니다.</p>
         </div>
         <div className="timeSegment" aria-label="차트 주기">
           {intervals.map((item) => (
@@ -134,28 +144,40 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
       </div>
 
       <div className="chartFrame">
-        <svg className="priceChart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="가격 흐름과 AI 주석 차트">
+        <div className="terminalBar" aria-label="종목 현재 상태">
+          <span>{workspace.stock.market}</span>
+          <strong>{workspace.stock.name}</strong>
+          <em>{formatPrice(latest.close)}</em>
+          <b>{change.toFixed(1)}%</b>
+        </div>
+        <svg
+          className="priceChart"
+          viewBox={`0 0 ${width} ${height}`}
+          preserveAspectRatio="xMaxYMid slice"
+          role="img"
+          aria-label="가격 흐름과 AI 주석 차트"
+        >
           <defs>
             <linearGradient id="priceFill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.34" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+              <stop offset="0%" stopColor="#4f9cff" stopOpacity="0.42" />
+              <stop offset="100%" stopColor="#4f9cff" stopOpacity="0.02" />
             </linearGradient>
           </defs>
 
           {[0, 1, 2, 3].map((line) => (
-            <line className="gridLine" key={line} x1="48" x2="925" y1={92 + line * 86} y2={92 + line * 86} />
+            <line className="gridLine" key={line} x1="48" x2="1066" y1={96 + line * 88} y2={96 + line * 88} />
           ))}
 
-          <rect className="zone buy" x="592" y="170" width="146" height="96" rx="8" />
-          <rect className="zone watch" x="738" y="142" width="96" height="128" rx="8" />
-          <rect className="zone sell" x="826" y="96" width="70" height="138" rx="8" />
-          <rect className="zone risk" x="112" y="322" width="138" height="70" rx="8" />
-          <text className="zoneText" x="604" y="158">매수 검토</text>
-          <text className="zoneText" x="748" y="130">관망</text>
-          <text className="zoneText" x="833" y="84">매도 검토</text>
-          <text className="zoneText" x="124" y="310">리스크 관리</text>
+          <rect className="zone buy" x="676" y="178" width="166" height="98" rx="8" />
+          <rect className="zone watch" x="842" y="144" width="110" height="140" rx="8" />
+          <rect className="zone sell" x="952" y="104" width="86" height="148" rx="8" />
+          <rect className="zone risk" x="128" y="330" width="154" height="76" rx="8" />
+          <text className="zoneText" x="690" y="166">매수 검토</text>
+          <text className="zoneText" x="854" y="132">관망</text>
+          <text className="zoneText" x="962" y="92">매도 검토</text>
+          <text className="zoneText" x="140" y="318">리스크 관리</text>
 
-          <polygon className="area" points={`${polyline(points)} 925,430 48,430`} />
+          <polygon className="area" points={`${polyline(points)} 1066,430 48,430`} />
           <polyline className="priceLine" points={polyline(points)} />
           <polyline className="maLine blue" points={polyline(ma20)} />
           <polyline className="maLine amber" points={polyline(ma60)} />
@@ -165,20 +187,32 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
           ))}
 
           {volumeBars.map((bar, index) => (
-            <rect className={bar.up ? "volumeBar up" : "volumeBar down"} key={`${points[index].date}-volume`} x={bar.x - 6} y={468 - bar.h} width="10" height={bar.h} rx="3" />
+            <rect className={bar.up ? "volumeBar up" : "volumeBar down"} key={`${points[index].date}-volume`} x={bar.x - 6} y={486 - bar.h} width="10" height={bar.h} rx="3" />
           ))}
 
-          <path className="handArrow" d="M690 112 C658 124 632 146 614 178" />
-          <path className="handArrow" d="M474 248 C502 258 532 256 558 236" />
-          <path className="handArrow" d="M230 310 C198 324 172 346 150 378" />
-          <path className="handArrow red" d="M846 156 C830 176 816 196 802 224" />
-          <text className="handLabel" x="684" y="102">거래량 붙은 돌파</text>
-          <text className="handLabel" x="386" y="238">속도 조절</text>
-          <text className="handLabel" x="116" y="298">지지선 기준</text>
-          <text className="handLabel" x="790" y="145">반대 신호</text>
+          <circle className="eventMarker good" cx="446" cy="220" r="8" />
+          <circle className="eventMarker bad" cx="904" cy="172" r="8" />
+          <text className="markerLabel" x="456" y="214">호재</text>
+          <text className="markerLabel" x="914" y="166">악재</text>
 
-          <text className="axisLabel" x="48" y="504">거래량</text>
-          <text className="axisLabel" x="690" y="504">RSI · MACD · OBV는 추세 확인용</text>
+          <path className="handArrow" d="M790 112 C746 130 708 150 684 186" />
+          <path className="handArrow" d="M552 260 C586 270 624 266 654 240" />
+          <path className="handArrow" d="M258 320 C220 336 188 360 164 402" />
+          <path className="handArrow red" d="M972 154 C948 180 924 208 906 246" />
+          <text className="handLabel" x="746" y="102">거래량 붙은 돌파</text>
+          <text className="handLabel" x="442" y="250">속도 조절</text>
+          <text className="handLabel" x="118" y="306">지지선 기준</text>
+          <text className="handLabel" x="908" y="142">반대 신호</text>
+
+          <line className="indicatorDivider" x1="48" x2="1066" y1="518" y2="518" />
+          <line className="indicatorDivider" x1="48" x2="1066" y1="582" y2="582" />
+          <polyline className="indicator obv" points={indicatorLine(points, 512, 52, 0.2)} />
+          <polyline className="indicator rsi" points={indicatorLine(points, 574, 50, 1.4)} />
+          <polyline className="indicator macd" points={indicatorLine(points, 634, 48, 2.5)} />
+          <text className="axisLabel" x="48" y="502">거래량</text>
+          <text className="axisLabel" x="48" y="548">OBV · 수급이 가격을 받치는지 확인</text>
+          <text className="axisLabel" x="48" y="612">RSI · 과열과 추세 힘 확인</text>
+          <text className="axisLabel" x="48" y="672">MACD · 모멘텀 둔화 확인</text>
         </svg>
 
         {notes.map((note) => (
@@ -198,6 +232,21 @@ export function ChartWorkspace({ interval, onIntervalChange, workspace, mode }) 
           <ActiveIcon size={16} />
           <strong>{active.title}</strong>
           <span>{active.body}</span>
+        </div>
+      </div>
+
+      <div className="aiLedger" aria-label="차트 아래 AI 판단 요약">
+        <div>
+          <span>추세 판단</span>
+          <strong>{workspace.ai.phase}</strong>
+        </div>
+        <div>
+          <span>진입 신호</span>
+          <strong>{workspace.ai.buyCondition}</strong>
+        </div>
+        <div>
+          <span>반대 신호</span>
+          <strong>{workspace.ai.opposingSignals?.[0] || workspace.ai.waitCondition}</strong>
         </div>
       </div>
 

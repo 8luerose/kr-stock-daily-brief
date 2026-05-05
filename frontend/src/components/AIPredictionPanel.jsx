@@ -15,6 +15,10 @@ export function AIPredictionPanel({ workspace, mode }) {
         <span className="eyebrow">AI 예측 요약</span>
         <strong>{ai.phase}</strong>
         <p>{ai.direction}</p>
+        <div className="confidenceDial">
+          <span style={{ "--confidence": ai.confidence }}>{ai.confidence}</span>
+          <em>조건 신뢰도</em>
+        </div>
       </div>
 
       <div className="aiConditions">

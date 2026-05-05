@@ -38,21 +38,33 @@ export function SearchCommand({ candidates, onSelectStock, onOpenLearning }) {
 
   return (
     <section className="commandCenter" aria-label="통합 검색">
-      <label className="searchBox" htmlFor="universal-search">
-        <Search size={21} />
-        <input
-          id="universal-search"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder="종목, 테마, 용어를 검색하세요"
-          autoComplete="off"
-        />
-        <span>AI 차트 연결</span>
-      </label>
+      <div className="commandGlass">
+        <label className="searchBox" htmlFor="universal-search">
+          <Search size={21} />
+          <input
+            id="universal-search"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            placeholder="삼성전자, 거래량, 반도체 호재"
+            autoComplete="off"
+          />
+          <span>차트 연결</span>
+        </label>
+        <div className="candidateRail" aria-label="오늘 관심 후보">
+          {visibleCandidates.map((stock) => (
+            <button className="candidateCard" key={stock.code} type="button" onClick={() => onSelectStock?.(stock.code)}>
+              <span>{stock.market}</span>
+              <strong>{stock.name}</strong>
+              <em>{stock.changeRate}</em>
+              <ArrowUpRight size={15} />
+            </button>
+          ))}
+        </div>
+      </div>
 
       {open && query.trim() ? (
         <div className="searchResults" role="listbox" aria-label="검색 결과">
@@ -79,18 +91,6 @@ export function SearchCommand({ candidates, onSelectStock, onOpenLearning }) {
           )}
         </div>
       ) : null}
-
-      <div className="candidateRail" aria-label="오늘 관심 후보">
-        {visibleCandidates.map((stock) => (
-          <button className="candidateCard" key={stock.code} type="button" onClick={() => onSelectStock?.(stock.code)}>
-            <span>{stock.market}</span>
-            <strong>{stock.name}</strong>
-            <em>{stock.changeRate}</em>
-            <p>{stock.beginnerLine}</p>
-            <ArrowUpRight size={15} />
-          </button>
-        ))}
-      </div>
     </section>
   );
 }
