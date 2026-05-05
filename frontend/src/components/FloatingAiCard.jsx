@@ -4,7 +4,7 @@ import clsx from 'clsx';
 import styles from './FloatingAiCard.module.css';
 
 export default function FloatingAiCard({ ai, events, asOf }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   if (!ai) return null;
 

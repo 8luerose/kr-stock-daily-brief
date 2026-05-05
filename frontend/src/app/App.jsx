@@ -114,18 +114,20 @@ function App() {
           <FloatingAiCard ai={data.ai} events={data.events} asOf={data.asOf} />
         )}
 
-        <FloatingLearningMode 
-          isActive={learningMode} 
-          onToggle={handleToggleLearningMode} 
-        />
+        <div className={styles.rightActionGroup}>
+          <FloatingLearningMode 
+            isActive={learningMode} 
+            onToggle={handleToggleLearningMode} 
+          />
 
-        <button 
-          className={clsx(styles.floatingIconBtn, styles.portfolioBtn)}
-          onClick={() => setPortfolioOpen(true)}
-          aria-label="Open Portfolio"
-        >
-          <Briefcase size={20} />
-        </button>
+          <button 
+            className={styles.floatingIconBtn}
+            onClick={() => setPortfolioOpen(true)}
+            aria-label="Open Portfolio"
+          >
+            <Briefcase size={20} />
+          </button>
+        </div>
       </div>
 
       <DeepDiveLearningSheet 

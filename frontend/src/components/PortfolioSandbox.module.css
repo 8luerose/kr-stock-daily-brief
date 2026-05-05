@@ -81,6 +81,9 @@
 .content {
   padding: var(--spacing-4);
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .desc {
@@ -95,6 +98,7 @@
   padding: var(--spacing-4);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
+  margin-bottom: var(--spacing-4);
 }
 
 .stockInfo {
@@ -151,7 +155,8 @@
 }
 
 .aiReviewSection {
-  margin-top: var(--spacing-5);
+  margin-top: auto;
+  padding-top: var(--spacing-5);
   animation: fadeIn var(--transition-normal) forwards;
 }
 
@@ -176,9 +181,11 @@
 }
 
 .reviewCard p {
+  flex: 1;
   font-size: 0.85rem;
   color: var(--color-text-secondary);
   line-height: 1.4;
+  word-break: keep-all;
 }
 
 .warnIcon { color: var(--color-warning); flex-shrink: 0; }
