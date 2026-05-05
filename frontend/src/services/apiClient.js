@@ -21,76 +21,6 @@ async function requestJson(path, options = {}) {
   return response.json();
 }
 
-function normalizeSearchResult(item) {
-  if (item.type === "term") {
-    return {
-      id: item.id || `term-${item.termId || item.title}`,
-      type: "term",
-      title: item.title || item.term,
-      code: "학습",
-      market: "용어",
-      changeRate: "기초",
-      theme: (item.tags || []).join(" · ") || "주식 개념",
-      beginnerLine: item.summary || "차트와 연결해서 배우는 용어입니다."
-    };
-  }
-  return {
-    id: item.id || `stock-${item.code || item.stockCode}`,
-    type: "stock",
-    code: item.code || item.stockCode,
-    name: item.name || item.stockName || item.title,
-    title: item.title || item.stockName || item.name,
-    market: item.market || "KRX",
-    changeRate: item.rate || item.changeRate || "확인 필요",
-    theme: (item.tags || []).join(" · ") || item.theme || "관심 후보",
-    beginnerLine: item.summary || item.beginnerLine || "차트와 AI 조건을 함께 확인할 수 있습니다.",
-    positive: item.positive || item.goodNews || "호재 요약을 불러오는 중입니다.",
-    negative: item.negative || item.badNews || "악재 요약을 불러오는 중입니다."
-  };
-}
-
-export async function searchWorkspace(query) {
-  const normalizedQuery = query.trim().toLowerCase();
-  const localStocks = fallbackStocks.filter((stock) => {
-    const haystack = `${stock.name} ${stock.code} ${stock.market} ${stock.theme}`.toLowerCase();
-    return !normalizedQuery || haystack.includes(normalizedQuery);
-  });
-  const localTerms = fallbackLearningTerms
-    .filter((term) => {
-      const haystack = `${term.term} ${term.category} ${term.coreSummary}`.toLowerCase();
-      return normalizedQuery && haystack.includes(normalizedQuery);
-    })
-    .slice(0, 3)
-    .map((term) => ({
-      id: `term-${term.id}`,
-      type: "term",
-      title: term.term,
-      code: "학습",
-      market: term.category,
-      changeRate: "개념",
-      theme: term.relatedChartZone,
-      beginnerLine: term.coreSummary
-    }));
-
-  function uniqueResults(items) {
-    const seen = new Set();
-    return items.filter((item) => {
-      const key = item.code ? `${item.type || "stock"}-${item.code}` : item.id;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }
-
-  try {
-    const remote = await requestJson(`/api/search?q=${encodeURIComponent(query)}`);
-    const remoteResults = Array.isArray(remote) ? remote.map(normalizeSearchResult) : [];
-    return uniqueResults([...remoteResults, ...localStocks, ...localTerms]).slice(0, 5);
-  } catch {
-    return uniqueResults([...localStocks, ...localTerms]).slice(0, 5);
-  }
-}
-
 function normalizeChart(remoteChart) {
   const rows = remoteChart?.data || remoteChart?.rows || fallbackWorkspace.chart.rows;
   return {
@@ -265,16 +195,53 @@ export async function loadSummaryArchive() {
   } catch {
     return {
       latest: {
-        date: fallbackWorkspace.asOf,
-        topGainers: fallbackStocks.slice(0, 2).map((stock) => ({ code: stock.code, name: stock.name }))
+        date: "2026-05-05",
+        effectiveDate: "20260504",
+        topGainer: "KBI메탈",
+        topLoser: "루닛",
+        mostMentioned: "PI첨단소재",
+        kospiPick: "대원전선우",
+        kosdaqPick: "KBI메탈",
+        rawNotes: "Source: pykrx(KRX OHLCV 전일대비 계산) + naver(board posts)\neffective_date=20260504",
+        topGainers: [
+          { code: "024840", name: "KBI메탈", rate: 30.0 },
+          { code: "322310", name: "오로스테크놀로지", rate: 30.0 },
+          { code: "006345", name: "대원전선우", rate: 29.98 }
+        ],
+        topLosers: [
+          { code: "328130", name: "루닛", rate: -49.82 },
+          { code: "217620", name: "선샤인푸드", rate: -34.43 },
+          { code: "261780", name: "차백신연구소", rate: -18.17 }
+        ],
+        mostMentionedTop: [
+          { code: "178920", name: "PI첨단소재", count: 57 },
+          { code: "448900", name: "한국피아이엠", count: 55 },
+          { code: "259960", name: "크래프톤", count: 55 }
+        ],
+        kospiTopGainer: "대원전선우",
+        kosdaqTopGainer: "KBI메탈",
+        kospiTopGainerCode: "006345",
+        kosdaqTopGainerCode: "024840",
+        kospiTopGainerRate: 29.98,
+        kosdaqTopGainerRate: 30.0,
+        kospiTopGainers: [
+          { code: "006345", name: "대원전선우", rate: 29.98 },
+          { code: "007610", name: "선도전기", rate: 29.94 },
+          { code: "015860", name: "일진홀딩스", rate: 29.94 }
+        ],
+        kosdaqTopGainers: [
+          { code: "024840", name: "KBI메탈", rate: 30.0 },
+          { code: "322310", name: "오로스테크놀로지", rate: 30.0 },
+          { code: "092190", name: "서울바이오시스", rate: 29.98 }
+        ]
       },
       list: [
         {
-          date: fallbackWorkspace.asOf,
-          topGainer: "삼성전자",
-          topLoser: "NAVER",
-          mostMentioned: "반도체",
-          content: "관리자와 기록 영역에 보존되는 브리프 예시입니다."
+          date: "2026-05-05",
+          topGainer: "KBI메탈",
+          topLoser: "루닛",
+          mostMentioned: "PI첨단소재",
+          content: "2026-05-05 한국 주식 일간 브리프 예시입니다."
         }
       ],
       source: "앱 내 예시 데이터"

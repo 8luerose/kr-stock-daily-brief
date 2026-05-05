@@ -16,6 +16,34 @@ function getEventLabel(type) {
   return '확인 필요';
 }
 
+function formatRate(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '';
+  const sign = number > 0 ? '+' : '';
+  return `${sign}${number.toFixed(2)}%`;
+}
+
+function formatLeader(entry) {
+  if (!entry) return '확인 필요';
+  const name = entry.name || entry.title || entry.value || '확인 필요';
+  const code = entry.code ? `(${entry.code})` : '';
+  const rate = formatRate(entry.rate);
+  return [name + code, rate].filter(Boolean).join(' ');
+}
+
+function firstLeader(list, fallbackName, fallbackCode, fallbackRate) {
+  if (Array.isArray(list) && list.length > 0) return list[0];
+  if (fallbackName) {
+    return { name: fallbackName, code: fallbackCode, rate: fallbackRate };
+  }
+  return null;
+}
+
+function formatBriefDate(summary) {
+  if (!summary?.date) return '일간';
+  return summary.date;
+}
+
 function CustomTooltip({ active, payload, learningMode, onTermClick }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -87,8 +115,8 @@ function parsePriceRange(priceStr) {
   return [val - val * 0.02, val + val * 0.02]; // fallback 2% band
 }
 
-export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, learningMode, onTermClick, children }) {
-  const [activePanel, setActivePanel] = useState('none'); // 'none', 'guide', 'ai'
+export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, learningMode, onTermClick, summary, children }) {
+  const [activePanel, setActivePanel] = useState('none'); // 'none', 'brief', 'guide', 'ai'
   const [guideTab, setGuideTab] = useState('ma'); // 'ma', 'beginner', 'event'
 
   const chartData = useMemo(() => {
@@ -184,6 +212,16 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     };
   });
   const visibleEvents = (events || []).slice(0, 2);
+  const briefTitle = summary ? `${formatBriefDate(summary)} 한국 주식 일간 브리프` : '저장 브리프 불러오는 중';
+  const kospiTopGainer = firstLeader(summary?.kospiTopGainers, summary?.kospiTopGainer, summary?.kospiTopGainerCode, summary?.kospiTopGainerRate);
+  const kosdaqTopGainer = firstLeader(summary?.kosdaqTopGainers, summary?.kosdaqTopGainer, summary?.kosdaqTopGainerCode, summary?.kosdaqTopGainerRate);
+  const marketTopGainer = firstLeader(summary?.topGainers, summary?.topGainer, null, null);
+  const marketTopLoser = firstLeader(summary?.topLosers, summary?.topLoser, null, null);
+  const mentionLeader = Array.isArray(summary?.mostMentionedTop) && summary.mostMentionedTop.length > 0
+    ? summary.mostMentionedTop[0]
+    : summary?.mostMentioned
+      ? { name: summary.mostMentioned }
+      : null;
 
   const getZoneColor = (type) => {
     if (type === 'buy' || type === 'split') return 'var(--color-positive)';
@@ -270,7 +308,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       </div>
 
       {/* Top Unified Toolbar */}
-      <div className={styles.topToolbar}>
+      <div className={styles.topToolbar} data-testid="chart-toolbar">
         <div className={styles.intervalGroup}>
           {['daily', 'weekly', 'monthly'].map(intv => (
             <button
@@ -287,14 +325,61 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
 
         <div className={styles.actionGroup}>
           <div className={styles.actionItem}>
+            <button
+              className={clsx(styles.actionBtn, activePanel === 'brief' && styles.actionBtnActive)}
+              onClick={() => setActivePanel(activePanel === 'brief' ? 'none' : 'brief')}
+              data-testid="daily-brief-button"
+              aria-label="일간 브리프"
+            >
+              <span>📊</span> 일간 브리프 <span className={styles.chevron}>▼</span>
+            </button>
+            {activePanel === 'brief' && (
+              <div className={styles.dropdownPanel} data-testid="daily-brief-panel">
+                <div className={styles.briefHeader}>
+                  <span>저장 브리프</span>
+                  <strong>{briefTitle}</strong>
+                </div>
+                <div className={styles.briefGrid}>
+                  <article>
+                    <span>KOSPI 상승 1위</span>
+                    <strong>{formatLeader(kospiTopGainer)}</strong>
+                  </article>
+                  <article>
+                    <span>KOSDAQ 상승 1위</span>
+                    <strong>{formatLeader(kosdaqTopGainer)}</strong>
+                  </article>
+                  <article>
+                    <span>전체 상승 대표</span>
+                    <strong>{formatLeader(marketTopGainer)}</strong>
+                  </article>
+                  <article>
+                    <span>전체 하락 대표</span>
+                    <strong>{formatLeader(marketTopLoser)}</strong>
+                  </article>
+                </div>
+                <div className={styles.briefMention}>
+                  <span>네이버 토론 언급 상위</span>
+                  <strong>{formatLeader(mentionLeader)}</strong>
+                </div>
+                {summary?.rawNotes && (
+                  <p className={styles.briefSource}>
+                    {summary.rawNotes.split('\n').find((line) => line.includes('effective_date')) || summary.rawNotes.split('\n')[0]}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.actionItem}>
             <button 
               className={clsx(styles.actionBtn, activePanel === 'guide' && styles.actionBtnActive)}
               onClick={() => setActivePanel(activePanel === 'guide' ? 'none' : 'guide')}
+              aria-label="차트 가이드"
             >
               <span>💡</span> 차트 가이드 <span className={styles.chevron}>▼</span>
             </button>
             {activePanel === 'guide' && (
-              <div className={styles.dropdownPanel}>
+              <div className={styles.dropdownPanel} data-testid="chart-guide-panel">
                 <div className={styles.panelTabs}>
                   <button className={clsx(guideTab === 'ma' && styles.activeTab)} onClick={() => setGuideTab('ma')}>이동평균선</button>
                   <button className={clsx(guideTab === 'beginner' && styles.activeTab)} onClick={() => setGuideTab('beginner')}>체크리스트</button>
@@ -356,11 +441,12 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
             <button 
               className={clsx(styles.actionBtn, activePanel === 'ai' && styles.actionBtnActive)}
               onClick={() => setActivePanel(activePanel === 'ai' ? 'none' : 'ai')}
+              aria-label="AI 검토 조건"
             >
               <span>🤖</span> AI 검토 조건 <span className={styles.chevron}>▼</span>
             </button>
             {activePanel === 'ai' && (
-              <div className={clsx(styles.dropdownPanel, styles.dropdownRight)}>
+              <div className={clsx(styles.dropdownPanel, styles.dropdownRight)} data-testid="chart-ai-condition-panel">
                 <div className={styles.conditionGrid}>
                   {conditionRows.map((row) => (
                     <article key={row.type} className={clsx(styles.conditionItem, styles[`condition-${row.type}`])}>

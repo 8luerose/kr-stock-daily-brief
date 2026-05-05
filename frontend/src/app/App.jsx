@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { loadLearningTerms } from '../services/apiClient';
-import SpotlightSearch from '../components/SpotlightSearch';
+import { loadLearningTerms, loadSummaryArchive } from '../services/apiClient';
 import ImmersiveChart from '../components/ImmersiveChart';
 import FloatingAiCard from '../components/FloatingAiCard';
 import FloatingLearningMode from '../components/FloatingLearningMode';
@@ -19,10 +18,6 @@ function App() {
     data,
     loading,
     error,
-    searchResults,
-    isSearching,
-    handleSearch,
-    changeStock,
     changeInterval
   } = useWorkspace();
 
@@ -31,6 +26,19 @@ function App() {
   const [termData, setTermData] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
+  const [summaryArchive, setSummaryArchive] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    loadSummaryArchive()
+      .then((archive) => {
+        if (mounted) setSummaryArchive(archive);
+      })
+      .catch(() => {
+        if (mounted) setSummaryArchive(null);
+      });
+    return () => { mounted = false; };
+  }, []);
 
   const handleToggleLearningMode = () => {
     if (!learningMode) {
@@ -84,6 +92,7 @@ function App() {
             onChangeInterval={changeInterval}
             learningMode={learningMode}
             onTermClick={handleSelectTerm}
+            summary={summaryArchive?.latest}
           >
             <FloatingLearningMode 
               isActive={learningMode} 
@@ -116,14 +125,6 @@ function App() {
 
       {/* Floating UI Layer */}
       <div className={styles.uiLayer}>
-        <SpotlightSearch 
-          onSearch={handleSearch} 
-          results={searchResults} 
-          isSearching={isSearching}
-          onSelect={changeStock}
-          onSelectTerm={handleSelectTerm}
-        />
-        
         {data && !loading && (
           <FloatingAiCard ai={data.ai} events={data.events} asOf={data.asOf} />
         )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { loadStockWorkspace, searchWorkspace } from '../services/apiClient';
+import { loadStockWorkspace } from '../services/apiClient';
 
 export function useWorkspace(initialCode = '005930', initialInterval = 'daily') {
   const [activeCode, setActiveCode] = useState(initialCode);
@@ -7,8 +7,6 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -35,27 +33,6 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
     return () => { mounted = false; };
   }, [activeCode, interval, refreshKey]);
 
-  const handleSearch = useCallback(async (query) => {
-    if (!query || query.trim() === '') {
-      setSearchResults([]);
-      return;
-    }
-    setIsSearching(true);
-    try {
-      const results = await searchWorkspace(query);
-      setSearchResults(results);
-    } catch {
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
-
-  const changeStock = useCallback((code) => {
-    setActiveCode(code);
-    setSearchResults([]);
-  }, []);
-
   const changeInterval = useCallback((newInterval) => {
     setRefreshKey((key) => key + 1);
     setInterval(newInterval);
@@ -67,10 +44,6 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
     data,
     loading,
     error,
-    searchResults,
-    isSearching,
-    handleSearch,
-    changeStock,
     changeInterval
   };
 }

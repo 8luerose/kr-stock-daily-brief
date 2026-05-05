@@ -5,6 +5,43 @@ const APP_URL = process.env.APP_URL || "http://localhost:5173";
 
 const chartRows = fallbackWorkspace.chart.rows;
 const tradeZones = fallbackWorkspace.zones;
+const dailyBriefSample = {
+  date: "2026-05-05",
+  effectiveDate: "20260504",
+  topGainer: "KBI메탈",
+  topLoser: "루닛",
+  mostMentioned: "PI첨단소재",
+  rawNotes: "Source: pykrx(KRX OHLCV 전일대비 계산) + naver(board posts)\neffective_date=20260504",
+  topGainers: [
+    { code: "024840", name: "KBI메탈", rate: 30.0 },
+    { code: "322310", name: "오로스테크놀로지", rate: 30.0 },
+    { code: "006345", name: "대원전선우", rate: 29.98 }
+  ],
+  topLosers: [
+    { code: "328130", name: "루닛", rate: -49.82 },
+    { code: "217620", name: "선샤인푸드", rate: -34.43 },
+    { code: "261780", name: "차백신연구소", rate: -18.17 }
+  ],
+  mostMentionedTop: [
+    { code: "178920", name: "PI첨단소재", count: 57 },
+    { code: "448900", name: "한국피아이엠", count: 55 },
+    { code: "259960", name: "크래프톤", count: 55 }
+  ],
+  kospiTopGainer: "대원전선우",
+  kospiTopGainerCode: "006345",
+  kospiTopGainerRate: 29.98,
+  kosdaqTopGainer: "KBI메탈",
+  kosdaqTopGainerCode: "024840",
+  kosdaqTopGainerRate: 30.0,
+  kospiTopGainers: [
+    { code: "006345", name: "대원전선우", rate: 29.98 },
+    { code: "007610", name: "선도전기", rate: 29.94 }
+  ],
+  kosdaqTopGainers: [
+    { code: "024840", name: "KBI메탈", rate: 30.0 },
+    { code: "322310", name: "오로스테크놀로지", rate: 30.0 }
+  ]
+};
 
 async function stubBackend(page) {
   await page.route("http://localhost:8080/api/**", async (route) => {
@@ -12,26 +49,8 @@ async function stubBackend(page) {
     const json = (body) =>
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
 
-    if (url.includes("/api/search")) {
-      return json([
-        {
-          id: "stock-005930",
-          type: "stock",
-          title: "삼성전자",
-          code: "005930",
-          market: "KOSPI",
-          rate: "+1.55%",
-          tags: ["반도체", "AI 메모리"],
-          summary: "차트와 AI 설명으로 근거를 확인할 수 있습니다."
-        },
-        {
-          id: "term-volume",
-          type: "term",
-          title: "거래량",
-          summary: "가격 움직임의 신뢰도를 확인합니다."
-        }
-      ]);
-    }
+    if (url.includes("/api/summaries/latest")) return json(dailyBriefSample);
+    if (url.includes("/api/summaries?")) return json([dailyBriefSample]);
     if (url.includes("/api/portfolio")) {
       const method = route.request().method();
       if (method === "GET") {
@@ -148,7 +167,7 @@ async function openApp(page) {
 
   await stubBackend(page);
   await page.goto(`${APP_URL}/`, { waitUntil: "networkidle" });
-  await page.waitForSelector('input[placeholder="종목명, 테마, 용어 검색..."]');
+  await page.waitForSelector('[data-testid="chart-toolbar"]');
 }
 
 function intersects(a, b) {
@@ -168,10 +187,9 @@ async function readResponsiveMetrics(page) {
         height: Math.round(r.height)
       };
     };
-    const byButtonText = (text) => Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim() === text);
-    const searchInput = document.querySelector('input[placeholder="종목명, 테마, 용어 검색..."]');
+    const byButtonText = (text) => Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.trim().includes(text));
     const aiButton = document.querySelector('button[aria-label="AI 요약 펼치기"], button[aria-label="AI 요약 접기"]');
-    const dropdown = document.querySelector('ul')?.closest('[class*="dropdown"]');
+    const toolbar = document.querySelector('[data-testid="chart-toolbar"]');
     const visibleElements = Array.from(document.querySelectorAll('body *')).filter((el) => {
       const r = el.getBoundingClientRect();
       const style = getComputedStyle(el);
@@ -188,12 +206,14 @@ async function readResponsiveMetrics(page) {
     });
 
     return {
-      search: rect(searchInput?.closest('[class*="container"]')),
-      dropdown: rect(dropdown),
+      toolbar: rect(toolbar),
       aiCard: rect(aiButton?.parentElement),
       learning: rect(document.querySelector('button[aria-label="Toggle Learning Mode"]')),
       portfolio: rect(document.querySelector('button[aria-label="Open Portfolio"]')),
       interval: rect(byButtonText('1일')?.parentElement),
+      brief: rect(byButtonText('일간 브리프')),
+      guide: rect(byButtonText('차트 가이드')),
+      aiCondition: rect(byButtonText('AI 검토 조건')),
       textOverflowCount: textOverflow.length,
       viewportOverflowCount: viewportOverflow.length
     };
@@ -204,22 +224,43 @@ for (const viewport of [
   { name: "desktop", width: 1440, height: 1000 },
   { name: "mobile", width: 390, height: 900 }
 ]) {
-  test(`home shows chart, search, and AI card on ${viewport.name}`, async ({ page }) => {
+  test(`home shows chart, daily brief, and AI card on ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openApp(page);
 
-    await expect(page.locator('input[placeholder="종목명, 테마, 용어 검색..."]')).toBeVisible();
+    await expect(page.locator('input[placeholder="종목명, 테마, 용어 검색..."]')).toHaveCount(0);
     await expect(page.locator('.recharts-responsive-container')).toBeVisible();
     await expectChartSvgPainted(page);
-    await expect(page.getByTestId("chart-ma-panel")).toContainText("5일선: 단기 흐름");
-    await expect(page.getByTestId("chart-ma-panel")).toContainText("20일선: 약 한 달 평균");
-    await expect(page.getByTestId("chart-ma-panel")).toContainText("60일선: 중기 흐름");
-    await expect(page.getByTestId("chart-condition-panel")).toContainText("매수 검토");
-    await expect(page.getByTestId("chart-condition-panel")).toContainText("관망");
-    await expect(page.getByTestId("chart-condition-panel")).toContainText("매도 검토");
-    await expect(page.getByTestId("chart-condition-panel")).toContainText("리스크 관리");
-    await expect(page.getByTestId("chart-beginner-guide")).toContainText("처음 볼 3가지");
-    await expect(page.getByTestId("chart-event-panel")).toContainText("호재 후보");
+
+    await expect(page.getByTestId("chart-toolbar")).toBeVisible();
+    await expect(page.getByRole("button", { name: /1일/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /1주/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /1개월/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /일간 브리프/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /차트 가이드/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /AI 검토 조건/ })).toBeVisible();
+    await expect(page.locator('button[aria-label="Toggle Learning Mode"]')).toBeVisible();
+
+    await page.getByRole("button", { name: /일간 브리프/ }).click();
+    await expect(page.getByTestId("daily-brief-panel")).toContainText("2026-05-05 한국 주식 일간 브리프");
+    await expect(page.getByTestId("daily-brief-panel")).toContainText("대원전선우");
+    await expect(page.getByTestId("daily-brief-panel")).toContainText("KBI메탈");
+    await expect(page.getByTestId("daily-brief-panel")).toContainText("PI첨단소재");
+
+    await page.getByRole("button", { name: /차트 가이드/ }).click();
+    const guidePanel = page.getByTestId("chart-guide-panel");
+    await expect(guidePanel.getByText("5일선", { exact: true })).toBeVisible();
+    await expect(guidePanel.getByText("20일선", { exact: true })).toBeVisible();
+    await expect(guidePanel.getByText("60일선", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "이벤트 해석" }).click();
+    await expect(guidePanel.locator("text=호재 후보")).toBeVisible();
+
+    await page.getByRole("button", { name: /AI 검토 조건/ }).click();
+    const conditionPanel = page.getByTestId("chart-ai-condition-panel");
+    await expect(conditionPanel.getByText("매수 검토", { exact: true })).toBeVisible();
+    await expect(conditionPanel.getByText("관망", { exact: true })).toBeVisible();
+    await expect(conditionPanel.getByText("매도 검토", { exact: true })).toBeVisible();
+    await expect(conditionPanel.getByText("리스크 관리", { exact: true })).toBeVisible();
 
     await expect(page.locator('button[aria-label="AI 요약 펼치기"]')).toBeVisible();
     await expect(page.locator('text=매매 검토 시점')).toHaveCount(0);
@@ -252,24 +293,6 @@ test("daily weekly monthly controls refetch and keep chart painted", async ({ pa
   }
 });
 
-test("search results display correctly and open learning sheet", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await openApp(page);
-
-  await page.fill('input[placeholder="종목명, 테마, 용어 검색..."]', "거래량");
-  
-  // Wait for dropdown
-  const termItem = page.locator('[class*="dropdown"] li', { hasText: '거래량' }).first();
-  await expect(termItem).toBeVisible();
-
-  // Click term
-  await termItem.click();
-
-  // DeepDiveLearningSheet should be open
-  await expect(page.locator('h2', { hasText: '거래량' })).toBeVisible();
-  await expect(page.locator('text=핵심 한 줄:')).toBeVisible();
-});
-
 for (const viewport of [
   { name: "desktop-1440", width: 1440, height: 1000 },
   { name: "desktop-1280", width: 1280, height: 900 },
@@ -280,18 +303,13 @@ for (const viewport of [
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openApp(page);
 
-    await page.fill('input[placeholder="종목명, 테마, 용어 검색..."]', "삼성");
-    await expect(page.locator('li', { hasText: '삼성전자' })).toBeVisible();
-
     const metrics = await readResponsiveMetrics(page);
     expect(metrics.textOverflowCount).toBe(0);
     expect(metrics.viewportOverflowCount).toBe(0);
     expect(intersects(metrics.learning, metrics.portfolio)).toBe(false);
     expect(intersects(metrics.learning, metrics.interval)).toBe(false);
     expect(intersects(metrics.portfolio, metrics.interval)).toBe(false);
-    expect(intersects(metrics.search, metrics.learning)).toBe(false);
-    expect(intersects(metrics.search, metrics.portfolio)).toBe(false);
-    expect(intersects(metrics.dropdown, metrics.aiCard)).toBe(false);
+    expect(intersects(metrics.toolbar, metrics.aiCard)).toBe(false);
   });
 }
 

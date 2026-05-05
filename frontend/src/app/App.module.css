@@ -132,4 +132,9 @@
     align-items: flex-end;
     gap: var(--spacing-2);
   }
+
+  .floatingIconBtn {
+    width: 40px;
+    height: 40px;
+  }
 }
