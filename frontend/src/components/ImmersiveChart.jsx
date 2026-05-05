@@ -92,7 +92,11 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   const chartData = useMemo(() => {
     if (!chart?.rows) return [];
 
-    // Compute moving averages used by the visual chart layer.
+    const eventsMap = new Map();
+    if (events) {
+      events.forEach(e => eventsMap.set(e.date, e));
+    }
+
     let temp = chart.rows.map(row => ({ ...row }));
     for (let i = 0; i < temp.length; i++) {
       if (i >= 4) {
@@ -110,15 +114,10 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         for (let j = 0; j < 60; j++) sum += temp[i - j].close;
         temp[i].ma60 = sum / 60;
       }
+      temp[i].event = eventsMap.get(temp[i].date) || null;
     }
 
-    return temp.map(row => {
-      const event = events?.find(e => e.date === row.date);
-      return {
-        ...row,
-        event: event || null,
-      };
-    });
+    return temp;
   }, [chart, events]);
 
   if (!chartData || chartData.length === 0) return null;
@@ -192,112 +191,180 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
 
   return (
     <div className={styles.container}>
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={chartData} margin={{ top: 112, right: 28, left: 28, bottom: 56 }}>
-          <defs>
-            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.4}/>
-              <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0.0}/>
-            </linearGradient>
-          </defs>
-          <XAxis dataKey="date" hide />
-          <YAxis domain={[minPrice - padding, maxPrice + padding]} hide />
+      <div className={styles.chartWrapper}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={chartData} margin={{ top: 112, right: 28, left: 28, bottom: 56 }}>
+            <defs>
+              <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.4}/>
+                <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0.0}/>
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="date" hide />
+            <YAxis domain={[minPrice - padding, maxPrice + padding]} hide />
 
-          <Tooltip
-            content={<CustomTooltip learningMode={learningMode} onTermClick={onTermClick} />}
-            cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }}
-            isAnimationActive={false}
-          />
+            <Tooltip
+              content={<CustomTooltip learningMode={learningMode} onTermClick={onTermClick} />}
+              cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }}
+              isAnimationActive={false}
+            />
 
-          {/* AI Zones as Horizontal Bands */}
-          {zones && zones.map((zone, idx) => {
-            const range = parsePriceRange(zone.price);
-            if (!range) return null;
-              const color = getZoneColor(zone.type);
-            // Limit Y values so they don't paint over the entire screen infinitely
-            const safeY1 = Math.max(range[0], minPrice - padding);
-            const safeY2 = Math.min(range[1], maxPrice + padding);
+            {/* AI Zones as Horizontal Bands */}
+            {zones && zones.map((zone, idx) => {
+              const range = parsePriceRange(zone.price);
+              if (!range) return null;
+                const color = getZoneColor(zone.type);
+              // Limit Y values so they don't paint over the entire screen infinitely
+              const safeY1 = Math.max(range[0], minPrice - padding);
+              const safeY2 = Math.min(range[1], maxPrice + padding);
 
-            return (
-              <ReferenceArea
-                key={idx}
-                y1={safeY1}
-                y2={safeY2}
-                fill={color}
-                fillOpacity={0.05}
-                strokeOpacity={0}
-              >
-                <Label
-                  value={zone.label}
-                  position="insideLeft"
-                  fill={color}
-                  fontSize={11}
-                  fontWeight="bold"
-                  offset={10}
-                  opacity={0.8}
-                />
-              </ReferenceArea>
-            );
-          })}
-
-          <Area type="monotone" dataKey="close" stroke="none" fill="url(#chartGradient)" />
-
-          {/* Moving Average Lines */}
-          <Line
-            type="monotone"
-            dataKey="ma5"
-            stroke="rgba(255,255,255,0.7)"
-            strokeWidth={1}
-            dot={false}
-          />
-
-          <Line
-            type="monotone"
-            dataKey="ma20"
-            stroke="var(--color-text-secondary)"
-            strokeWidth={1}
-            strokeDasharray="3 3"
-            dot={false}
-          />
-
-          <Line
-            type="monotone"
-            dataKey="ma60"
-            stroke="rgba(245, 158, 11, 0.85)"
-            strokeWidth={1}
-            strokeDasharray="6 5"
-            dot={false}
-          />
-
-          <Line
-            type="monotone"
-            dataKey="close"
-            stroke="var(--color-accent)"
-            strokeWidth={3}
-            dot={false}
-            activeDot={{ r: 8, fill: 'var(--color-accent)', stroke: 'var(--color-bg-base)', strokeWidth: 3 }}
-          />
-
-          {/* Event Dots */}
-          {chartData.map((entry, idx) => {
-            if (entry.event) {
-              const color = entry.event.type === 'positive' ? 'var(--color-positive)' : entry.event.type === 'negative' ? 'var(--color-negative)' : 'var(--color-warning)';
               return (
-                <ReferenceDot
+                <ReferenceArea
                   key={idx}
-                  x={entry.date}
-                  y={entry.close}
-                  r={6}
+                  y1={safeY1}
+                  y2={safeY2}
                   fill={color}
-                  stroke="var(--color-bg-base)"
-                  strokeWidth={2}
-                />
+                  fillOpacity={0.05}
+                  strokeOpacity={0}
+                >
+                  <Label
+                    value={zone.label}
+                    position="insideLeft"
+                    fill={color}
+                    fontSize={11}
+                    fontWeight="bold"
+                    offset={10}
+                    opacity={0.8}
+                  />
+                </ReferenceArea>
               );
-            }
-            return null;
-          })}
-        </ComposedChart>
-      </ResponsiveContainer>
+            })}
+
+            <Area type="monotone" dataKey="close" stroke="none" fill="url(#chartGradient)" />
+
+            {/* Moving Average Lines */}
+            <Line
+              type="monotone"
+              dataKey="ma5"
+              stroke="rgba(255,255,255,0.7)"
+              strokeWidth={1}
+              dot={false}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="ma20"
+              stroke="var(--color-text-secondary)"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+              dot={false}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="ma60"
+              stroke="rgba(245, 158, 11, 0.85)"
+              strokeWidth={1}
+              strokeDasharray="6 5"
+              dot={false}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="close"
+              stroke="var(--color-accent)"
+              strokeWidth={3}
+              dot={false}
+              activeDot={{ r: 8, fill: 'var(--color-accent)', stroke: 'var(--color-bg-base)', strokeWidth: 3 }}
+            />
+
+            {/* Event Dots */}
+            {chartData.map((entry, idx) => {
+              if (entry.event) {
+                const color = entry.event.type === 'positive' ? 'var(--color-positive)' : entry.event.type === 'negative' ? 'var(--color-negative)' : 'var(--color-warning)';
+                return (
+                  <ReferenceDot
+                    key={idx}
+                    x={entry.date}
+                    y={entry.close}
+                    r={6}
+                    fill={color}
+                    stroke="var(--color-bg-base)"
+                    strokeWidth={2}
+                  />
+                );
+              }
+              return null;
+            })}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className={styles.panelsOverlay}>
+        <div className={styles.leftColumn}>
+          <section className={styles.maPanel} aria-label="이동평균선 설명" data-testid="chart-ma-panel">
+            <div className={styles.panelEyebrow}>차트에서 먼저 볼 것</div>
+            <div className={styles.legendGrid}>
+              <span className={styles.legendItem}><i className={styles.priceLine} />현재가</span>
+              <span className={styles.legendItem}><i className={styles.ma5Line} />5일선: 단기 흐름</span>
+              <span className={styles.legendItem}><i className={styles.ma20Line} />20일선: 약 한 달 평균</span>
+              <span className={styles.legendItem}><i className={styles.ma60Line} />60일선: 중기 흐름</span>
+            </div>
+            <p className={styles.maStatus}>
+              <strong>{ma20StatusText}</strong> {ma20DistanceText}. 위라고 무조건 좋은 것도, 아래라고 무조건 나쁜 것도 아니며 거래량, 지지선, 저항선, 이벤트를 함께 봅니다.
+            </p>
+            <button type="button" className={styles.maDetailButton} onClick={() => onTermClick('이동평균선')}>
+              이동평균선 뜻 보기
+            </button>
+          </section>
+
+          <section className={styles.beginnerPanel} aria-label="초보자 확인 순서" data-testid="chart-beginner-guide">
+            <div className={styles.panelEyebrow}>처음 볼 3가지</div>
+            <ol className={styles.beginnerList}>
+              {beginnerChecklist.map((item) => <li key={item}>{item}</li>)}
+            </ol>
+            <p>반대 신호가 나오면 결론을 보류하고 다음 거래량과 종가를 다시 확인합니다.</p>
+          </section>
+
+          {visibleEvents.length > 0 && (
+            <section className={styles.eventPanel} aria-label="이벤트 해석" data-testid="chart-event-panel">
+              <div className={styles.panelEyebrow}>이벤트 해석</div>
+              {visibleEvents.map((event) => (
+                <article key={event.id || `${event.date}-${event.title}`} className={styles.eventItem}>
+                  <div className={styles.eventHeader}>
+                    <span className={clsx(styles.eventBadge, event.type === 'positive' ? styles.badgePos : event.type === 'negative' ? styles.badgeNeg : styles.badgeNeutral)}>
+                      {getEventLabel(event.type)}
+                    </span>
+                    <strong>{event.title}</strong>
+                  </div>
+                  <p>{getEventLabel(event.type)}인 이유: {event.reason || '가격 반응과 거래량을 함께 확인해야 합니다.'}</p>
+                  <small>반대 해석: {event.opposite || '다음 거래일 종가와 거래량이 다르면 해석을 보류합니다.'}</small>
+                  <small>근거 수준: {event.confidence || '확인 필요'} · 출처 한계: {event.sourceLimit || '뉴스·공시 원문 확인 전에는 확정 원인으로 보지 않습니다.'}</small>
+                </article>
+              ))}
+            </section>
+          )}
+        </div>
+
+        <div className={styles.rightColumn}>
+          <section className={styles.conditionPanel} aria-label="매수 관망 매도 리스크 조건" data-testid="chart-condition-panel">
+            <div className={styles.panelEyebrow}>조건형 검토 기준</div>
+            <div className={styles.conditionList}>
+              {conditionRows.map((row) => (
+                <article key={row.type} className={clsx(styles.conditionItem, styles[`condition-${row.type}`])}>
+                  <div className={styles.conditionHeader}>
+                    <strong>{row.label}</strong>
+                    {row.price && <span>{row.price}</span>}
+                  </div>
+                  <p className={styles.conditionShort}>{row.short}</p>
+                  <p className={styles.conditionDetail}>{row.condition}</p>
+                  {row.opposite && <small>반대 신호: {row.opposite}</small>}
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
 
       {/* Interval Selector Overlaid on Chart */}
       <div className={styles.intervalSelector}>
@@ -318,66 +385,6 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
           </div>
         )}
       </div>
-
-      <section className={styles.maPanel} aria-label="이동평균선 설명" data-testid="chart-ma-panel">
-        <div className={styles.panelEyebrow}>차트에서 먼저 볼 것</div>
-        <div className={styles.legendGrid}>
-          <span className={styles.legendItem}><i className={styles.priceLine} />현재가</span>
-          <span className={styles.legendItem}><i className={styles.ma5Line} />5일선: 단기 흐름</span>
-          <span className={styles.legendItem}><i className={styles.ma20Line} />20일선: 약 한 달 평균</span>
-          <span className={styles.legendItem}><i className={styles.ma60Line} />60일선: 중기 흐름</span>
-        </div>
-        <p className={styles.maStatus}>
-          <strong>{ma20StatusText}</strong> {ma20DistanceText}. 위라고 무조건 좋은 것도, 아래라고 무조건 나쁜 것도 아니며 거래량, 지지선, 저항선, 이벤트를 함께 봅니다.
-        </p>
-        <button type="button" className={styles.maDetailButton} onClick={() => onTermClick('이동평균선')}>
-          이동평균선 뜻 보기
-        </button>
-      </section>
-
-      <section className={styles.beginnerPanel} aria-label="초보자 확인 순서" data-testid="chart-beginner-guide">
-        <div className={styles.panelEyebrow}>처음 볼 3가지</div>
-        <ol className={styles.beginnerList}>
-          {beginnerChecklist.map((item) => <li key={item}>{item}</li>)}
-        </ol>
-        <p>반대 신호가 나오면 결론을 보류하고 다음 거래량과 종가를 다시 확인합니다.</p>
-      </section>
-
-      <section className={styles.conditionPanel} aria-label="매수 관망 매도 리스크 조건" data-testid="chart-condition-panel">
-        <div className={styles.panelEyebrow}>조건형 검토 기준</div>
-        <div className={styles.conditionList}>
-          {conditionRows.map((row) => (
-            <article key={row.type} className={clsx(styles.conditionItem, styles[`condition-${row.type}`])}>
-              <div className={styles.conditionHeader}>
-                <strong>{row.label}</strong>
-                {row.price && <span>{row.price}</span>}
-              </div>
-              <p className={styles.conditionShort}>{row.short}</p>
-              <p className={styles.conditionDetail}>{row.condition}</p>
-              {row.opposite && <small>반대 신호: {row.opposite}</small>}
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {visibleEvents.length > 0 && (
-        <section className={styles.eventPanel} aria-label="이벤트 해석" data-testid="chart-event-panel">
-          <div className={styles.panelEyebrow}>이벤트 해석</div>
-          {visibleEvents.map((event) => (
-            <article key={event.id || `${event.date}-${event.title}`} className={styles.eventItem}>
-              <div className={styles.eventHeader}>
-                <span className={clsx(styles.eventBadge, event.type === 'positive' ? styles.badgePos : event.type === 'negative' ? styles.badgeNeg : styles.badgeNeutral)}>
-                  {getEventLabel(event.type)}
-                </span>
-                <strong>{event.title}</strong>
-              </div>
-              <p>{getEventLabel(event.type)}인 이유: {event.reason || '가격 반응과 거래량을 함께 확인해야 합니다.'}</p>
-              <small>반대 해석: {event.opposite || '다음 거래일 종가와 거래량이 다르면 해석을 보류합니다.'}</small>
-              <small>근거 수준: {event.confidence || '확인 필요'} · 출처 한계: {event.sourceLimit || '뉴스·공시 원문 확인 전에는 확정 원인으로 보지 않습니다.'}</small>
-            </article>
-          ))}
-        </section>
-      )}
 
       {/* Hero Stock Info */}
       <div className={styles.heroInfo}>

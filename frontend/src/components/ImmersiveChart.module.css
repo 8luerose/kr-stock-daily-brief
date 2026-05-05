@@ -2,6 +2,17 @@
   width: 100%;
   height: 100%;
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.chartWrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
 
 /* Hero Info Overlay */
@@ -141,60 +152,74 @@
 }
 
 /* Chart Education Overlays */
+.panelsOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 8;
+  display: flex;
+  justify-content: space-between;
+  padding: 96px clamp(32px, 5vw, 72px) 136px;
+  gap: var(--spacing-4);
+}
+
+.leftColumn {
+  width: min(420px, calc(100vw - 800px));
+  min-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+  pointer-events: auto;
+  overflow-y: auto;
+  padding-right: var(--spacing-2);
+}
+
+.rightColumn {
+  width: min(380px, calc(100vw - 800px));
+  min-width: 340px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  margin-top: 124px;
+}
+
+.leftColumn::-webkit-scrollbar,
+.rightColumn::-webkit-scrollbar,
+.conditionPanel::-webkit-scrollbar {
+  width: 6px;
+}
+.leftColumn::-webkit-scrollbar-thumb,
+.rightColumn::-webkit-scrollbar-thumb,
+.conditionPanel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
 .maPanel,
 .beginnerPanel,
 .conditionPanel,
 .eventPanel {
-  position: absolute;
-  z-index: 8;
-  pointer-events: auto;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(5, 10, 18, 0.72);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: rgba(10, 15, 25, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.48);
   color: var(--color-text-primary);
   word-break: keep-all;
   overflow-wrap: anywhere;
-}
-
-.maPanel {
-  top: 96px;
-  left: clamp(32px, 5vw, 72px);
-  width: min(520px, calc(100vw - 900px));
-  min-width: 420px;
-  padding: var(--spacing-4);
   border-radius: var(--radius-lg);
-}
-
-.beginnerPanel {
-  top: 326px;
-  left: clamp(32px, 5vw, 72px);
-  width: min(420px, calc(100vw - 940px));
-  min-width: 360px;
   padding: var(--spacing-4);
-  border-radius: var(--radius-lg);
+  flex-shrink: 0;
 }
 
 .conditionPanel {
-  top: 220px;
-  right: clamp(32px, 5vw, 72px);
-  bottom: 136px;
-  width: min(380px, calc(100vw - 920px));
-  min-width: 340px;
-  padding: var(--spacing-4);
-  border-radius: var(--radius-lg);
-  overflow-y: auto;
-}
-
-.eventPanel {
-  top: 496px;
-  left: clamp(32px, 5vw, 72px);
-  width: min(520px, calc(100vw - 900px));
-  min-width: 420px;
-  max-height: calc(100vh - 636px);
-  padding: var(--spacing-4);
-  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -423,42 +448,51 @@
 @media (max-width: 768px) {
   .heroName { font-size: 4rem; }
   .heroRate { font-size: 2rem; }
+  .chartWrapper {
+    height: 40vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  .panelsOverlay {
+    position: relative;
+    top: auto;
+    left: auto;
+    height: 60vh;
+    padding: var(--spacing-3);
+    flex-direction: column;
+    justify-content: flex-start;
+    background: var(--color-bg-base);
+    border-top: 1px solid var(--color-border);
+    overflow-y: auto;
+    pointer-events: auto;
+    z-index: 10;
+  }
+
+  .leftColumn, .rightColumn {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    margin-top: 0;
+    overflow-y: visible;
+  }
+
   .intervalSelector {
-    top: calc(var(--spacing-3) + 64px);
+    top: var(--spacing-3);
     right: auto;
     left: var(--spacing-3);
+    z-index: 15;
   }
 
   .maPanel,
   .beginnerPanel,
   .conditionPanel,
   .eventPanel {
-    left: var(--spacing-3);
-    right: var(--spacing-3);
-    width: auto;
-    min-width: 0;
     border-radius: var(--radius-md);
     padding: var(--spacing-3);
-  }
-
-  .maPanel {
-    top: 126px;
-  }
-
-  .beginnerPanel {
-    top: 316px;
-  }
-
-  .eventPanel {
-    top: 430px;
-    max-height: none;
-  }
-
-  .conditionPanel {
-    top: 560px;
-    bottom: 112px;
-    max-width: none;
-    overflow-y: hidden;
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
   .legendGrid {
@@ -536,24 +570,14 @@
 }
 
 @media (min-width: 769px) and (max-width: 1120px) {
-  .maPanel,
-  .eventPanel {
-    left: 24px;
-    width: 390px;
-    min-width: 0;
-  }
-
-  .beginnerPanel {
-    left: 24px;
-    width: 360px;
-    min-width: 0;
-  }
-
-  .conditionPanel {
-    right: 24px;
+  .leftColumn {
     width: 320px;
     min-width: 0;
-    overflow-y: hidden;
+  }
+
+  .rightColumn {
+    width: 280px;
+    min-width: 0;
   }
 
   .conditionItem {
@@ -568,9 +592,5 @@
   .conditionDetail,
   .conditionItem small {
     display: none;
-  }
-
-  .eventPanel {
-    max-height: none;
   }
 }
