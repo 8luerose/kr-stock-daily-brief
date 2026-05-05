@@ -9,6 +9,7 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
   const [error, setError] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -32,7 +33,7 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
     };
     fetchWorkspace();
     return () => { mounted = false; };
-  }, [activeCode, interval]);
+  }, [activeCode, interval, refreshKey]);
 
   const handleSearch = useCallback(async (query) => {
     if (!query || query.trim() === '') {
@@ -56,6 +57,7 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
   }, []);
 
   const changeInterval = useCallback((newInterval) => {
+    setRefreshKey((key) => key + 1);
     setInterval(newInterval);
   }, []);
 

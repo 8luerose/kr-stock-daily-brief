@@ -80,7 +80,9 @@ async function stubBackend(page) {
       });
     }
     if (url.includes("/chart")) {
-      return json({ code: "005930", name: "삼성전자", interval: "daily", asOf: "2026-05-05", data: chartRows });
+      const requestUrl = new URL(url);
+      const interval = requestUrl.searchParams.get("interval") || "daily";
+      return json({ code: "005930", name: "삼성전자", interval, asOf: "2026-05-05", data: chartRows });
     }
     if (url.includes("/trade-zones")) {
       return json({
@@ -92,7 +94,17 @@ async function stubBackend(page) {
       });
     }
     if (url.includes("/events")) {
-      return json({ events: [{ date: "2026-03-02", type: "positive", title: "거래량 동반 돌파" }] });
+      return json({
+        events: [{
+          date: "2026-03-02",
+          type: "positive",
+          title: "거래량 동반 돌파",
+          reason: "가격 상승과 거래량 증가가 함께 나타났습니다.",
+          opposite: "다음 거래일에 거래량 없이 종가가 밀리면 실패 돌파일 수 있습니다.",
+          confidence: "근거 수준 보통",
+          sourceLimit: "공시 원문 확인 전에는 확정 원인으로 보지 않습니다."
+        }]
+      });
     }
     if (url.includes("/learning/terms")) {
       return json([{
@@ -111,6 +123,21 @@ async function stubBackend(page) {
     }
     return json({});
   });
+}
+
+async function expectChartSvgPainted(page) {
+  const svg = page.locator(".recharts-wrapper svg").first();
+  await expect(svg).toBeVisible();
+
+  const paint = await svg.evaluate((node) => ({
+    primitives: node.querySelectorAll("path,line,circle,rect,text").length,
+    circles: node.querySelectorAll("circle").length,
+    text: node.textContent || ""
+  }));
+
+  expect(paint.primitives).toBeGreaterThan(8);
+  expect(paint.circles).toBeGreaterThan(0);
+  expect(paint.text).toContain("매수 검토");
 }
 
 async function openApp(page) {
@@ -183,6 +210,16 @@ for (const viewport of [
 
     await expect(page.locator('input[placeholder="종목명, 테마, 용어 검색..."]')).toBeVisible();
     await expect(page.locator('.recharts-responsive-container')).toBeVisible();
+    await expectChartSvgPainted(page);
+    await expect(page.getByTestId("chart-ma-panel")).toContainText("5일선: 단기 흐름");
+    await expect(page.getByTestId("chart-ma-panel")).toContainText("20일선: 약 한 달 평균");
+    await expect(page.getByTestId("chart-ma-panel")).toContainText("60일선: 중기 흐름");
+    await expect(page.getByTestId("chart-condition-panel")).toContainText("매수 검토");
+    await expect(page.getByTestId("chart-condition-panel")).toContainText("관망");
+    await expect(page.getByTestId("chart-condition-panel")).toContainText("매도 검토");
+    await expect(page.getByTestId("chart-condition-panel")).toContainText("리스크 관리");
+    await expect(page.getByTestId("chart-beginner-guide")).toContainText("처음 볼 3가지");
+    await expect(page.getByTestId("chart-event-panel")).toContainText("호재 후보");
 
     await expect(page.locator('button[aria-label="AI 요약 펼치기"]')).toBeVisible();
     await expect(page.locator('text=매매 검토 시점')).toHaveCount(0);
@@ -194,6 +231,27 @@ for (const viewport of [
   });
 }
 
+test("daily weekly monthly controls refetch and keep chart painted", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openApp(page);
+
+  for (const [label, interval] of [
+    ["1일", "daily"],
+    ["1주", "weekly"],
+    ["1개월", "monthly"]
+  ]) {
+    const requestPromise = page.waitForRequest((request) =>
+      request.url().includes("/api/stocks/005930/chart")
+      && request.url().includes(`interval=${interval}`)
+    );
+
+    await page.getByRole("button", { name: label }).click();
+    await requestPromise;
+    await expect(page.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "true");
+    await expectChartSvgPainted(page);
+  }
+});
+
 test("search results display correctly and open learning sheet", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await openApp(page);
@@ -201,7 +259,7 @@ test("search results display correctly and open learning sheet", async ({ page }
   await page.fill('input[placeholder="종목명, 테마, 용어 검색..."]', "거래량");
   
   // Wait for dropdown
-  const termItem = page.locator('li', { hasText: '거래량' }).first();
+  const termItem = page.locator('[class*="dropdown"] li', { hasText: '거래량' }).first();
   await expect(termItem).toBeVisible();
 
   // Click term

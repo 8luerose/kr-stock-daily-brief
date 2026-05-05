@@ -65,7 +65,14 @@ export default function SpotlightSearch({ onSearch, results, isSearching, onSele
           {showResults ? (
             <ul className={styles.list}>
               {results.map(item => (
-                <li key={item.id} className={styles.item} onClick={() => handleSelect(item)}>
+                <li
+                  key={item.id}
+                  className={styles.item}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    handleSelect(item);
+                  }}
+                >
                   <div className={styles.itemIcon}>
                     {item.type === 'term' ? (
                       <BookOpen size={18} className={styles.termIcon} />

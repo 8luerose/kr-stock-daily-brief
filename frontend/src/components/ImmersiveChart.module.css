@@ -40,27 +40,6 @@
 .heroRate.pos { color: var(--color-positive); }
 .heroRate.neg { color: var(--color-negative); }
 
-.indicatorSummary {
-  position: absolute;
-  left: clamp(32px, 5vw, 72px);
-  bottom: calc(var(--spacing-6) + env(safe-area-inset-bottom, 0px));
-  max-width: min(420px, calc(50vw - 96px));
-  padding: var(--spacing-3) var(--spacing-4);
-  border: 1px solid rgba(59, 130, 246, 0.18);
-  border-radius: var(--radius-lg);
-  background: rgba(5, 10, 18, 0.62);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
-  line-height: 1.45;
-  text-align: left;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-  box-shadow: var(--shadow-float);
-  z-index: 9;
-}
-
 /* Custom Tooltip */
 .tooltip {
   background: var(--glass-bg);
@@ -155,6 +134,245 @@
   line-height: 1.4;
 }
 
+.sourceLimit,
+.confidenceInfo,
+.oppositeSignal {
+  color: var(--color-text-tertiary);
+}
+
+/* Chart Education Overlays */
+.maPanel,
+.beginnerPanel,
+.conditionPanel,
+.eventPanel {
+  position: absolute;
+  z-index: 8;
+  pointer-events: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(5, 10, 18, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.48);
+  color: var(--color-text-primary);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.maPanel {
+  top: 96px;
+  left: clamp(32px, 5vw, 72px);
+  width: min(520px, calc(100vw - 900px));
+  min-width: 420px;
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+}
+
+.beginnerPanel {
+  top: 326px;
+  left: clamp(32px, 5vw, 72px);
+  width: min(420px, calc(100vw - 940px));
+  min-width: 360px;
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+}
+
+.conditionPanel {
+  top: 220px;
+  right: clamp(32px, 5vw, 72px);
+  bottom: 136px;
+  width: min(380px, calc(100vw - 920px));
+  min-width: 340px;
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+  overflow-y: auto;
+}
+
+.eventPanel {
+  top: 496px;
+  left: clamp(32px, 5vw, 72px);
+  width: min(520px, calc(100vw - 900px));
+  min-width: 420px;
+  max-height: calc(100vh - 636px);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-lg);
+  overflow-y: auto;
+}
+
+.panelEyebrow {
+  margin-bottom: var(--spacing-2);
+  color: var(--color-text-tertiary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.legendGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: var(--spacing-2);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.legendItem i {
+  width: 24px;
+  height: 0;
+  flex: 0 0 24px;
+  border-top-width: 3px;
+  border-top-style: solid;
+}
+
+.priceLine { border-color: var(--color-accent); }
+.ma5Line { border-color: rgba(255, 255, 255, 0.78); }
+.ma20Line {
+  border-color: var(--color-text-secondary);
+  border-top-style: dashed !important;
+}
+.ma60Line {
+  border-color: rgba(245, 158, 11, 0.9);
+  border-top-style: dashed !important;
+}
+
+.maStatus,
+.beginnerPanel p,
+.conditionItem p,
+.eventItem p,
+.eventItem small,
+.conditionItem small {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.conditionShort {
+  display: none;
+}
+
+.maStatus strong {
+  color: var(--color-text-primary);
+}
+
+.maDetailButton {
+  margin-top: var(--spacing-3);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.16);
+  color: #dbeafe;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.beginnerList {
+  display: grid;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-3);
+  counter-reset: beginner;
+}
+
+.beginnerList li {
+  position: relative;
+  padding-left: 28px;
+  color: var(--color-text-primary);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.beginnerList li::before {
+  counter-increment: beginner;
+  content: counter(beginner);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.conditionList {
+  display: grid;
+  gap: var(--spacing-2);
+}
+
+.conditionItem {
+  display: grid;
+  gap: 6px;
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.condition-buy { border-color: rgba(239, 68, 68, 0.22); }
+.condition-split { border-color: rgba(244, 114, 182, 0.2); }
+.condition-watch { border-color: rgba(245, 158, 11, 0.24); }
+.condition-sell,
+.condition-risk { border-color: rgba(59, 130, 246, 0.24); }
+
+.conditionHeader,
+.eventHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.conditionHeader strong {
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
+}
+
+.conditionHeader span {
+  flex-shrink: 0;
+  color: var(--color-text-tertiary);
+  font-size: 0.74rem;
+}
+
+.conditionItem small,
+.eventItem small {
+  display: block;
+  color: var(--color-text-tertiary);
+}
+
+.eventItem {
+  display: grid;
+  gap: 6px;
+  padding: var(--spacing-3) 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eventItem:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.eventHeader {
+  justify-content: flex-start;
+}
+
+.eventHeader strong {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: 0.88rem;
+}
+
 /* Interval Selector */
 .intervalSelector {
   position: absolute;
@@ -211,12 +429,148 @@
     left: var(--spacing-3);
   }
 
-  .indicatorSummary {
+  .maPanel,
+  .beginnerPanel,
+  .conditionPanel,
+  .eventPanel {
     left: var(--spacing-3);
     right: var(--spacing-3);
-    bottom: 116px;
+    width: auto;
+    min-width: 0;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-3);
+  }
+
+  .maPanel {
+    top: 126px;
+  }
+
+  .beginnerPanel {
+    top: 316px;
+  }
+
+  .eventPanel {
+    top: 430px;
+    max-height: none;
+  }
+
+  .conditionPanel {
+    top: 560px;
+    bottom: 112px;
     max-width: none;
-    font-size: 0.78rem;
-    padding: var(--spacing-2) var(--spacing-3);
+    overflow-y: hidden;
+  }
+
+  .legendGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+  }
+
+  .legendItem,
+  .maStatus,
+  .beginnerPanel p,
+  .conditionItem p,
+  .eventItem p,
+  .eventItem small,
+  .conditionItem small {
+    font-size: 0.72rem;
+  }
+
+  .maDetailButton {
+    padding: 6px 9px;
+    font-size: 0.72rem;
+  }
+
+  .beginnerList {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .beginnerList li {
+    font-size: 0.76rem;
+  }
+
+  .conditionItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 6px 8px;
+  }
+
+  .conditionHeader {
+    display: block;
+    flex: 0 0 76px;
+  }
+
+  .conditionHeader strong {
+    display: block;
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .conditionHeader span {
+    display: none;
+  }
+
+  .conditionShort {
+    display: block;
+    flex: 1;
+    font-size: 0.67rem;
+    line-height: 1.25;
+    min-width: 0;
+  }
+
+  .conditionDetail,
+  .conditionItem small {
+    display: none;
+  }
+
+  .eventItem {
+    padding: var(--spacing-2) 0 0 0;
+    gap: 4px;
+  }
+
+  .eventItem small:last-child {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1120px) {
+  .maPanel,
+  .eventPanel {
+    left: 24px;
+    width: 390px;
+    min-width: 0;
+  }
+
+  .beginnerPanel {
+    left: 24px;
+    width: 360px;
+    min-width: 0;
+  }
+
+  .conditionPanel {
+    right: 24px;
+    width: 320px;
+    min-width: 0;
+    overflow-y: hidden;
+  }
+
+  .conditionItem {
+    gap: 5px;
+    padding: 9px 10px;
+  }
+
+  .conditionShort {
+    display: block;
+  }
+
+  .conditionDetail,
+  .conditionItem small {
+    display: none;
+  }
+
+  .eventPanel {
+    max-height: none;
   }
 }

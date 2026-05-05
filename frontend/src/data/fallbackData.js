@@ -130,7 +130,8 @@ export const fallbackWorkspace = {
       reason: "전고점 돌파 시도와 거래량 증가가 함께 나타났습니다.",
       chartPoint: "3월 초 장대 양봉과 거래량 막대",
       opposite: "돌파 뒤 종가가 다시 내려오면 실패 돌파일 수 있습니다.",
-      confidence: "신뢰도 84%"
+      confidence: "신뢰도 84%",
+      sourceLimit: "학습용 예시 데이터라 공시·뉴스 원문 확인 전에는 확정 원인으로 보지 않습니다."
     },
     {
       id: "event-2",
@@ -140,7 +141,8 @@ export const fallbackWorkspace = {
       reason: "상단 가격대에서 거래량이 줄며 관망 신호가 생겼습니다.",
       chartPoint: "4월 중순 짧은 조정 구간",
       opposite: "거래대금이 다시 늘면 매물 부담을 흡수하는 흐름일 수 있습니다.",
-      confidence: "신뢰도 78%"
+      confidence: "신뢰도 78%",
+      sourceLimit: "학습용 예시 데이터라 공시·뉴스 원문 확인 전에는 확정 원인으로 보지 않습니다."
     }
   ],
   indicatorSnapshot: {

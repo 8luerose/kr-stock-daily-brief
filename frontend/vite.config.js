@@ -7,12 +7,14 @@ export default defineConfig({
     noDiscovery: true,
     include: [
       "@vitejs/plugin-react/preamble",
+      "clsx",
       "lucide-react",
       "react",
       "react-dom",
       "react-dom/client",
       "react/jsx-dev-runtime",
       "react/jsx-runtime",
+      "recharts",
       "three"
     ]
   },

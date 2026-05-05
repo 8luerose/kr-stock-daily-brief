@@ -79,6 +79,7 @@ function App() {
             events={data.events}
             ai={data.ai}
             indicatorSnapshot={data.indicatorSnapshot}
+            decisionSummary={data.currentDecisionSummary}
             interval={interval}
             onChangeInterval={changeInterval}
             learningMode={learningMode}

@@ -141,7 +141,8 @@ function normalizeEvent(remoteEvent = {}) {
     rawType: remoteEvent.type,
     reason: remoteEvent.reason || remoteEvent.whyItMatters || remoteEvent.explanation,
     opposite: remoteEvent.opposite || remoteEvent.oppositeInterpretation,
-    confidence: remoteEvent.confidence || remoteEvent.evidenceLevel || remoteEvent.severity || "확인 필요"
+    confidence: remoteEvent.confidence || remoteEvent.evidenceLevel || remoteEvent.severity || "확인 필요",
+    sourceLimit: remoteEvent.sourceLimit || remoteEvent.sourceLimitation || remoteEvent.limitations || "뉴스·공시 원문 확인 전에는 확정 원인으로 보지 않습니다."
   };
 }
 
