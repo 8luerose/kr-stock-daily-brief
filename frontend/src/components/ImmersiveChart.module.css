@@ -78,18 +78,28 @@
 .tooltipEvent p { font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.4; }
 .sourceLimit, .confidenceInfo, .oppositeSignal { color: var(--color-text-tertiary); }
 
-/* Interval Selector */
-.intervalSelector {
+/* Top Unified Toolbar */
+.topToolbar {
   position: absolute;
   top: 96px;
-  right: clamp(32px, 5vw, 72px);
+  left: clamp(16px, 5vw, 72px);
+  right: clamp(16px, 5vw, 72px);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.intervalGroup {
   display: flex;
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-round);
   padding: 4px;
-  z-index: 10;
+  pointer-events: auto;
 }
 
 .intervalBtn {
@@ -103,74 +113,67 @@
 .intervalBtn:hover { color: var(--color-text-primary); }
 .intervalActive { background: rgba(255, 255, 255, 0.15); color: var(--color-text-primary); }
 
-/* Modern Floating Action Controls (FAB) */
-.fabContainerLeft, .fabContainerRight {
-  position: absolute;
-  bottom: clamp(24px, 5vh, 48px);
-  z-index: 20;
+.actionGroup {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
   gap: var(--spacing-3);
-  pointer-events: none;
-}
-
-.fabContainerLeft { left: clamp(32px, 5vw, 72px); }
-.fabContainerRight { 
-  right: clamp(32px, 5vw, 72px); 
-  align-items: flex-end; 
-}
-
-.fabButton {
   pointer-events: auto;
+}
+
+.actionItem {
+  position: relative;
+}
+
+.actionBtn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 10px 16px;
   background: rgba(20, 25, 35, 0.85);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 32px;
   color: var(--color-text-primary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
 }
 
-.fabButton:hover, .fabActive {
+.actionBtn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
 }
 
-.fabActive {
+.actionBtnActive {
   background: rgba(40, 50, 70, 0.95);
   border-color: var(--color-accent);
 }
 
-.floatingPanel {
-  pointer-events: auto;
+.dropdownPanel {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
   background: rgba(15, 20, 30, 0.85);
   backdrop-filter: blur(32px);
   -webkit-backdrop-filter: blur(32px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-lg);
   padding: var(--spacing-4);
-  width: min(380px, calc(100vw - 64px));
+  width: 360px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transform-origin: bottom center;
+  animation: slideDownFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top left;
 }
 
-.fabContainerRight .floatingPanel {
-  transform-origin: bottom right;
+.dropdownRight {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
 }
 
-@keyframes slideUpFade {
-  0% { opacity: 0; transform: translateY(16px) scale(0.96); }
+@keyframes slideDownFade {
+  0% { opacity: 0; transform: translateY(-8px) scale(0.96); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -269,38 +272,21 @@
   .heroName { font-size: 4rem; }
   .heroRate { font-size: 2rem; }
   
-  .intervalSelector {
-    top: var(--spacing-3);
-    right: auto;
-    left: var(--spacing-3);
+  .topToolbar {
+    top: 64px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-3);
   }
 
-  .fabContainerLeft, .fabContainerRight {
-    bottom: auto;
-    top: 64px;
-    left: var(--spacing-3);
-    right: auto;
-  }
-  
-  .fabContainerRight {
-    left: auto;
-    right: var(--spacing-3);
-  }
-  
-  .fabButton {
+  .actionBtn {
     padding: 8px 12px;
     font-size: 0.8rem;
   }
   
-  .floatingPanel {
+  .dropdownPanel {
     width: calc(100vw - var(--spacing-6));
     max-width: 360px;
-    padding: var(--spacing-3);
-    transform-origin: top center;
-  }
-  
-  @keyframes slideUpFade {
-    0% { opacity: 0; transform: translateY(-16px) scale(0.96); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
+    left: 0;
   }
 }

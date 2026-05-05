@@ -269,106 +269,109 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         </ResponsiveContainer>
       </div>
 
-      {/* Modern Floating Action Controls */}
-      <div className={styles.fabContainerLeft}>
-        <button 
-          className={clsx(styles.fabButton, activePanel === 'guide' && styles.fabActive)}
-          onClick={() => setActivePanel(activePanel === 'guide' ? 'none' : 'guide')}
-        >
-          <span>💡</span> 차트 가이드
-        </button>
-        {activePanel === 'guide' && (
-          <div className={styles.floatingPanel}>
-            <div className={styles.panelTabs}>
-              <button className={clsx(guideTab === 'ma' && styles.activeTab)} onClick={() => setGuideTab('ma')}>이동평균선</button>
-              <button className={clsx(guideTab === 'beginner' && styles.activeTab)} onClick={() => setGuideTab('beginner')}>체크리스트</button>
-              {visibleEvents.length > 0 && <button className={clsx(guideTab === 'event' && styles.activeTab)} onClick={() => setGuideTab('event')}>이벤트 해석</button>}
-            </div>
-            
-            <div className={styles.panelBody}>
-              {guideTab === 'ma' && (
-                <section className={styles.maSection}>
-                  <div className={styles.legendGrid}>
-                    <span className={styles.legendItem}><i className={styles.priceLine} />현재가</span>
-                    <span className={styles.legendItem}><i className={styles.ma5Line} />5일선</span>
-                    <span className={styles.legendItem}><i className={styles.ma20Line} />20일선</span>
-                    <span className={styles.legendItem}><i className={styles.ma60Line} />60일선</span>
-                  </div>
-                  <p className={styles.maStatus}>
-                    <strong>{ma20StatusText}</strong> {ma20DistanceText}. 위라고 무조건 좋은 것도, 아래라고 무조건 나쁜 것도 아니며 거래량, 지지선, 저항선을 함께 봅니다.
-                  </p>
-                  <button type="button" className={styles.maDetailButton} onClick={() => onTermClick('이동평균선')}>
-                    이동평균선 뜻 보기
-                  </button>
-                </section>
-              )}
+      {/* Top Unified Toolbar */}
+      <div className={styles.topToolbar}>
+        <div className={styles.intervalGroup}>
+          {['daily', 'weekly', 'monthly'].map(intv => (
+            <button
+              type="button"
+              key={intv}
+              className={clsx(styles.intervalBtn, interval === intv && styles.intervalActive)}
+              onClick={() => onChangeInterval(intv)}
+              aria-pressed={interval === intv}
+            >
+              {intv === 'daily' ? '1일' : intv === 'weekly' ? '1주' : '1개월'}
+            </button>
+          ))}
+        </div>
 
-              {guideTab === 'beginner' && (
-                <section className={styles.beginnerSection}>
-                  <ol className={styles.beginnerList}>
-                    {beginnerChecklist.map((item) => <li key={item}>{item}</li>)}
-                  </ol>
-                  <p className={styles.subtext}>반대 신호가 나오면 결론을 보류하고 다음 거래량과 종가를 다시 확인합니다.</p>
-                </section>
-              )}
-
-              {guideTab === 'event' && (
-                <section className={styles.eventSection}>
-                  {visibleEvents.map((event) => (
-                    <article key={event.id || `${event.date}-${event.title}`} className={styles.eventItem}>
-                      <div className={styles.eventHeader}>
-                        <span className={clsx(styles.eventBadge, event.type === 'positive' ? styles.badgePos : event.type === 'negative' ? styles.badgeNeg : styles.badgeNeutral)}>
-                          {getEventLabel(event.type)}
-                        </span>
-                        <strong>{event.title}</strong>
+        <div className={styles.actionGroup}>
+          <div className={styles.actionItem}>
+            <button 
+              className={clsx(styles.actionBtn, activePanel === 'guide' && styles.actionBtnActive)}
+              onClick={() => setActivePanel(activePanel === 'guide' ? 'none' : 'guide')}
+            >
+              <span>💡</span> 차트 가이드
+            </button>
+            {activePanel === 'guide' && (
+              <div className={styles.dropdownPanel}>
+                <div className={styles.panelTabs}>
+                  <button className={clsx(guideTab === 'ma' && styles.activeTab)} onClick={() => setGuideTab('ma')}>이동평균선</button>
+                  <button className={clsx(guideTab === 'beginner' && styles.activeTab)} onClick={() => setGuideTab('beginner')}>체크리스트</button>
+                  {visibleEvents.length > 0 && <button className={clsx(guideTab === 'event' && styles.activeTab)} onClick={() => setGuideTab('event')}>이벤트 해석</button>}
+                </div>
+                
+                <div className={styles.panelBody}>
+                  {guideTab === 'ma' && (
+                    <section className={styles.maSection}>
+                      <div className={styles.legendGrid}>
+                        <span className={styles.legendItem}><i className={styles.priceLine} />현재가</span>
+                        <span className={styles.legendItem}><i className={styles.ma5Line} />5일선</span>
+                        <span className={styles.legendItem}><i className={styles.ma20Line} />20일선</span>
+                        <span className={styles.legendItem}><i className={styles.ma60Line} />60일선</span>
                       </div>
-                      <p className={styles.subtext}>{event.reason || '가격 반응과 거래량을 함께 확인해야 합니다.'}</p>
+                      <p className={styles.maStatus}>
+                        <strong>{ma20StatusText}</strong> {ma20DistanceText}. 위라고 무조건 좋은 것도, 아래라고 무조건 나쁜 것도 아니며 거래량, 지지선, 저항선을 함께 봅니다.
+                      </p>
+                      <button type="button" className={styles.maDetailButton} onClick={() => onTermClick('이동평균선')}>
+                        이동평균선 뜻 보기
+                      </button>
+                    </section>
+                  )}
+
+                  {guideTab === 'beginner' && (
+                    <section className={styles.beginnerSection}>
+                      <ol className={styles.beginnerList}>
+                        {beginnerChecklist.map((item) => <li key={item}>{item}</li>)}
+                      </ol>
+                      <p className={styles.subtext}>반대 신호가 나오면 결론을 보류하고 다음 거래량과 종가를 다시 확인합니다.</p>
+                    </section>
+                  )}
+
+                  {guideTab === 'event' && (
+                    <section className={styles.eventSection}>
+                      {visibleEvents.map((event) => (
+                        <article key={event.id || `${event.date}-${event.title}`} className={styles.eventItem}>
+                          <div className={styles.eventHeader}>
+                            <span className={clsx(styles.eventBadge, event.type === 'positive' ? styles.badgePos : event.type === 'negative' ? styles.badgeNeg : styles.badgeNeutral)}>
+                              {getEventLabel(event.type)}
+                            </span>
+                            <strong>{event.title}</strong>
+                          </div>
+                          <p className={styles.subtext}>{event.reason || '가격 반응과 거래량을 함께 확인해야 합니다.'}</p>
+                        </article>
+                      ))}
+                    </section>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.actionItem}>
+            <button 
+              className={clsx(styles.actionBtn, activePanel === 'ai' && styles.actionBtnActive)}
+              onClick={() => setActivePanel(activePanel === 'ai' ? 'none' : 'ai')}
+            >
+              <span>🤖</span> AI 검토 조건
+            </button>
+            {activePanel === 'ai' && (
+              <div className={clsx(styles.dropdownPanel, styles.dropdownRight)}>
+                <div className={styles.conditionGrid}>
+                  {conditionRows.map((row) => (
+                    <article key={row.type} className={clsx(styles.conditionItem, styles[`condition-${row.type}`])}>
+                      <div className={styles.conditionHeader}>
+                        <strong>{row.label}</strong>
+                        {row.price && <span>{row.price}</span>}
+                      </div>
+                      <p className={styles.conditionDetail}>{row.condition}</p>
                     </article>
                   ))}
-                </section>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      <div className={styles.fabContainerRight}>
-        <button 
-          className={clsx(styles.fabButton, activePanel === 'ai' && styles.fabActive)}
-          onClick={() => setActivePanel(activePanel === 'ai' ? 'none' : 'ai')}
-        >
-          <span>🤖</span> AI 검토 조건
-        </button>
-        {activePanel === 'ai' && (
-          <div className={styles.floatingPanel}>
-            <div className={styles.conditionGrid}>
-              {conditionRows.map((row) => (
-                <article key={row.type} className={clsx(styles.conditionItem, styles[`condition-${row.type}`])}>
-                  <div className={styles.conditionHeader}>
-                    <strong>{row.label}</strong>
-                    {row.price && <span>{row.price}</span>}
-                  </div>
-                  <p className={styles.conditionDetail}>{row.condition}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Interval Selector */}
-      <div className={styles.intervalSelector}>
-        {['daily', 'weekly', 'monthly'].map(intv => (
-          <button
-            type="button"
-            key={intv}
-            className={clsx(styles.intervalBtn, interval === intv && styles.intervalActive)}
-            onClick={() => onChangeInterval(intv)}
-            aria-pressed={interval === intv}
-          >
-            {intv === 'daily' ? '1일' : intv === 'weekly' ? '1주' : '1개월'}
-          </button>
-        ))}
+        </div>
       </div>
 
       {/* Hero Stock Info */}
