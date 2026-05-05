@@ -1,6 +1,9 @@
 package com.krbrief.stocks;
 
 import java.time.LocalDate;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -11,13 +14,23 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class StockResearchClient {
+  private static final long CACHE_TTL_MILLIS = 5 * 60 * 1000L;
   private final RestClient http;
+  private final Map<String, CachedValue<StockChartDto>> chartCache = new ConcurrentHashMap<>();
+  private final Map<String, CachedValue<StockEventsDto>> eventsCache = new ConcurrentHashMap<>();
+  private final Map<String, CachedValue<StockUniverseDto>> universeCache = new ConcurrentHashMap<>();
+  private final Map<String, CachedValue<StockSectorUniverseDto>> sectorCache = new ConcurrentHashMap<>();
+  private final Map<String, CachedValue<StockThemeUniverseDto>> themeCache = new ConcurrentHashMap<>();
 
   public StockResearchClient(@Value("${marketdata.baseUrl:http://marketdata:8000}") String baseUrl) {
     this.http = RestClient.builder().baseUrl(baseUrl).build();
   }
 
   public StockChartDto chart(String code, String range, String interval) {
+    return cached(chartCache, "chart:" + code + ":" + range + ":" + interval, () -> fetchChart(code, range, interval));
+  }
+
+  private StockChartDto fetchChart(String code, String range, String interval) {
     try {
       StockChartDto res =
           http
@@ -44,6 +57,10 @@ public class StockResearchClient {
   }
 
   public StockEventsDto events(String code, LocalDate from, LocalDate to) {
+    return cached(eventsCache, "events:" + code + ":" + from + ":" + to, () -> fetchEvents(code, from, to));
+  }
+
+  private StockEventsDto fetchEvents(String code, LocalDate from, LocalDate to) {
     try {
       StockEventsDto res =
           http
@@ -70,6 +87,11 @@ public class StockResearchClient {
   }
 
   public StockUniverseDto universe(String query, int limit) {
+    String safeQuery = query == null ? "" : query.trim();
+    return cached(universeCache, "universe:" + safeQuery + ":" + limit, () -> fetchUniverse(query, limit));
+  }
+
+  private StockUniverseDto fetchUniverse(String query, int limit) {
     try {
       StockUniverseDto res =
           http
@@ -97,6 +119,11 @@ public class StockResearchClient {
   }
 
   public StockSectorUniverseDto sectors(String query, int limit) {
+    String safeQuery = query == null ? "" : query.trim();
+    return cached(sectorCache, "sectors:" + safeQuery + ":" + limit, () -> fetchSectors(query, limit));
+  }
+
+  private StockSectorUniverseDto fetchSectors(String query, int limit) {
     try {
       StockSectorUniverseDto res =
           http
@@ -124,6 +151,11 @@ public class StockResearchClient {
   }
 
   public StockThemeUniverseDto themes(String query, int limit) {
+    String safeQuery = query == null ? "" : query.trim();
+    return cached(themeCache, "themes:" + safeQuery + ":" + limit, () -> fetchThemes(query, limit));
+  }
+
+  private StockThemeUniverseDto fetchThemes(String query, int limit) {
     try {
       StockThemeUniverseDto res =
           http
@@ -149,4 +181,17 @@ public class StockResearchClient {
       throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "marketdata_themes_error", e);
     }
   }
+
+  private <T> T cached(Map<String, CachedValue<T>> cache, String key, Supplier<T> loader) {
+    long now = System.currentTimeMillis();
+    CachedValue<T> found = cache.get(key);
+    if (found != null && found.expiresAtMillis() > now) {
+      return found.value();
+    }
+    T loaded = loader.get();
+    cache.put(key, new CachedValue<>(loaded, now + CACHE_TTL_MILLIS));
+    return loaded;
+  }
+
+  private record CachedValue<T>(T value, long expiresAtMillis) {}
 }

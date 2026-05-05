@@ -16,6 +16,8 @@ const dailyBriefSample = {
   topGainer: "KBI메탈",
   topLoser: "루닛",
   mostMentioned: "PI첨단소재",
+  kospiPick: "대원전선우",
+  kosdaqPick: "KBI메탈",
   rawNotes: "Source: pykrx(KRX OHLCV 전일대비 계산) + naver(board posts)\neffective_date=20260504",
   topGainers: [
     { code: "024840", name: "KBI메탈", rate: 30.0 },
@@ -35,18 +37,42 @@ const dailyBriefSample = {
   kospiTopGainer: "대원전선우",
   kospiTopGainerCode: "006345",
   kospiTopGainerRate: 29.98,
+  kospiTopLoser: "에스원",
+  kospiTopLoserCode: "012750",
+  kospiTopLoserRate: -9.06,
   kosdaqTopGainer: "KBI메탈",
   kosdaqTopGainerCode: "024840",
   kosdaqTopGainerRate: 30.0,
+  kosdaqTopLoser: "루닛",
+  kosdaqTopLoserCode: "328130",
+  kosdaqTopLoserRate: -49.82,
   kospiTopGainers: [
     { code: "006345", name: "대원전선우", rate: 29.98 },
     { code: "007610", name: "선도전기", rate: 29.94 }
   ],
+  kospiTopLosers: [
+    { code: "012750", name: "에스원", rate: -9.06 },
+    { code: "001250", name: "GS글로벌", rate: -8.71 }
+  ],
   kosdaqTopGainers: [
     { code: "024840", name: "KBI메탈", rate: 30.0 },
     { code: "322310", name: "오로스테크놀로지", rate: 30.0 }
+  ],
+  kosdaqTopLosers: [
+    { code: "328130", name: "루닛", rate: -49.82 },
+    { code: "217620", name: "선샤인푸드", rate: -34.43 }
   ]
 };
+
+const featuredOptionsByCode = new Map([
+  ["005930", { code: "005930", name: "삼성전자", market: "KOSPI" }],
+  ["000660", { code: "000660", name: "SK하이닉스", market: "KOSPI" }],
+  ...dailyBriefSample.kospiTopGainers.map((item) => [item.code, { ...item, market: "KOSPI" }]),
+  ...dailyBriefSample.kospiTopLosers.map((item) => [item.code, { ...item, market: "KOSPI" }]),
+  ...dailyBriefSample.kosdaqTopGainers.map((item) => [item.code, { ...item, market: "KOSDAQ" }]),
+  ...dailyBriefSample.kosdaqTopLosers.map((item) => [item.code, { ...item, market: "KOSDAQ" }]),
+  ...dailyBriefSample.mostMentionedTop.map((item) => [item.code, { ...item, market: "KRX" }])
+]);
 
 async function stubBackend(page) {
   await page.route("http://localhost:8080/api/**", async (route) => {
@@ -109,14 +135,16 @@ async function stubBackend(page) {
     if (url.includes("/chart")) {
       const requestUrl = new URL(url);
       const interval = requestUrl.searchParams.get("interval") || "daily";
-      const code = url.includes("/api/stocks/000660/") ? "000660" : "005930";
-      const option = stockOptions.find((item) => item.code === code) || stockOptions[0];
+      const code = url.match(/\/api\/stocks\/(\d{6})\/chart/)?.[1] || "005930";
+      const option = featuredOptionsByCode.get(code) || stockOptions.find((item) => item.code === code) || stockOptions[0];
       return json({ code, name: option.name, interval, asOf: "2026-05-05", data: chartRows });
     }
     if (url.includes("/trade-zones")) {
+      const code = url.match(/\/api\/stocks\/(\d{6})\/trade-zones/)?.[1] || "005930";
+      const option = featuredOptionsByCode.get(code) || stockOptions.find((item) => item.code === code) || stockOptions[0];
       return json({
-        code: url.includes("/api/stocks/000660/") ? "000660" : "005930",
-        name: url.includes("/api/stocks/000660/") ? "SK하이닉스" : "삼성전자",
+        code,
+        name: option.name,
         basisDate: "2026-05-05",
         confidence: "86%",
         zones: tradeZones
@@ -253,8 +281,17 @@ for (const viewport of [
     await expect(page.locator('button[aria-label="Toggle Learning Mode"]')).toBeVisible();
 
     await page.getByRole("button", { name: /기업 선택/ }).click();
-    await expect(page.getByTestId("stock-selector-panel")).toContainText("삼성전자");
-    await expect(page.getByTestId("stock-selector-panel")).toContainText("SK하이닉스");
+    const stockPanel = page.getByTestId("stock-selector-panel");
+    await expect(stockPanel).toContainText("삼성전자");
+    await expect(stockPanel).toContainText("SK하이닉스");
+    await expect(stockPanel).toContainText("KOSPI 상승 1위");
+    await expect(stockPanel).toContainText("KOSPI 하락 1위");
+    await expect(stockPanel).toContainText("KOSDAQ 상승 1위");
+    await expect(stockPanel).toContainText("KOSDAQ 하락 1위");
+    await expect(stockPanel).toContainText("KOSPI 픽");
+    await expect(stockPanel).toContainText("KOSDAQ 픽");
+    await expect(stockPanel).toContainText("최다 언급");
+    await expect(stockPanel.getByRole("option")).toHaveCount(9);
     await page.mouse.click(viewport.width - 20, viewport.height - 20);
     await expect(page.getByTestId("stock-selector-panel")).toHaveCount(0);
 
@@ -292,14 +329,9 @@ test("daily weekly monthly controls refetch and keep chart painted", async ({ pa
     ["1주", "weekly"],
     ["1개월", "monthly"]
   ]) {
-    const requestPromise = page.waitForRequest((request) =>
-      request.url().includes("/api/stocks/005930/chart")
-      && request.url().includes(`interval=${interval}`)
-    );
-
     await page.getByRole("button", { name: label }).click();
-    await requestPromise;
     await expect(page.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("interval-status")).toContainText(label);
     await expectChartSvgPainted(page);
   }
 });
@@ -323,6 +355,19 @@ test("stock selector switches to SK hynix and closes on outside click", async ({
   await expect(page.getByTestId("stock-selector-panel")).toBeVisible();
   await page.mouse.click(20, 900);
   await expect(page.getByTestId("stock-selector-panel")).toHaveCount(0);
+});
+
+test("stock selector uses daily brief featured categories", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openApp(page);
+
+  await page.getByRole("button", { name: /기업 선택/ }).click();
+  const gainerRequest = page.waitForRequest((request) =>
+    request.url().includes("/api/stocks/006345/chart")
+  );
+  await page.getByRole("option", { name: /KOSPI 상승 1위/ }).click();
+  await gainerRequest;
+  await expect(page.locator("h1", { hasText: "대원전선우" })).toBeVisible();
 });
 
 for (const viewport of [

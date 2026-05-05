@@ -16,6 +16,14 @@ public class StockTradeZoneService {
 
   public StockTradeZonesDto tradeZones(String code, String range, String interval, String riskMode) {
     StockChartDto chart = client.chart(code, range, interval);
+    return tradeZonesFromChart(chart, range, interval, riskMode);
+  }
+
+  public StockTradeZonesDto tradeZonesFromChart(
+      StockChartDto chart, String range, String interval, String riskMode) {
+    if (chart == null) {
+      throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_GATEWAY, "marketdata_empty_chart_response");
+    }
     List<StockChartDto.StockOhlcvDto> data = chart.data() == null ? List.of() : chart.data();
     if (data.isEmpty()) {
       throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_GATEWAY, "marketdata_empty_chart_response");
@@ -146,7 +154,7 @@ public class StockTradeZoneService {
             "판단 성향: " + riskMode);
 
     return new StockTradeZonesDto(
-        code,
+        chart.code(),
         chart.name(),
         interval,
         range,

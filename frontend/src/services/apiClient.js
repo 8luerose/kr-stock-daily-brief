@@ -1,6 +1,9 @@
 import { fallbackLearningTerms, fallbackStocks, fallbackWorkspace } from "../data/fallbackData.js";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const WORKSPACE_INTERVALS = ["daily", "weekly", "monthly"];
+const coreWorkspaceCache = new Map();
+const aiWorkspaceCache = new Map();
 
 function getRuntimeConfig() {
   return window.__CONFIG__ || { API_BASE_URL: DEFAULT_API_BASE_URL, GATE_ENABLED: false };
@@ -71,16 +74,123 @@ function uniqueStockOptions(items) {
   });
 }
 
+function formatRate(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+  }
+  return value || "실제 데이터";
+}
+
 function normalizeStockOption(item = {}) {
+  const code = item.code || item.stockCode || "";
   return {
-    id: item.id || `stock-${item.code}`,
-    code: item.code || item.stockCode || "",
+    id: item.id || `${item.role || "stock"}-${code}`,
+    role: item.role || item.label || item.name || "기업",
+    label: item.label || item.role || item.name || "기업",
+    code,
     name: item.name || item.stockName || item.title || item.code || "종목",
     market: item.market || "KRX",
-    changeRate: item.rate || item.changeRate || "실시간 확인",
+    changeRate: formatRate(item.rate ?? item.changeRate),
     theme: item.theme || item.summary || "실제 시세 API 기준",
     beginnerLine: item.beginnerLine || "선택하면 실제 차트와 이벤트 근거를 다시 불러옵니다."
   };
+}
+
+function firstEntry(items = []) {
+  return Array.isArray(items) && items.length ? items[0] : null;
+}
+
+function entryFromFields(code, name, rate) {
+  return code || name ? { code, name, rate } : null;
+}
+
+function findEntryByName(name, ...lists) {
+  if (!name) return null;
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    const found = list.find((item) => item?.name === name);
+    if (found) return found;
+  }
+  return null;
+}
+
+function featuredOption(role, entry, market, theme) {
+  if (!entry?.code || !entry?.name) return null;
+  return normalizeStockOption({
+    id: `${role}-${entry.code}`,
+    role,
+    label: role,
+    code: entry.code,
+    name: entry.name,
+    market,
+    rate: entry.rate ?? entry.changeRate,
+    changeRate: entry.count ? `${entry.count}건` : entry.changeRate,
+    theme,
+    beginnerLine: "저장된 일간 브리프 기준으로 매일 바뀌는 기업입니다."
+  });
+}
+
+function buildFeaturedStockOptions(summary) {
+  const kospiTopGainer =
+    firstEntry(summary?.kospiTopGainers) ||
+    entryFromFields(summary?.kospiTopGainerCode, summary?.kospiTopGainer, summary?.kospiTopGainerRate);
+  const kospiTopLoser =
+    firstEntry(summary?.kospiTopLosers) ||
+    entryFromFields(summary?.kospiTopLoserCode, summary?.kospiTopLoser, summary?.kospiTopLoserRate);
+  const kosdaqTopGainer =
+    firstEntry(summary?.kosdaqTopGainers) ||
+    entryFromFields(summary?.kosdaqTopGainerCode, summary?.kosdaqTopGainer, summary?.kosdaqTopGainerRate);
+  const kosdaqTopLoser =
+    firstEntry(summary?.kosdaqTopLosers) ||
+    entryFromFields(summary?.kosdaqTopLoserCode, summary?.kosdaqTopLoser, summary?.kosdaqTopLoserRate);
+  const kospiPick = findEntryByName(
+    summary?.kospiPick,
+    summary?.kospiTopGainers,
+    summary?.kospiTopLosers,
+    summary?.topGainers,
+    summary?.topLosers
+  ) || entryFromFields(summary?.kospiTopGainerCode, summary?.kospiPick, summary?.kospiTopGainerRate);
+  const kosdaqPick = findEntryByName(
+    summary?.kosdaqPick,
+    summary?.kosdaqTopGainers,
+    summary?.kosdaqTopLosers,
+    summary?.topGainers,
+    summary?.topLosers
+  ) || entryFromFields(summary?.kosdaqTopGainerCode, summary?.kosdaqPick, summary?.kosdaqTopGainerRate);
+  const mostMentioned =
+    firstEntry(summary?.mostMentionedTop) ||
+    findEntryByName(summary?.mostMentioned, summary?.topGainers, summary?.topLosers) ||
+    entryFromFields("", summary?.mostMentioned, null);
+
+  return [
+    normalizeStockOption({
+      id: "fixed-005930",
+      role: "삼성전자",
+      label: "삼성전자",
+      code: "005930",
+      name: "삼성전자",
+      market: "KOSPI",
+      changeRate: "기준 기업",
+      theme: "고정 기준 기업"
+    }),
+    normalizeStockOption({
+      id: "fixed-000660",
+      role: "SK하이닉스",
+      label: "SK하이닉스",
+      code: "000660",
+      name: "SK하이닉스",
+      market: "KOSPI",
+      changeRate: "반도체 비교",
+      theme: "고정 비교 기업"
+    }),
+    featuredOption("KOSPI 상승 1위", kospiTopGainer, "KOSPI", "저장 브리프 KOSPI 상승률 1위"),
+    featuredOption("KOSPI 하락 1위", kospiTopLoser, "KOSPI", "저장 브리프 KOSPI 하락률 1위"),
+    featuredOption("KOSDAQ 상승 1위", kosdaqTopGainer, "KOSDAQ", "저장 브리프 KOSDAQ 상승률 1위"),
+    featuredOption("KOSDAQ 하락 1위", kosdaqTopLoser, "KOSDAQ", "저장 브리프 KOSDAQ 하락률 1위"),
+    featuredOption("KOSPI 픽", kospiPick, "KOSPI", "저장 브리프 KOSPI 추천 후보"),
+    featuredOption("KOSDAQ 픽", kosdaqPick, "KOSDAQ", "저장 브리프 KOSDAQ 추천 후보"),
+    featuredOption("최다 언급", mostMentioned, "KRX", "저장 브리프 네이버 종목토론 언급 수 기준")
+  ].filter((item) => item?.code && /^\d{6}$/.test(item.code));
 }
 
 function normalizeEvent(remoteEvent = {}) {
@@ -155,6 +265,32 @@ function buildStockRequestParams(interval) {
 }
 
 export async function loadStockWorkspace(code, interval) {
+  const core = await loadStockCoreWorkspace(code, interval);
+  try {
+    const ai = await loadStockAi(core, interval);
+    return { ...core, ai };
+  } catch {
+    return core;
+  }
+}
+
+export async function loadStockCoreWorkspace(code, interval) {
+  const key = `${code}:${interval || "daily"}`;
+  if (coreWorkspaceCache.has(key)) {
+    return coreWorkspaceCache.get(key);
+  }
+
+  const promise = loadStockCoreWorkspaceRemote(code, interval);
+  coreWorkspaceCache.set(key, promise);
+  try {
+    return await promise;
+  } catch (error) {
+    coreWorkspaceCache.delete(key);
+    throw error;
+  }
+}
+
+async function loadStockCoreWorkspaceRemote(code, interval) {
   const stock = fallbackStocks.find((item) => item.code === code) || fallbackWorkspace.stock;
   const next = {
     ...fallbackWorkspace,
@@ -163,17 +299,10 @@ export async function loadStockWorkspace(code, interval) {
   };
 
   const params = buildStockRequestParams(interval);
-  const [chart, zones, events, ai] = await Promise.all([
+  const [chart, zones, events] = await Promise.all([
     requestJson(`/api/stocks/${code}/chart?${params.chart}`),
     requestJson(`/api/stocks/${code}/trade-zones?${params.zones}`),
-    requestJson(`/api/stocks/${code}/events?${params.events}`),
-    requestJson("/api/ai/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        question: `${stock.name} 차트의 매수와 매도 검토 조건을 교육용으로 설명해줘`,
-        context: { code, interval }
-      })
-    })
+    requestJson(`/api/stocks/${code}/events?${params.events}`)
   ]);
 
   const normalizedChart = normalizeChart(chart);
@@ -189,13 +318,117 @@ export async function loadStockWorkspace(code, interval) {
     chart: normalizedChart,
     zones: normalizeTradeZones(zones, next.zones),
     events: Array.isArray(events?.events) ? events.events.map(normalizeEvent) : [],
-    indicatorSnapshot: zones?.indicatorSnapshot || ai?.structured?.chartState?.indicatorSnapshot || null,
-    currentDecisionSummary: zones?.currentDecisionSummary || ai?.structured?.chartState || null,
-    ai: normalizeAi(ai)
+    indicatorSnapshot: zones?.indicatorSnapshot || null,
+    currentDecisionSummary: zones?.currentDecisionSummary || null,
+    ai: normalizeAi(null)
   };
 }
 
+function compactChartForAi(workspace) {
+  const rows = workspace?.chart?.rows || [];
+  return {
+    code: workspace?.stock?.code,
+    name: workspace?.stock?.name,
+    interval: workspace?.chart?.interval,
+    asOf: workspace?.asOf,
+    latest: rows[rows.length - 1] || null,
+    recentRows: rows.slice(-30)
+  };
+}
+
+function compactZonesForAi(zones = []) {
+  return zones.slice(0, 5).map((zone) => ({
+    type: zone.rawType || zone.type,
+    label: zone.label,
+    price: zone.price,
+    condition: zone.condition,
+    evidence: zone.evidence,
+    oppositeSignal: zone.oppositeSignal || zone.invalidationSignal,
+    confidence: zone.confidence
+  }));
+}
+
+function compactEventsForAi(events = []) {
+  return events.slice(0, 4).map((event) => ({
+    date: event.date,
+    type: event.rawType || event.type,
+    title: event.title,
+    severity: event.severity,
+    priceChangeRate: event.priceChangeRate,
+    volumeChangeRate: event.volumeChangeRate,
+    reason: event.reason,
+    opposite: event.opposite,
+    confidence: event.confidence,
+    sourceLimit: event.sourceLimit,
+    causalScores: (event.causalScores || []).slice(0, 3).map((score) => ({
+      sourceType: score.sourceType,
+      score: score.score,
+      confidence: score.confidence,
+      interpretation: score.interpretation,
+      causalFactors: score.causalFactors,
+      evidenceLevel: score.evidenceLevel
+    }))
+  }));
+}
+
+export async function loadStockAi(workspace, interval) {
+  const key = `${workspace?.stock?.code || "unknown"}:${interval || workspace?.chart?.interval || "daily"}:${workspace?.asOf || ""}`;
+  if (aiWorkspaceCache.has(key)) {
+    return aiWorkspaceCache.get(key);
+  }
+
+  const promise = requestJson("/api/ai/chat", {
+    method: "POST",
+    body: JSON.stringify({
+      question: `${workspace.stock.name} 차트의 매수·매도 검토 조건, 관망 구간, 분할매수 검토 구간, 리스크 관리 구간을 교육용으로 설명해줘`,
+      context: {
+        code: workspace.stock.code,
+        stockCode: workspace.stock.code,
+        stockName: workspace.stock.name,
+        interval: interval || workspace.chart.interval,
+        chart: compactChartForAi(workspace),
+        tradeZones: {
+          code: workspace.stock.code,
+          name: workspace.stock.name,
+          basisDate: workspace.asOf,
+          zones: compactZonesForAi(workspace.zones)
+        },
+        events: compactEventsForAi(workspace.events),
+        indicatorSnapshot: workspace.indicatorSnapshot,
+        currentDecisionSummary: workspace.currentDecisionSummary
+      }
+    })
+  }).then(normalizeAi);
+
+  aiWorkspaceCache.set(key, promise);
+  try {
+    return await promise;
+  } catch (error) {
+    aiWorkspaceCache.delete(key);
+    throw error;
+  }
+}
+
+export function prefetchStockWorkspaces(code, currentInterval = "daily") {
+  const targets = WORKSPACE_INTERVALS.filter((item) => item !== currentInterval);
+  setTimeout(() => {
+    targets.forEach((interval) => {
+      loadStockCoreWorkspace(code, interval).catch(() => {});
+    });
+  }, 50);
+}
+
 export async function loadStockOptions() {
+  try {
+    const latest = await requestJson("/api/summaries/latest");
+    const featured = buildFeaturedStockOptions(latest);
+    if (featured.length >= 9) {
+      return featured.slice(0, 9);
+    }
+  } catch {
+    // Fall through to broad universe fallback.
+  }
+
   try {
     const remote = await requestJson("/api/stocks/universe?limit=300");
     const remoteStocks = Array.isArray(remote?.stocks) ? remote.stocks.map(normalizeStockOption) : [];

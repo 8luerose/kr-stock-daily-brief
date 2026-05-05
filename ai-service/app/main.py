@@ -549,7 +549,7 @@ def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | N
         "model": model,
         "messages": messages,
         "temperature": 0.2,
-        "max_tokens": 900,
+        "max_tokens": int(os.getenv("LLM_MAX_TOKENS", "650")),
     }).encode("utf-8")
     req = request.Request(
         f"{base_url}/chat/completions",
@@ -645,7 +645,7 @@ def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str 
         "model": model,
         "messages": chat_messages,
         "temperature": 0.2,
-        "max_tokens": 900,
+        "max_tokens": int(os.getenv("LLM_MAX_TOKENS", "650")),
     }
     if system:
         payload_data["system"] = system

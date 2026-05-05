@@ -330,7 +330,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                     return (
                       <button
                         type="button"
-                        key={option.code}
+                        key={option.id || `${option.label}-${option.code}`}
                         role="option"
                         aria-selected={selected}
                         className={clsx(styles.stockOption, selected && styles.stockOptionActive)}
@@ -340,8 +340,8 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                         }}
                       >
                         <span>
-                          <strong>{option.name}</strong>
-                          <em>{option.code} · {option.market}</em>
+                          <strong>{option.label || option.name}</strong>
+                          <em>{option.name} · {option.code} · {option.market}</em>
                         </span>
                         <b>{selected ? '선택됨' : option.changeRate || '실제 데이터'}</b>
                       </button>

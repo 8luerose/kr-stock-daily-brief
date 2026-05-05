@@ -371,16 +371,19 @@
 .stockOption span {
   display: grid;
   gap: 3px;
+  min-width: 0;
 }
 
 .stockOption strong {
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 .stockOption em {
   color: var(--color-text-tertiary);
   font-size: 0.76rem;
   font-style: normal;
+  overflow-wrap: anywhere;
 }
 
 .stockOption b {
@@ -388,6 +391,7 @@
   color: var(--color-text-secondary);
   font-size: 0.76rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .stockOptionActive b {

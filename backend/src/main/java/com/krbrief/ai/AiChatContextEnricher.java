@@ -127,60 +127,72 @@ public class AiChatContextEnricher {
 
   private void enrichStockContext(LinkedHashMap<String, Object> context, String stockCode) {
     try {
-      StockChartDto chart = stockResearchClient.chart(stockCode, "6M", "daily");
-      List<StockChartDto.StockOhlcvDto> rows = chart.data() == null ? List.of() : chart.data();
-      StockChartDto.StockOhlcvDto latest = rows.isEmpty() ? null : rows.get(rows.size() - 1);
-      LinkedHashMap<String, Object> chartMap = new LinkedHashMap<>();
-      chartMap.put("code", chart.code());
-      chartMap.put("name", chart.name());
-      chartMap.put("interval", chart.interval());
-      chartMap.put("range", chart.range());
-      chartMap.put("asOf", chart.asOf());
-      if (latest != null) {
-        LinkedHashMap<String, Object> latestMap = new LinkedHashMap<>();
-        latestMap.put("date", latest.date());
-        latestMap.put("close", latest.close());
-        latestMap.put("volume", latest.volume());
-        chartMap.put("latest", latestMap);
+      StockChartDto chart = null;
+      if (!context.containsKey("chart") || !context.containsKey("stockName")) {
+        chart = stockResearchClient.chart(stockCode, "6M", "daily");
+        List<StockChartDto.StockOhlcvDto> rows = chart.data() == null ? List.of() : chart.data();
+        StockChartDto.StockOhlcvDto latest = rows.isEmpty() ? null : rows.get(rows.size() - 1);
+        LinkedHashMap<String, Object> chartMap = new LinkedHashMap<>();
+        chartMap.put("code", chart.code());
+        chartMap.put("name", chart.name());
+        chartMap.put("interval", chart.interval());
+        chartMap.put("range", chart.range());
+        chartMap.put("asOf", chart.asOf());
+        if (latest != null) {
+          LinkedHashMap<String, Object> latestMap = new LinkedHashMap<>();
+          latestMap.put("date", latest.date());
+          latestMap.put("close", latest.close());
+          latestMap.put("volume", latest.volume());
+          chartMap.put("latest", latestMap);
+        }
+        context.putIfAbsent("chart", chartMap);
+        context.putIfAbsent("stockName", chart.name());
       }
-      context.putIfAbsent("chart", chartMap);
-      context.putIfAbsent("stockName", chart.name());
 
-      StockTradeZonesDto tradeZones = stockTradeZoneService.tradeZones(stockCode, "6M", "daily", "neutral");
-      context.putIfAbsent("tradeZones", tradeZoneMap(tradeZones));
-      context.putIfAbsent("indicatorSnapshot", tradeZones.indicatorSnapshot());
-      context.putIfAbsent("currentDecisionSummary", tradeZones.currentDecisionSummary());
+      if (!context.containsKey("tradeZones")
+          || !context.containsKey("indicatorSnapshot")
+          || !context.containsKey("currentDecisionSummary")) {
+        if (chart == null) {
+          chart = stockResearchClient.chart(stockCode, "6M", "daily");
+        }
+        StockTradeZonesDto tradeZones = stockTradeZoneService.tradeZonesFromChart(chart, "6M", "daily", "neutral");
+        context.putIfAbsent("tradeZones", tradeZoneMap(tradeZones));
+        context.putIfAbsent("indicatorSnapshot", tradeZones.indicatorSnapshot());
+        context.putIfAbsent("currentDecisionSummary", tradeZones.currentDecisionSummary());
+      }
 
-      LocalDate to = LocalDate.now(KST);
-      LocalDate from = to.minusDays(120);
-      StockEventsDto events = stockResearchClient.events(stockCode, from, to).withDerivedNarratives();
-      context.putIfAbsent("events", (events.events() == null ? List.<StockEventsDto.StockEventDto>of() : events.events()).stream()
-          .limit(5)
-          .map(event -> {
-            LinkedHashMap<String, Object> out = new LinkedHashMap<>();
-            out.put("date", event.date());
-            out.put("type", event.type());
-            out.put("severity", event.severity());
-            out.put("title", event.title());
-            out.put("explanation", event.explanation());
-            out.put("priceChangeRate", event.priceChangeRate());
-            out.put("volumeChangeRate", event.volumeChangeRate());
-            out.put("sentimentForPrice", event.sentimentForPrice());
-            out.put("positiveReasons", event.positiveReasons());
-            out.put("negativeReasons", event.negativeReasons());
-            out.put("neutralReasons", event.neutralReasons());
-            out.put("whyItMatters", event.whyItMatters());
-            out.put("oppositeInterpretation", event.oppositeInterpretation());
-            out.put("oppositeSignals", event.oppositeSignals());
-            out.put("evidenceLevel", event.evidenceLevel());
-            out.put("sourceLimitations", event.sourceLimitations());
-            out.put("whyItMoved", event.whyItMoved());
-            out.put("verificationChecklist", event.verificationChecklist());
-            out.put("evidenceSources", event.evidenceSources());
-            out.put("causalScores", event.causalScores());
-            return out;
-          })
-          .toList());
+      if (!context.containsKey("events")) {
+        LocalDate to = LocalDate.now(KST);
+        LocalDate from = to.minusDays(120);
+        StockEventsDto events = stockResearchClient.events(stockCode, from, to).withDerivedNarratives();
+        context.putIfAbsent("events", (events.events() == null ? List.<StockEventsDto.StockEventDto>of() : events.events()).stream()
+            .limit(5)
+            .map(event -> {
+              LinkedHashMap<String, Object> out = new LinkedHashMap<>();
+              out.put("date", event.date());
+              out.put("type", event.type());
+              out.put("severity", event.severity());
+              out.put("title", event.title());
+              out.put("explanation", event.explanation());
+              out.put("priceChangeRate", event.priceChangeRate());
+              out.put("volumeChangeRate", event.volumeChangeRate());
+              out.put("sentimentForPrice", event.sentimentForPrice());
+              out.put("positiveReasons", event.positiveReasons());
+              out.put("negativeReasons", event.negativeReasons());
+              out.put("neutralReasons", event.neutralReasons());
+              out.put("whyItMatters", event.whyItMatters());
+              out.put("oppositeInterpretation", event.oppositeInterpretation());
+              out.put("oppositeSignals", event.oppositeSignals());
+              out.put("evidenceLevel", event.evidenceLevel());
+              out.put("sourceLimitations", event.sourceLimitations());
+              out.put("whyItMoved", event.whyItMoved());
+              out.put("verificationChecklist", event.verificationChecklist());
+              out.put("evidenceSources", event.evidenceSources());
+              out.put("causalScores", event.causalScores());
+              return out;
+            })
+            .toList());
+      }
     } catch (RuntimeException e) {
       context.putIfAbsent("stockContextWarning", "stock_context_unavailable");
     }
