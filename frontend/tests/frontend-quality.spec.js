@@ -32,6 +32,53 @@ async function stubBackend(page) {
         }
       ]);
     }
+    if (url.includes("/api/portfolio")) {
+      const method = route.request().method();
+      if (method === "GET") {
+        return json({
+          items: [],
+          summary: {
+            totalWeight: 0,
+            maxWeightStock: "-",
+            maxWeight: 0,
+            concentration: "아직 담긴 종목이 없습니다.",
+            volatility: "종목을 담으면 변동성 점검을 시작합니다.",
+            nextChecklist: []
+          },
+          source: "server_mysql_portfolio_sandbox",
+          updatedAt: "2026-05-05T00:00:00Z"
+        });
+      }
+      return json({
+        items: [{
+          code: "005930",
+          name: "삼성전자",
+          group: "반도체",
+          rate: 1.55,
+          count: null,
+          weight: 10,
+          riskNotes: ["서버 리스크 점검: 동일 섹터 집중 여부를 함께 확인해야 합니다."],
+          nextChecklist: ["삼성전자의 최근 이벤트와 거래량 급증 여부 확인", "비중이 손실 허용 범위에 맞는지 점검"],
+          recentEvents: [{
+            date: "2026-03-02",
+            type: "volume_spike",
+            severity: "medium",
+            title: "거래량 동반 돌파",
+            explanation: "거래량이 평균보다 크게 늘었습니다."
+          }]
+        }],
+        summary: {
+          totalWeight: 10,
+          maxWeightStock: "삼성전자",
+          maxWeight: 10,
+          concentration: "비중이 한 종목에 과도하게 몰리지는 않았습니다.",
+          volatility: "큰 변동률 종목은 아직 적습니다.",
+          nextChecklist: ["비중이 가장 큰 종목의 최근 이벤트 확인"]
+        },
+        source: "server_mysql_portfolio_sandbox",
+        updatedAt: "2026-05-05T00:00:00Z"
+      });
+    }
     if (url.includes("/chart")) {
       return json({ code: "005930", name: "삼성전자", interval: "daily", asOf: "2026-05-05", data: chartRows });
     }
@@ -202,13 +249,19 @@ test("portfolio sandbox opens and works", async ({ page }) => {
   await expect(sandboxSheet.getByTestId('portfolio-stock-info')).toContainText('005930');
   await expect(sandboxSheet.getByTestId('portfolio-stock-info')).toContainText('삼성전자');
   await expect(sandboxSheet.locator('text=가상 비중 설정 (%)')).toBeVisible();
-  await expect(sandboxSheet.locator('text=학습용 임시 샌드박스')).toBeVisible();
+  await expect(sandboxSheet.locator('text=학습용 가상 샌드박스')).toBeVisible();
 
   // Click Add
+  const saveRequest = page.waitForRequest((request) =>
+    request.url().includes('/api/portfolio/items') && request.method() === 'POST'
+  );
   await page.click('button:has-text("가상 포트폴리오에 담기")');
+  await saveRequest;
 
   // AI review section appears
   await expect(page.locator('text=AI 포트폴리오 점검')).toBeVisible();
+  await expect(page.locator('text=서버 리스크 점검')).toBeVisible();
+  await expect(page.locator('text=총 가상 비중')).toBeVisible();
 });
 
 test("admin sheet opens on double click", async ({ page }) => {

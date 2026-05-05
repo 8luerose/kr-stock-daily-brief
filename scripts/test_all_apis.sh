@@ -162,28 +162,70 @@ grep -q '최근 지지선' /tmp/krbrief_resp.json || fail "stock trade-zones mis
 grep -q '거래량 강도' /tmp/krbrief_resp.json || fail "stock trade-zones missing volume strength evidence"
 pass "GET /api/stocks/{code}/trade-zones"
 
-# 16) Stock universe
+# 16) Portfolio sandbox
+code=$(status_code GET "$BASE_URL/api/portfolio")
+[[ "$code" == "200" ]] || fail "portfolio get expected 200, got $code"
+contains_field /tmp/krbrief_resp.json items || fail "portfolio get missing items"
+contains_field /tmp/krbrief_resp.json summary || fail "portfolio get missing summary"
+contains_field /tmp/krbrief_resp.json source || fail "portfolio get missing source"
+grep -q 'server_mysql_portfolio_sandbox' /tmp/krbrief_resp.json || fail "portfolio get missing server source"
+pass "GET /api/portfolio"
+
+cat > /tmp/krbrief_portfolio_payload.json <<JSON
+{
+  "code": "005930",
+  "name": "삼성전자",
+  "group": "반도체 대표 종목",
+  "rate": 1.55,
+  "count": null,
+  "weight": 10
+}
+JSON
+code=$(status_code POST "$BASE_URL/api/portfolio/items" \
+  -H "Content-Type: application/json" \
+  --data-binary @/tmp/krbrief_portfolio_payload.json)
+[[ "$code" == "200" ]] || fail "portfolio upsert expected 200, got $code"
+grep -q '"code":"005930"' /tmp/krbrief_resp.json || fail "portfolio upsert missing 005930"
+contains_field /tmp/krbrief_resp.json riskNotes || fail "portfolio upsert missing riskNotes"
+contains_field /tmp/krbrief_resp.json nextChecklist || fail "portfolio upsert missing nextChecklist"
+contains_field /tmp/krbrief_resp.json recentEvents || fail "portfolio upsert missing recentEvents"
+pass "POST /api/portfolio/items"
+
+code=$(status_code PUT "$BASE_URL/api/portfolio/items/005930" \
+  -H "Content-Type: application/json" \
+  -d '{"weight":25}')
+[[ "$code" == "200" ]] || fail "portfolio update expected 200, got $code"
+grep -Eq '"weight"[[:space:]]*:[[:space:]]*25' /tmp/krbrief_resp.json || fail "portfolio update missing weight 25"
+contains_field /tmp/krbrief_resp.json concentration || fail "portfolio update missing summary concentration"
+pass "PUT /api/portfolio/items/{code}"
+
+code=$(status_code DELETE "$BASE_URL/api/portfolio/items/005930")
+[[ "$code" == "200" ]] || fail "portfolio delete expected 200, got $code"
+contains_field /tmp/krbrief_resp.json summary || fail "portfolio delete missing summary"
+pass "DELETE /api/portfolio/items/{code}"
+
+# 17) Stock universe
 code=$(status_code GET "$BASE_URL/api/stocks/universe" --get --data-urlencode "query=유한양행" --data-urlencode "limit=5")
 [[ "$code" == "200" ]] || fail "stock universe expected 200, got $code"
 grep -q '"code":"000100"' /tmp/krbrief_resp.json || fail "stock universe missing 유한양행 000100"
 contains_field /tmp/krbrief_resp.json totalCount || fail "stock universe missing totalCount"
 pass "GET /api/stocks/universe"
 
-# 17) Stock sectors
+# 18) Stock sectors
 code=$(status_code GET "$BASE_URL/api/stocks/sectors" --get --data-urlencode "query=의료·정밀기기" --data-urlencode "limit=5")
 [[ "$code" == "200" ]] || fail "stock sectors expected 200, got $code"
 grep -q '"name":"의료·정밀기기"' /tmp/krbrief_resp.json || fail "stock sectors missing 의료·정밀기기"
 contains_field /tmp/krbrief_resp.json totalCount || fail "stock sectors missing totalCount"
 pass "GET /api/stocks/sectors"
 
-# 18) Stock themes
+# 19) Stock themes
 code=$(status_code GET "$BASE_URL/api/stocks/themes" --get --data-urlencode "query=전선" --data-urlencode "limit=5")
 [[ "$code" == "200" ]] || fail "stock themes expected 200, got $code"
 grep -q '"name":"전선"' /tmp/krbrief_resp.json || fail "stock themes missing 전선"
 contains_field /tmp/krbrief_resp.json totalCount || fail "stock themes missing totalCount"
 pass "GET /api/stocks/themes"
 
-# 19) AI status
+# 20) AI status
 code=$(status_code GET "$BASE_URL/api/ai/status")
 [[ "$code" == "200" ]] || fail "ai status expected 200, got $code"
 contains_field /tmp/krbrief_resp.json provider || fail "ai status missing provider"
@@ -196,7 +238,7 @@ if grep -q '"configured":true' /tmp/krbrief_resp.json; then
 fi
 pass "GET /api/ai/status"
 
-# 20) AI chat
+# 21) AI chat
 cat > /tmp/krbrief_ai_chat_payload.json <<JSON
 {
   "question": "삼성전자 차트를 초보자 관점으로 설명해줘",
@@ -291,7 +333,24 @@ if [[ "$AI_CONFIGURED" == "true" ]]; then
 fi
 pass "POST /api/ai/chat"
 
-# 21) Unified search
+cat > /tmp/krbrief_ai_chat_minimal_payload.json <<JSON
+{
+  "question": "삼성전자는 왜 움직였는지 초보자에게 설명해줘"
+}
+JSON
+code=$(status_code POST "$BASE_URL/api/ai/chat" \
+  -H "Content-Type: application/json" \
+  --data-binary @/tmp/krbrief_ai_chat_minimal_payload.json)
+[[ "$code" == "200" ]] || fail "ai chat minimal expected 200, got $code"
+contains_field /tmp/krbrief_resp.json retrieval || fail "ai chat minimal missing retrieval"
+contains_field /tmp/krbrief_resp.json sourceCount || fail "ai chat minimal missing sourceCount"
+contains_field /tmp/krbrief_resp.json grounding || fail "ai chat minimal missing grounding"
+contains_field /tmp/krbrief_resp.json limitations || fail "ai chat minimal missing limitations"
+grep -Eq '"sourceCount"[[:space:]]*:[[:space:]]*[1-9]' /tmp/krbrief_resp.json || fail "ai chat minimal did not use auto-enriched retrieval"
+grep -q '"id":"search-result"' /tmp/krbrief_resp.json || fail "ai chat minimal missing auto-enriched search-result"
+pass "POST /api/ai/chat auto-enriches minimal context"
+
+# 22) Unified search
 code=$(status_code GET "$BASE_URL/api/search?query=%EB%B0%98%EB%8F%84%EC%B2%B4&limit=5")
 [[ "$code" == "200" ]] || fail "search expected 200, got $code"
 contains_field /tmp/krbrief_resp.json source || fail "search missing source"

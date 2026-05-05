@@ -1,6 +1,6 @@
 # ERD (kr-stock-daily-brief)
 
-최종 업데이트: 2026-05-03
+최종 업데이트: 2026-05-05
 
 ---
 
@@ -32,6 +32,16 @@ erDiagram
         VARCHAR discord_channel_id "Discord 채널 ID"
         VARCHAR discord_thread_id "Discord 스레드 ID"
     }
+    PORTFOLIO_ITEMS {
+        VARCHAR stock_code PK "KRX 종목 코드"
+        VARCHAR stock_name "종목명"
+        VARCHAR group_label "테마 또는 그룹"
+        DOUBLE rate "추가 시점 등락률 참고값"
+        BIGINT mention_count "언급량 참고값"
+        DOUBLE weight "교육용 가상 비중"
+        TIMESTAMP created_at "생성 시각 UTC"
+        TIMESTAMP updated_at "수정 시각 UTC"
+    }
 ```
 
 ---
@@ -42,6 +52,7 @@ erDiagram
 flowchart LR
     UI[React Frontend] --> Backend[Spring Backend]
     Backend --> MySQL[(MySQL daily_summaries)]
+    Backend --> PortfolioMySQL[(MySQL portfolio_items)]
     Backend --> Marketdata[FastAPI marketdata]
     Backend --> AI[FastAPI ai-service]
     AI --> Qdrant[(Qdrant - RAG 확장용)]
@@ -53,11 +64,11 @@ flowchart LR
 
 ## 설계 메모
 
-- 핵심 영속 테이블은 현재 `daily_summaries` 1개다.
+- 핵심 영속 테이블은 현재 `daily_summaries`, `portfolio_items`다.
 - 종목 차트와 이벤트는 저장하지 않고 요청 시 pykrx OHLCV 기반으로 조회/계산한다.
-- 포트폴리오 샌드박스는 실계좌 연동 없이 브라우저 `localStorage`에만 저장한다.
+- 포트폴리오 샌드박스는 실계좌 연동 없이 `portfolio_items`에 교육용 가상 비중만 저장한다.
 - Qdrant는 RAG 인덱싱 확장용으로 준비되어 있으며, 현재 MySQL ERD와 직접 FK 관계는 없다.
 - 추후 확장 후보:
   - `stock_events` (이벤트 캐시/근거 링크 저장)
-  - `watchlist_items` (로그인 도입 시 관심 종목 서버 저장)
+  - `watchlist_items` (로그인 도입 시 사용자별 관심 종목 저장)
   - `ai_chat_logs` (비식별 AI 품질 개선 로그)

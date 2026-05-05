@@ -996,6 +996,97 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
 
 ---
 
+## 21) 포트폴리오 샌드박스
+
+실계좌 연동이 아닌 교육용 가상 비중 샌드박스다. 서버는 `portfolio_items`에 종목 코드, 종목명, 테마/그룹, 추가 시점 참고 등락률, 가상 비중만 저장하고, 응답에는 최근 이벤트와 다음 확인 체크리스트를 함께 내려준다.
+
+### `GET /api/portfolio`
+
+저장된 가상 포트폴리오와 전체 리스크 요약을 조회한다.
+
+#### 성공 응답 (200)
+
+```json
+{
+  "items": [
+    {
+      "code": "005930",
+      "name": "삼성전자",
+      "group": "반도체 대표 종목",
+      "rate": 1.55,
+      "count": null,
+      "weight": 10,
+      "riskNotes": [
+        "가상 비중이 과도하게 높지는 않지만, 동일 섹터 집중 여부를 함께 확인해야 합니다."
+      ],
+      "nextChecklist": [
+        "삼성전자의 최근 이벤트와 거래량 급증 여부 확인"
+      ],
+      "recentEvents": [
+        {
+          "date": "2026-05-05",
+          "type": "volume_spike",
+          "severity": "medium",
+          "title": "거래량 급증",
+          "explanation": "최근 20거래일 평균 대비 거래량이 늘었습니다."
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "totalWeight": 10,
+    "maxWeightStock": "삼성전자",
+    "maxWeight": 10,
+    "concentration": "비중이 한 종목에 과도하게 몰리지는 않았습니다.",
+    "volatility": "큰 변동률 종목은 아직 적지만, 이벤트 발생 시 비중을 다시 점검하세요.",
+    "nextChecklist": ["비중이 가장 큰 종목의 최근 이벤트 확인"]
+  },
+  "source": "server_mysql_portfolio_sandbox",
+  "updatedAt": "2026-05-05T00:00:00Z"
+}
+```
+
+### `POST /api/portfolio/items`
+
+관심 종목을 추가하거나 기존 종목의 이름, 그룹, 참고 등락률, 가상 비중을 갱신한다.
+
+#### 요청 예시
+
+```json
+{
+  "code": "005930",
+  "name": "삼성전자",
+  "group": "반도체 대표 종목",
+  "rate": 1.55,
+  "count": null,
+  "weight": 10
+}
+```
+
+### `PUT /api/portfolio/items/{code}`
+
+기존 종목의 가상 비중만 수정한다.
+
+#### 요청 예시
+
+```json
+{ "weight": 25 }
+```
+
+### `DELETE /api/portfolio/items/{code}`
+
+가상 포트폴리오에서 종목을 제거한다.
+
+#### 응답 정책
+
+- 모든 성공 응답은 `PortfolioResponse` 형식으로 현재 전체 포트폴리오를 반환한다.
+- `code`는 6자리 숫자만 허용한다.
+- `weight`는 서버에서 0~100 사이로 보정한다.
+- 최근 이벤트는 `marketdata` 이벤트 API를 조회해 최대 3건까지 포함한다. 이벤트 조회 실패 시 빈 배열로 내려준다.
+- 응답의 문구는 투자 지시가 아니라 교육용 리스크 점검과 다음 확인 행동으로 제한한다.
+
+---
+
 ## DTO 스키마 (`SummaryDto`)
 
 - `date: LocalDate`

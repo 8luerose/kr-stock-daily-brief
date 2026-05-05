@@ -221,6 +221,71 @@ export async function loadSummaryArchive() {
   }
 }
 
+function toFiniteNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizePortfolioItem(item = {}) {
+  return {
+    code: item.code || item.stockCode || "",
+    name: item.name || item.stockName || item.code || "관심 종목",
+    group: item.group || item.groupLabel || "관심 종목",
+    rate: toFiniteNumber(item.rate, 0),
+    count: Number.isFinite(Number(item.count)) ? Number(item.count) : null,
+    weight: toFiniteNumber(item.weight, 10),
+    riskNotes: Array.isArray(item.riskNotes) ? item.riskNotes : [],
+    nextChecklist: Array.isArray(item.nextChecklist) ? item.nextChecklist : [],
+    recentEvents: Array.isArray(item.recentEvents) ? item.recentEvents : []
+  };
+}
+
+function normalizePortfolio(response = {}) {
+  return {
+    items: Array.isArray(response.items) ? response.items.map(normalizePortfolioItem) : [],
+    summary: response.summary || {
+      totalWeight: 0,
+      maxWeightStock: "-",
+      maxWeight: 0,
+      concentration: "아직 담긴 종목이 없습니다.",
+      volatility: "종목을 담으면 변동성 점검을 시작합니다.",
+      nextChecklist: []
+    },
+    source: response.source || "server_mysql_portfolio_sandbox",
+    updatedAt: response.updatedAt || null
+  };
+}
+
+export async function loadPortfolio() {
+  return normalizePortfolio(await requestJson("/api/portfolio"));
+}
+
+export async function upsertPortfolioItem(item) {
+  return normalizePortfolio(
+    await requestJson("/api/portfolio/items", {
+      method: "POST",
+      body: JSON.stringify(item)
+    })
+  );
+}
+
+export async function updatePortfolioItemWeight(code, weight) {
+  return normalizePortfolio(
+    await requestJson(`/api/portfolio/items/${encodeURIComponent(code)}`, {
+      method: "PUT",
+      body: JSON.stringify({ weight })
+    })
+  );
+}
+
+export async function deletePortfolioItem(code) {
+  return normalizePortfolio(
+    await requestJson(`/api/portfolio/items/${encodeURIComponent(code)}`, {
+      method: "DELETE"
+    })
+  );
+}
+
 export async function runAdminAction(action, adminKey) {
   const headers = adminKey ? { "X-Admin-Key": adminKey } : {};
   if (action === "today") return requestJson("/api/summaries/generate/today", { method: "POST", headers });
