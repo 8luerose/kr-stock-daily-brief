@@ -22,7 +22,7 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
         }
       } catch (err) {
         if (mounted) {
-          setError(err.message || '데이터를 불러오는데 실패했습니다.');
+          setError(err.message || '데이터 로드 실패');
         }
       } finally {
         if (mounted) {
@@ -30,7 +30,6 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
         }
       }
     };
-
     fetchWorkspace();
     return () => { mounted = false; };
   }, [activeCode, interval]);
@@ -44,8 +43,7 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
     try {
       const results = await searchWorkspace(query);
       setSearchResults(results);
-    } catch (err) {
-      console.error('검색 실패:', err);
+    } catch {
       setSearchResults([]);
     } finally {
       setIsSearching(false);

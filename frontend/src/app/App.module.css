@@ -1,123 +1,52 @@
-.appShell {
-  display: flex;
-  flex-direction: column;
+.appContainer {
+  position: relative;
+  width: 100vw;
   height: 100vh;
   overflow: hidden;
+  background: var(--color-bg-base);
 }
 
-.header {
+.chartLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.uiLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none; /* Let clicks pass through to chart */
+}
+
+/* Children of uiLayer should capture pointer events */
+.uiLayer > * {
+  pointer-events: auto;
+}
+
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(5, 5, 5, 0.7);
+  backdrop-filter: blur(10px);
+  z-index: 50;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-3) var(--spacing-6);
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--glass-border);
-  z-index: 100;
-  height: 72px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  color: var(--color-text-primary);
-  width: 200px;
-}
-
-.logo h1 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.logoIcon {
-  color: var(--color-accent);
-}
-
-.searchContainer {
-  flex: 1;
-  max-width: 600px;
-  position: relative;
-}
-
-.nav {
-  display: flex;
-  gap: var(--spacing-2);
-  width: 200px;
-  justify-content: flex-end;
-}
-
-.navButton {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: var(--spacing-2) var(--spacing-3);
-  color: var(--color-text-secondary);
-  border-radius: var(--radius-md);
-}
-
-.navButton span {
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.navButton:hover {
-  background: var(--color-bg-elevated);
-  color: var(--color-text-primary);
-}
-
-.navButton.active {
-  color: var(--color-accent);
-}
-
-.mainContent {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: var(--spacing-6);
-  position: relative;
-}
-
-.workspace {
-  display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: var(--spacing-6);
-  height: calc(100vh - 120px);
-  max-width: 1600px;
-  margin: 0 auto;
-}
-
-.chartSection {
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* Important for deeply nested flex/grid scrolling */
-}
-
-.sidePanel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
-  overflow-y: auto;
-  padding-right: var(--spacing-2);
-}
-
-/* Loading & Error States */
-.loadingState, .errorState {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  color: var(--color-text-secondary);
-  gap: var(--spacing-4);
 }
 
 .spinner {
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
   border: 3px solid var(--color-border);
   border-top-color: var(--color-accent);
   border-radius: 50%;
@@ -128,35 +57,13 @@
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 1024px) {
-  .workspace {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
-  
-  .sidePanel {
-    padding-right: 0;
-  }
-}
-
-@media (max-width: 768px) {
-  .header {
-    flex-wrap: wrap;
-    height: auto;
-    padding: var(--spacing-3);
-    gap: var(--spacing-3);
-  }
-  
-  .logo, .nav {
-    width: auto;
-  }
-  
-  .searchContainer {
-    order: 3;
-    max-width: 100%;
-  }
-  
-  .mainContent {
-    padding: var(--spacing-3);
-  }
+.secretAdminToggle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50px;
+  height: 50px;
+  z-index: 100;
+  opacity: 0;
+  cursor: default;
 }

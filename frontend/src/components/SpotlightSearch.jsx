@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, Loader2, ArrowRight } from 'lucide-react';
-import styles from './SearchCenter.module.css';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Loader2, TrendingUp, TrendingDown, BookOpen } from 'lucide-react';
 import clsx from 'clsx';
+import styles from './SpotlightSearch.module.css';
 
-export default function SearchCenter({ onSearch, results, isSearching, onSelect }) {
+export default function SpotlightSearch({ onSearch, results, isSearching, onSelect }) {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef(null);
@@ -35,44 +35,45 @@ export default function SearchCenter({ onSearch, results, isSearching, onSelect 
 
   return (
     <div className={styles.container} ref={containerRef}>
-      <div className={clsx(styles.inputWrapper, isFocused && styles.focused)}>
+      <div className={clsx(styles.searchBar, isFocused && styles.focused, 'animate-slide-down')}>
         <Search className={styles.icon} size={20} />
         <input
-          type="text"
-          placeholder="어떤 주식이 궁금하신가요? (예: 삼성전자, 반도체)"
+          className={styles.input}
+          placeholder="종목명, 테마, 용어 검색..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
-          className={styles.input}
         />
         {isSearching && <Loader2 className={clsx(styles.icon, styles.spin)} size={20} />}
       </div>
 
       {isFocused && (query.length > 0 || results?.length > 0) && (
-        <div className={clsx(styles.dropdown, 'animate-slide-up')}>
+        <div className={styles.dropdown}>
           {results && results.length > 0 ? (
             <ul className={styles.list}>
-              {results.map((item) => (
-                <li 
-                  key={item.id} 
-                  className={styles.listItem}
-                  onClick={() => handleSelect(item)}
-                >
-                  <div className={styles.itemMain}>
-                    <div className={styles.itemHeader}>
-                      <span className={styles.itemName}>{item.title || item.name}</span>
+              {results.map(item => (
+                <li key={item.id} className={styles.item} onClick={() => handleSelect(item)}>
+                  <div className={styles.itemIcon}>
+                    {item.type === 'term' ? (
+                      <BookOpen size={18} className={styles.termIcon} />
+                    ) : parseFloat(item.changeRate) > 0 ? (
+                      <TrendingUp size={18} className={styles.posIcon} />
+                    ) : (
+                      <TrendingDown size={18} className={styles.negIcon} />
+                    )}
+                  </div>
+                  <div className={styles.itemContent}>
+                    <div className={styles.itemTitleGroup}>
+                      <span className={styles.itemTitle}>{item.title}</span>
                       <span className={styles.itemCode}>{item.code}</span>
-                      <span className={clsx(
-                        styles.badge, 
-                        item.type === 'term' ? styles.badgeNeutral : 
-                        parseFloat(item.changeRate) > 0 ? styles.badgePos : styles.badgeNeg
-                      )}>
-                        {item.type === 'term' ? '용어' : item.changeRate}
-                      </span>
                     </div>
                     <p className={styles.itemDesc}>{item.beginnerLine}</p>
                   </div>
-                  <ArrowRight size={16} className={styles.itemArrow} />
+                  {item.type !== 'term' && (
+                    <div className={clsx(styles.itemRate, parseFloat(item.changeRate) > 0 ? styles.posText : styles.negText)}>
+                      {item.changeRate}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
