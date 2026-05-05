@@ -1,27 +1,60 @@
 :root {
-  color-scheme: light;
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
-  --bg: #f6f8fb;
-  --surface: rgba(255, 255, 255, 0.9);
-  --surface-solid: #ffffff;
-  --surface-soft: #edf4ff;
-  --ink: #111827;
-  --muted: #667085;
-  --subtle: #98a2b3;
-  --line: #dbe5f2;
-  --line-strong: #c7d4e8;
-  --blue: #1f7aff;
-  --blue-deep: #0f52d9;
-  --green: #00a86b;
-  --red: #f04452;
-  --amber: #f5a524;
-  --navy: #101828;
-  --chart: #091222;
-  --chart-soft: #101d33;
-  --chart-line: rgba(139, 163, 193, 0.2);
-  --radius: 8px;
-  --radius-lg: 14px;
-  --shadow: 0 26px 80px rgba(15, 23, 42, 0.14);
-  --shadow-soft: 0 14px 38px rgba(15, 23, 42, 0.08);
-  --speed: 220ms;
+  /* Colors - Core */
+  --color-bg-base: #0f1115;
+  --color-bg-surface: #1a1d24;
+  --color-bg-elevated: #242831;
+  
+  --color-text-primary: #f2f4f6;
+  --color-text-secondary: #8b95a1;
+  --color-text-tertiary: #4e5968;
+  
+  --color-border: #333a44;
+  --color-border-subtle: #242831;
+
+  /* Colors - Accents */
+  --color-accent: #3182f6;
+  --color-accent-hover: #1b64da;
+  
+  /* Semantic Colors */
+  --color-positive: #e82c5d; /* Korean stock market uses red for positive */
+  --color-positive-bg: rgba(232, 44, 93, 0.15);
+  --color-negative: #2f73ee; /* Korean stock market uses blue for negative */
+  --color-negative-bg: rgba(47, 115, 238, 0.15);
+  --color-warning: #f5a623;
+  --color-warning-bg: rgba(245, 166, 35, 0.15);
+
+  /* Typography */
+  --font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  
+  /* Spacing */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-round: 9999px;
+
+  /* Shadows (Glassmorphism & Depth) */
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 20px rgba(49, 130, 246, 0.2);
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(26, 29, 36, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 320ms cubic-bezier(0.4, 0, 0.2, 1);
 }

@@ -1,0 +1,76 @@
+import { useState, useEffect, useCallback } from 'react';
+import { loadStockWorkspace, searchWorkspace } from '../services/apiClient';
+
+export function useWorkspace(initialCode = '005930', initialInterval = 'daily') {
+  const [activeCode, setActiveCode] = useState(initialCode);
+  const [interval, setInterval] = useState(initialInterval);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchWorkspace = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const workspaceData = await loadStockWorkspace(activeCode, interval);
+        if (mounted) {
+          setData(workspaceData);
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err.message || '데이터를 불러오는데 실패했습니다.');
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchWorkspace();
+    return () => { mounted = false; };
+  }, [activeCode, interval]);
+
+  const handleSearch = useCallback(async (query) => {
+    if (!query || query.trim() === '') {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const results = await searchWorkspace(query);
+      setSearchResults(results);
+    } catch (err) {
+      console.error('검색 실패:', err);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const changeStock = useCallback((code) => {
+    setActiveCode(code);
+    setSearchResults([]);
+  }, []);
+
+  const changeInterval = useCallback((newInterval) => {
+    setInterval(newInterval);
+  }, []);
+
+  return {
+    activeCode,
+    interval,
+    data,
+    loading,
+    error,
+    searchResults,
+    isSearching,
+    handleSearch,
+    changeStock,
+    changeInterval
+  };
+}

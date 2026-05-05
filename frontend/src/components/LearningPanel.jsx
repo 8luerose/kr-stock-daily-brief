@@ -1,105 +1,64 @@
-import { MessageCircleQuestion, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { findLearningTerm } from "../data/fallbackData.js";
+import React, { useEffect, useState } from 'react';
+import { loadLearningTerms } from '../services/apiClient';
+import { BookOpen, HelpCircle } from 'lucide-react';
+import styles from './LearningPanel.module.css';
 
-export function LearningPanel({ compact = false, terms = [], onAsk }) {
-  const [selectedId, setSelectedId] = useState("거래량".toLowerCase());
-  const [query, setQuery] = useState("");
-  const safeTerms = terms.length ? terms : [findLearningTerm("거래량")];
-  const selected =
-    safeTerms.find((term) => term.id === selectedId) ||
-    safeTerms.find((term) => term.term === "거래량") ||
-    safeTerms[0];
+export default function LearningPanel() {
+  const [terms, setTerms] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    function onQuestion(event) {
-      const match = safeTerms.find((term) => event.detail?.includes(term.term));
-      if (match) setSelectedId(match.id);
-    }
-    window.addEventListener("learning-question", onQuestion);
-    return () => window.removeEventListener("learning-question", onQuestion);
-  }, [safeTerms]);
+    let mounted = true;
+    loadLearningTerms().then(data => {
+      if (mounted) {
+        setTerms(data);
+        setLoading(false);
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
 
-  const filteredTerms = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return safeTerms.slice(0, compact ? 5 : 14);
-    return safeTerms
-      .filter((term) => `${term.term} ${term.category} ${term.coreSummary}`.toLowerCase().includes(normalized))
-      .slice(0, 14);
-  }, [compact, query, safeTerms]);
+  if (loading) {
+    return <div className={styles.loading}>학습 데이터를 불러오는 중...</div>;
+  }
 
   return (
-    <section className={compact ? "learningPanel compact" : "learningPanel"} aria-label="초보자 학습">
-      <div className="panelHead">
-        <span className="eyebrow">초보자 학습</span>
-        <strong>{compact ? "차트에서 바로 배우기" : "차트와 연결되는 주식 개념"}</strong>
-        <p>{selected.coreSummary}</p>
-      </div>
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <BookOpen className={styles.headerIcon} size={28} />
+        <div>
+          <h2>주식 초보자를 위한 개념 학습</h2>
+          <p>차트와 AI 설명을 이해하기 위한 필수 개념들을 배워보세요.</p>
+        </div>
+      </header>
 
-      {!compact ? (
-        <label className="termSearch">
-          <Search size={16} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="용어 검색" />
-        </label>
-      ) : null}
+      <div className={styles.grid}>
+        {terms.map((term, index) => (
+          <div key={term.id || index} className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h3>{term.term}</h3>
+              <span className={styles.category}>{term.category}</span>
+            </div>
+            
+            <p className={styles.coreSummary}>{term.coreSummary}</p>
+            
+            <div className={styles.detailBox}>
+              <strong>차트에서 확인하는 법</strong>
+              <p>{term.relatedChartZone}</p>
+            </div>
+            
+            <div className={styles.detailBox}>
+              <strong>실제 시나리오</strong>
+              <p>{term.scenario}</p>
+            </div>
 
-      <div className="termTabs" role="tablist" aria-label="학습 용어">
-        {filteredTerms.map((term) => (
-          <button
-            aria-selected={selected.id === term.id}
-            className={selected.id === term.id ? "selected" : ""}
-            key={term.id}
-            type="button"
-            role="tab"
-            onClick={() => setSelectedId(term.id)}
-          >
-            {term.term}
-          </button>
+            <button className={styles.askAiBtn}>
+              <HelpCircle size={16} />
+              <span>AI에게 더 물어보기</span>
+            </button>
+          </div>
         ))}
       </div>
-
-      <article className="termDetail">
-        <h3>{selected.term}</h3>
-        <p className="termLead">{selected.coreSummary}</p>
-        <dl>
-          <div>
-            <dt>자세한 설명</dt>
-            <dd>{selected.longExplanation}</dd>
-          </div>
-          <div>
-            <dt>차트에서 보는 법</dt>
-            <dd>{selected.chartUsage}</dd>
-          </div>
-          <div>
-            <dt>왜 중요한지</dt>
-            <dd>{selected.whyItMatters}</dd>
-          </div>
-          <div>
-            <dt>초보자 오해</dt>
-            <dd>{selected.commonMisunderstanding}</dd>
-          </div>
-          {!compact ? (
-            <>
-              <div>
-                <dt>시나리오 예시</dt>
-                <dd>{selected.scenario}</dd>
-              </div>
-              <div>
-                <dt>관련 차트 구간</dt>
-                <dd>{selected.relatedChartZone}</dd>
-              </div>
-              <div>
-                <dt>관련 질문</dt>
-                <dd>{selected.relatedQuestions?.join(" / ")}</dd>
-              </div>
-            </>
-          ) : null}
-        </dl>
-        <button className="askButton" type="button" onClick={() => onAsk?.(selected.askEntry)}>
-          <MessageCircleQuestion size={16} />
-          AI에게 물어보기
-        </button>
-      </article>
-    </section>
+    </div>
   );
 }
