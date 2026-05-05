@@ -1,14 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { fallbackWorkspace } from "../src/data/fallbackData.js";
 
 const APP_URL = process.env.APP_URL || "http://localhost:5173";
 
-const chartRows = [
-  ["2026-02-02", 69200, 71200, 68800, 70600, 12600000],
-  ["2026-02-09", 70600, 72400, 69900, 71900, 14100000],
-  ["2026-02-16", 71900, 74700, 71200, 74200, 19300000],
-  ["2026-02-23", 74200, 76100, 73100, 75600, 17400000],
-  ["2026-03-02", 75600, 79400, 74900, 78900, 26800000]
-].map(([date, open, high, low, close, volume]) => ({ date, open, high, low, close, volume }));
+const chartRows = fallbackWorkspace.chart.rows;
+const tradeZones = fallbackWorkspace.zones;
 
 async function stubBackend(page) {
   await page.route("http://localhost:8080/api/**", async (route) => {
@@ -45,9 +41,7 @@ async function stubBackend(page) {
         name: "삼성전자",
         basisDate: "2026-05-05",
         confidence: "86%",
-        zones: [
-          { type: "buy", label: "매수 검토", price: "86,000~88,500원" }
-        ]
+        zones: tradeZones
       });
     }
     if (url.includes("/events")) {
@@ -94,8 +88,12 @@ for (const viewport of [
     await expect(page.locator('input[placeholder="종목명, 테마, 용어 검색..."]')).toBeVisible();
     await expect(page.locator('.recharts-responsive-container')).toBeVisible();
 
+    await expect(page.locator('button[aria-label="AI 요약 펼치기"]')).toBeVisible();
+    await expect(page.locator('text=매매 검토 시점')).toHaveCount(0);
+    await page.click('button[aria-label="AI 요약 펼치기"]');
     await expect(page.locator('text=매매 검토 시점')).toBeVisible();
     await expect(page.locator('text=주요 모멘텀')).toBeVisible();
+    await expect(page.locator('text=신뢰도: 86%')).toBeVisible();
     await expect(page.locator('button[aria-label="Open Portfolio"]')).toBeVisible();
   });
 }
@@ -125,9 +123,12 @@ test("portfolio sandbox opens and works", async ({ page }) => {
   await page.click('button[aria-label="Open Portfolio"]');
 
   // Sandbox sheet should be open
-  await expect(page.locator('h2', { hasText: '포트폴리오 샌드박스' })).toBeVisible();
-  await expect(page.locator('text=가상 비중 설정 (%)')).toBeVisible();
-  await expect(page.locator('text=학습용 임시 샌드박스')).toBeVisible();
+  const sandboxSheet = page.getByTestId('portfolio-sandbox-sheet');
+  await expect(sandboxSheet.locator('h2', { hasText: '포트폴리오 샌드박스' })).toBeVisible();
+  await expect(sandboxSheet.getByTestId('portfolio-stock-info')).toContainText('005930');
+  await expect(sandboxSheet.getByTestId('portfolio-stock-info')).toContainText('삼성전자');
+  await expect(sandboxSheet.locator('text=가상 비중 설정 (%)')).toBeVisible();
+  await expect(sandboxSheet.locator('text=학습용 임시 샌드박스')).toBeVisible();
 
   // Click Add
   await page.click('button:has-text("가상 포트폴리오에 담기")');

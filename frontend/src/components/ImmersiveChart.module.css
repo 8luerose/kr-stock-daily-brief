@@ -19,7 +19,7 @@
   font-size: 2rem;
   font-weight: 700;
   color: var(--color-text-primary);
-  letter-spacing: 2px;
+  letter-spacing: 0;
 }
 
 .heroName {
@@ -28,7 +28,7 @@
   line-height: 1;
   color: var(--color-text-primary);
   white-space: nowrap;
-  letter-spacing: -2px;
+  letter-spacing: 0;
 }
 
 .heroRate {
@@ -118,7 +118,7 @@
 /* Interval Selector */
 .intervalSelector {
   position: absolute;
-  top: 120px;
+  top: 148px;
   right: 5%;
   display: flex;
   background: var(--glass-bg);
@@ -165,5 +165,9 @@
 @media (max-width: 768px) {
   .heroName { font-size: 4rem; }
   .heroRate { font-size: 2rem; }
-  .intervalSelector { top: 90px; right: 5%; }
+  .intervalSelector {
+    top: calc(var(--spacing-3) + 64px);
+    right: auto;
+    left: var(--spacing-3);
+  }
 }

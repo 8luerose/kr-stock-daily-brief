@@ -16,7 +16,7 @@ export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockNam
   return (
     <div className={clsx(styles.overlay, isOpen && styles.open)}>
       <div className={styles.backdrop} onClick={onClose} />
-      <div className={styles.sheet}>
+      <div className={styles.sheet} data-testid="portfolio-sandbox-sheet">
         <div className={styles.header}>
           <div className={styles.titleGroup}>
             <PieChart size={20} className={styles.icon} />
@@ -32,7 +32,7 @@ export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockNam
           <p className={styles.desc}>현재 보고 있는 종목을 가상의 포트폴리오에 담고 AI 리스크를 점검해보세요.</p>
 
           <div className={styles.addSection}>
-            <div className={styles.stockInfo}>
+            <div className={styles.stockInfo} data-testid="portfolio-stock-info">
               <span className={styles.code}>{activeCode}</span>
               <span className={styles.name}>{stockName || '로딩 중'}</span>
             </div>

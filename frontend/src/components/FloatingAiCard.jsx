@@ -9,9 +9,15 @@ export default function FloatingAiCard({ ai, events, asOf }) {
   if (!ai) return null;
 
   return (
-    <div className={clsx(styles.container, expanded && styles.expanded, 'animate-slide-up')}>
+    <div className={clsx(styles.container, expanded && styles.expanded)}>
       {/* Minimized View (1-line summary) */}
-      <div className={styles.header} onClick={() => setExpanded(!expanded)}>
+      <button
+        type="button"
+        className={styles.header}
+        onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
+        aria-label={expanded ? 'AI 요약 접기' : 'AI 요약 펼치기'}
+      >
         <div className={styles.iconWrapper}>
           <Bot size={24} className={styles.icon} />
         </div>
@@ -19,10 +25,10 @@ export default function FloatingAiCard({ ai, events, asOf }) {
           <span className={styles.direction}>{ai.direction || '분석 중'}</span>
           <p className={styles.conclusion}>{ai.conclusion || '현재 종목의 주요 흐름을 파악하고 있습니다.'}</p>
         </div>
-        <button className={styles.toggleBtn}>
+        <span className={styles.toggleBtn} aria-hidden="true">
           {expanded ? <ChevronDown /> : <ChevronUp />}
-        </button>
-      </div>
+        </span>
+      </button>
 
       {/* Expanded View (Conditions & News) */}
       {expanded && (
