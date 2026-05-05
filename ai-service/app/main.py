@@ -525,10 +525,16 @@ def _join_api_path(base_url: str, path: str) -> str:
     return f"{base}/{suffix}"
 
 
+def _openai_compatible_api_key(base_url: str) -> str:
+    if "api.z.ai" in base_url:
+        return _first_env("LLM_API_KEY", "ZAI_API_KEY")
+    return _first_env("LLM_API_KEY", "ZAI_API_KEY", "OPENAI_API_KEY")
+
+
 def _call_openai_compatible_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
-    api_key = _first_env("LLM_API_KEY", "OPENAI_API_KEY")
     model = os.getenv("LLM_MODEL", "").strip()
     base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    api_key = _openai_compatible_api_key(base_url)
     timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "45"))
 
     if not api_key or not model:
@@ -683,9 +689,9 @@ def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str 
 
 
 def _llm_status() -> dict[str, Any]:
-    openai_key_set = bool(_first_env("LLM_API_KEY", "OPENAI_API_KEY"))
     openai_model = os.getenv("LLM_MODEL", "").strip()
     openai_base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    openai_key_set = bool(_openai_compatible_api_key(openai_base_url))
     anthropic_key_set = bool(_first_env("ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"))
     anthropic_model = _first_env(
         "ANTHROPIC_MODEL",

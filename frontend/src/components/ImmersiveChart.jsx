@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ResponsiveContainer, ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ReferenceDot, ReferenceArea, Label
 } from 'recharts';
@@ -14,34 +14,6 @@ function getEventLabel(type) {
   if (type === 'positive') return '호재 후보';
   if (type === 'negative') return '악재 후보';
   return '확인 필요';
-}
-
-function formatRate(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return '';
-  const sign = number > 0 ? '+' : '';
-  return `${sign}${number.toFixed(2)}%`;
-}
-
-function formatLeader(entry) {
-  if (!entry) return '확인 필요';
-  const name = entry.name || entry.title || entry.value || '확인 필요';
-  const code = entry.code ? `(${entry.code})` : '';
-  const rate = formatRate(entry.rate);
-  return [name + code, rate].filter(Boolean).join(' ');
-}
-
-function firstLeader(list, fallbackName, fallbackCode, fallbackRate) {
-  if (Array.isArray(list) && list.length > 0) return list[0];
-  if (fallbackName) {
-    return { name: fallbackName, code: fallbackCode, rate: fallbackRate };
-  }
-  return null;
-}
-
-function formatBriefDate(summary) {
-  if (!summary?.date) return '일간';
-  return summary.date;
 }
 
 function CustomTooltip({ active, payload, learningMode, onTermClick }) {
@@ -115,9 +87,27 @@ function parsePriceRange(priceStr) {
   return [val - val * 0.02, val + val * 0.02]; // fallback 2% band
 }
 
-export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, learningMode, onTermClick, summary, children }) {
-  const [activePanel, setActivePanel] = useState('none'); // 'none', 'brief', 'guide', 'ai'
+export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, stockOptions = [], onChangeStock, learningMode, onTermClick, children }) {
+  const toolbarRef = useRef(null);
+  const [activePanel, setActivePanel] = useState('none'); // 'none', 'stocks', 'guide', 'ai'
   const [guideTab, setGuideTab] = useState('ma'); // 'ma', 'beginner', 'event'
+
+  useEffect(() => {
+    if (activePanel === 'none') return undefined;
+    const handlePointerDown = (event) => {
+      if (toolbarRef.current?.contains(event.target)) return;
+      setActivePanel('none');
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setActivePanel('none');
+    };
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activePanel]);
 
   const chartData = useMemo(() => {
     if (!chart?.rows) return [];
@@ -212,16 +202,8 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     };
   });
   const visibleEvents = (events || []).slice(0, 2);
-  const briefTitle = summary ? `${formatBriefDate(summary)} 한국 주식 일간 브리프` : '저장 브리프 불러오는 중';
-  const kospiTopGainer = firstLeader(summary?.kospiTopGainers, summary?.kospiTopGainer, summary?.kospiTopGainerCode, summary?.kospiTopGainerRate);
-  const kosdaqTopGainer = firstLeader(summary?.kosdaqTopGainers, summary?.kosdaqTopGainer, summary?.kosdaqTopGainerCode, summary?.kosdaqTopGainerRate);
-  const marketTopGainer = firstLeader(summary?.topGainers, summary?.topGainer, null, null);
-  const marketTopLoser = firstLeader(summary?.topLosers, summary?.topLoser, null, null);
-  const mentionLeader = Array.isArray(summary?.mostMentionedTop) && summary.mostMentionedTop.length > 0
-    ? summary.mostMentionedTop[0]
-    : summary?.mostMentioned
-      ? { name: summary.mostMentioned }
-      : null;
+  const intervalLabel = interval === 'daily' ? '1일' : interval === 'weekly' ? '1주' : '1개월';
+  const normalizedStockOptions = stockOptions.length ? stockOptions : [stock].filter(Boolean);
 
   const getZoneColor = (type) => {
     if (type === 'buy' || type === 'split') return 'var(--color-positive)';
@@ -308,7 +290,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       </div>
 
       {/* Top Unified Toolbar */}
-      <div className={styles.topToolbar} data-testid="chart-toolbar">
+      <div className={styles.topToolbar} data-testid="chart-toolbar" ref={toolbarRef}>
         <div className={styles.intervalGroup}>
           {['daily', 'weekly', 'monthly'].map(intv => (
             <button
@@ -321,51 +303,51 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
               {intv === 'daily' ? '1일' : intv === 'weekly' ? '1주' : '1개월'}
             </button>
           ))}
+          <span className={styles.intervalStatus} data-testid="interval-status" aria-live="polite">
+            {intervalLabel}
+          </span>
         </div>
 
         <div className={styles.actionGroup}>
           <div className={styles.actionItem}>
             <button
-              className={clsx(styles.actionBtn, activePanel === 'brief' && styles.actionBtnActive)}
-              onClick={() => setActivePanel(activePanel === 'brief' ? 'none' : 'brief')}
-              data-testid="daily-brief-button"
-              aria-label="일간 브리프"
+              className={clsx(styles.actionBtn, activePanel === 'stocks' && styles.actionBtnActive)}
+              onClick={() => setActivePanel(activePanel === 'stocks' ? 'none' : 'stocks')}
+              data-testid="stock-selector-button"
+              aria-label="기업 선택"
             >
-              <span>📊</span> 일간 브리프 <span className={styles.chevron}>▼</span>
+              <span>▦</span> 기업 선택 <span className={styles.chevron}>▼</span>
             </button>
-            {activePanel === 'brief' && (
-              <div className={styles.dropdownPanel} data-testid="daily-brief-panel">
-                <div className={styles.briefHeader}>
-                  <span>저장 브리프</span>
-                  <strong>{briefTitle}</strong>
+            {activePanel === 'stocks' && (
+              <div className={styles.dropdownPanel} data-testid="stock-selector-panel" role="listbox" aria-label="기업 목록">
+                <div className={styles.stockPanelHeader}>
+                  <span>기준 기업</span>
+                  <strong>{stock.name} ({stock.code})</strong>
                 </div>
-                <div className={styles.briefGrid}>
-                  <article>
-                    <span>KOSPI 상승 1위</span>
-                    <strong>{formatLeader(kospiTopGainer)}</strong>
-                  </article>
-                  <article>
-                    <span>KOSDAQ 상승 1위</span>
-                    <strong>{formatLeader(kosdaqTopGainer)}</strong>
-                  </article>
-                  <article>
-                    <span>전체 상승 대표</span>
-                    <strong>{formatLeader(marketTopGainer)}</strong>
-                  </article>
-                  <article>
-                    <span>전체 하락 대표</span>
-                    <strong>{formatLeader(marketTopLoser)}</strong>
-                  </article>
+                <div className={styles.stockList}>
+                  {normalizedStockOptions.map((option) => {
+                    const selected = option.code === stock.code;
+                    return (
+                      <button
+                        type="button"
+                        key={option.code}
+                        role="option"
+                        aria-selected={selected}
+                        className={clsx(styles.stockOption, selected && styles.stockOptionActive)}
+                        onClick={() => {
+                          if (option.code !== stock.code) onChangeStock?.(option.code);
+                          setActivePanel('none');
+                        }}
+                      >
+                        <span>
+                          <strong>{option.name}</strong>
+                          <em>{option.code} · {option.market}</em>
+                        </span>
+                        <b>{selected ? '선택됨' : option.changeRate || '실제 데이터'}</b>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div className={styles.briefMention}>
-                  <span>네이버 토론 언급 상위</span>
-                  <strong>{formatLeader(mentionLeader)}</strong>
-                </div>
-                {summary?.rawNotes && (
-                  <p className={styles.briefSource}>
-                    {summary.rawNotes.split('\n').find((line) => line.includes('effective_date')) || summary.rawNotes.split('\n')[0]}
-                  </p>
-                )}
               </div>
             )}
           </div>

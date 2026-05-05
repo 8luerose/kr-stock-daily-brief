@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useWorkspace } from '../hooks/useWorkspace';
-import { loadLearningTerms, loadSummaryArchive } from '../services/apiClient';
+import { loadLearningTerms, loadStockOptions } from '../services/apiClient';
 import ImmersiveChart from '../components/ImmersiveChart';
 import FloatingAiCard from '../components/FloatingAiCard';
 import FloatingLearningMode from '../components/FloatingLearningMode';
@@ -8,7 +8,6 @@ import DeepDiveLearningSheet from '../components/DeepDiveLearningSheet';
 import HiddenAdminSheet from '../components/HiddenAdminSheet';
 import PortfolioSandbox from '../components/PortfolioSandbox';
 import { Briefcase } from 'lucide-react';
-import clsx from 'clsx';
 import styles from './App.module.css';
 
 function App() {
@@ -18,6 +17,7 @@ function App() {
     data,
     loading,
     error,
+    changeStock,
     changeInterval
   } = useWorkspace();
 
@@ -26,16 +26,16 @@ function App() {
   const [termData, setTermData] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
-  const [summaryArchive, setSummaryArchive] = useState(null);
+  const [stockOptions, setStockOptions] = useState([]);
 
   useEffect(() => {
     let mounted = true;
-    loadSummaryArchive()
-      .then((archive) => {
-        if (mounted) setSummaryArchive(archive);
+    loadStockOptions()
+      .then((options) => {
+        if (mounted) setStockOptions(options);
       })
       .catch(() => {
-        if (mounted) setSummaryArchive(null);
+        if (mounted) setStockOptions([]);
       });
     return () => { mounted = false; };
   }, []);
@@ -90,9 +90,10 @@ function App() {
             decisionSummary={data.currentDecisionSummary}
             interval={interval}
             onChangeInterval={changeInterval}
+            stockOptions={stockOptions}
+            onChangeStock={changeStock}
             learningMode={learningMode}
             onTermClick={handleSelectTerm}
-            summary={summaryArchive?.latest}
           >
             <FloatingLearningMode 
               isActive={learningMode} 

@@ -38,12 +38,18 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
     setInterval(newInterval);
   }, []);
 
+  const changeStock = useCallback((code) => {
+    setActiveCode(code);
+    setRefreshKey((key) => key + 1);
+  }, []);
+
   return {
     activeCode,
     interval,
     data,
     loading,
     error,
+    changeStock,
     changeInterval
   };
 }

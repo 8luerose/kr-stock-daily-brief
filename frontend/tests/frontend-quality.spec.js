@@ -5,6 +5,11 @@ const APP_URL = process.env.APP_URL || "http://localhost:5173";
 
 const chartRows = fallbackWorkspace.chart.rows;
 const tradeZones = fallbackWorkspace.zones;
+const stockOptions = [
+  { code: "005930", name: "삼성전자", market: "KOSPI", rate: "+1.55%" },
+  { code: "000660", name: "SK하이닉스", market: "KOSPI", rate: "+2.10%" },
+  { code: "035420", name: "NAVER", market: "KOSPI", rate: "-0.42%" }
+];
 const dailyBriefSample = {
   date: "2026-05-05",
   effectiveDate: "20260504",
@@ -51,6 +56,9 @@ async function stubBackend(page) {
 
     if (url.includes("/api/summaries/latest")) return json(dailyBriefSample);
     if (url.includes("/api/summaries?")) return json([dailyBriefSample]);
+    if (url.includes("/api/stocks/universe")) {
+      return json({ asOf: "2026-05-05", stocks: stockOptions });
+    }
     if (url.includes("/api/portfolio")) {
       const method = route.request().method();
       if (method === "GET") {
@@ -101,12 +109,14 @@ async function stubBackend(page) {
     if (url.includes("/chart")) {
       const requestUrl = new URL(url);
       const interval = requestUrl.searchParams.get("interval") || "daily";
-      return json({ code: "005930", name: "삼성전자", interval, asOf: "2026-05-05", data: chartRows });
+      const code = url.includes("/api/stocks/000660/") ? "000660" : "005930";
+      const option = stockOptions.find((item) => item.code === code) || stockOptions[0];
+      return json({ code, name: option.name, interval, asOf: "2026-05-05", data: chartRows });
     }
     if (url.includes("/trade-zones")) {
       return json({
-        code: "005930",
-        name: "삼성전자",
+        code: url.includes("/api/stocks/000660/") ? "000660" : "005930",
+        name: url.includes("/api/stocks/000660/") ? "SK하이닉스" : "삼성전자",
         basisDate: "2026-05-05",
         confidence: "86%",
         zones: tradeZones
@@ -211,7 +221,7 @@ async function readResponsiveMetrics(page) {
       learning: rect(document.querySelector('button[aria-label="Toggle Learning Mode"]')),
       portfolio: rect(document.querySelector('button[aria-label="Open Portfolio"]')),
       interval: rect(byButtonText('1일')?.parentElement),
-      brief: rect(byButtonText('일간 브리프')),
+      stockSelector: rect(byButtonText('기업 선택')),
       guide: rect(byButtonText('차트 가이드')),
       aiCondition: rect(byButtonText('AI 검토 조건')),
       textOverflowCount: textOverflow.length,
@@ -224,7 +234,7 @@ for (const viewport of [
   { name: "desktop", width: 1440, height: 1000 },
   { name: "mobile", width: 390, height: 900 }
 ]) {
-  test(`home shows chart, daily brief, and AI card on ${viewport.name}`, async ({ page }) => {
+  test(`home shows chart, stock selector, and AI card on ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openApp(page);
 
@@ -236,16 +246,17 @@ for (const viewport of [
     await expect(page.getByRole("button", { name: /1일/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /1주/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /1개월/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /일간 브리프/ })).toBeVisible();
+    await expect(page.getByTestId("interval-status")).toContainText("1일");
+    await expect(page.getByRole("button", { name: /기업 선택/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /차트 가이드/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /AI 검토 조건/ })).toBeVisible();
     await expect(page.locator('button[aria-label="Toggle Learning Mode"]')).toBeVisible();
 
-    await page.getByRole("button", { name: /일간 브리프/ }).click();
-    await expect(page.getByTestId("daily-brief-panel")).toContainText("2026-05-05 한국 주식 일간 브리프");
-    await expect(page.getByTestId("daily-brief-panel")).toContainText("대원전선우");
-    await expect(page.getByTestId("daily-brief-panel")).toContainText("KBI메탈");
-    await expect(page.getByTestId("daily-brief-panel")).toContainText("PI첨단소재");
+    await page.getByRole("button", { name: /기업 선택/ }).click();
+    await expect(page.getByTestId("stock-selector-panel")).toContainText("삼성전자");
+    await expect(page.getByTestId("stock-selector-panel")).toContainText("SK하이닉스");
+    await page.mouse.click(viewport.width - 20, viewport.height - 20);
+    await expect(page.getByTestId("stock-selector-panel")).toHaveCount(0);
 
     await page.getByRole("button", { name: /차트 가이드/ }).click();
     const guidePanel = page.getByTestId("chart-guide-panel");
@@ -291,6 +302,27 @@ test("daily weekly monthly controls refetch and keep chart painted", async ({ pa
     await expect(page.getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "true");
     await expectChartSvgPainted(page);
   }
+});
+
+test("stock selector switches to SK hynix and closes on outside click", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openApp(page);
+
+  await page.getByRole("button", { name: /기업 선택/ }).click();
+  await expect(page.getByTestId("stock-selector-panel")).toContainText("SK하이닉스");
+
+  const skRequest = page.waitForRequest((request) =>
+    request.url().includes("/api/stocks/000660/chart")
+  );
+  await page.getByRole("option", { name: /SK하이닉스/ }).click();
+  await skRequest;
+  await expect(page.locator("h1", { hasText: "SK하이닉스" })).toBeVisible();
+  await expect(page.getByTestId("stock-selector-panel")).toHaveCount(0);
+
+  await page.getByRole("button", { name: /기업 선택/ }).click();
+  await expect(page.getByTestId("stock-selector-panel")).toBeVisible();
+  await page.mouse.click(20, 900);
+  await expect(page.getByTestId("stock-selector-panel")).toHaveCount(0);
 });
 
 for (const viewport of [

@@ -22,7 +22,7 @@ async function requestJson(path, options = {}) {
 }
 
 function normalizeChart(remoteChart) {
-  const rows = remoteChart?.data || remoteChart?.rows || fallbackWorkspace.chart.rows;
+  const rows = remoteChart?.data || remoteChart?.rows || [];
   return {
     interval: remoteChart?.interval || "daily",
     rows
@@ -50,7 +50,7 @@ function normalizeZoneType(type) {
 }
 
 function normalizeTradeZones(remoteZones, fallbackZones) {
-  const zones = Array.isArray(remoteZones?.zones) && remoteZones.zones.length ? remoteZones.zones : fallbackZones;
+  const zones = Array.isArray(remoteZones?.zones) ? remoteZones.zones : [];
   return zones.map((zone) => ({
     ...zone,
     type: normalizeZoneType(zone.type),
@@ -59,6 +59,28 @@ function normalizeTradeZones(remoteZones, fallbackZones) {
     beginner: zone.beginner || zone.beginnerExplanation,
     invalidationSignal: zone.invalidationSignal || zone.oppositeSignal
   }));
+}
+
+function uniqueStockOptions(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const code = String(item?.code || "").trim();
+    if (!code || seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
+}
+
+function normalizeStockOption(item = {}) {
+  return {
+    id: item.id || `stock-${item.code}`,
+    code: item.code || item.stockCode || "",
+    name: item.name || item.stockName || item.title || item.code || "종목",
+    market: item.market || "KRX",
+    changeRate: item.rate || item.changeRate || "실시간 확인",
+    theme: item.theme || item.summary || "실제 시세 API 기준",
+    beginnerLine: item.beginnerLine || "선택하면 실제 차트와 이벤트 근거를 다시 불러옵니다."
+  };
 }
 
 function normalizeEvent(remoteEvent = {}) {
@@ -140,39 +162,52 @@ export async function loadStockWorkspace(code, interval) {
     chart: { ...fallbackWorkspace.chart, interval }
   };
 
-  try {
-    const params = buildStockRequestParams(interval);
-    const [chart, zones, events, ai] = await Promise.all([
-      requestJson(`/api/stocks/${code}/chart?${params.chart}`),
-      requestJson(`/api/stocks/${code}/trade-zones?${params.zones}`),
-      requestJson(`/api/stocks/${code}/events?${params.events}`),
-      requestJson("/api/ai/chat", {
-        method: "POST",
-        body: JSON.stringify({
-          question: `${stock.name} 차트의 매수와 매도 검토 조건을 교육용으로 설명해줘`,
-          context: { code, interval }
-        })
+  const params = buildStockRequestParams(interval);
+  const [chart, zones, events, ai] = await Promise.all([
+    requestJson(`/api/stocks/${code}/chart?${params.chart}`),
+    requestJson(`/api/stocks/${code}/trade-zones?${params.zones}`),
+    requestJson(`/api/stocks/${code}/events?${params.events}`),
+    requestJson("/api/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        question: `${stock.name} 차트의 매수와 매도 검토 조건을 교육용으로 설명해줘`,
+        context: { code, interval }
       })
-    ]);
+    })
+  ]);
 
-    return {
-      ...next,
-      stock: { ...stock, name: chart?.name || stock.name, code: chart?.code || stock.code },
-      asOf: chart?.asOf || zones?.basisDate || next.asOf,
-      source: "백엔드 API와 앱 내 학습 데이터",
-      chart: normalizeChart(chart),
-      zones: normalizeTradeZones(zones, next.zones),
-      events: Array.isArray(events?.events) && events.events.length ? events.events.map(normalizeEvent) : next.events,
-      indicatorSnapshot: zones?.indicatorSnapshot || ai?.structured?.chartState?.indicatorSnapshot || next.indicatorSnapshot,
-      currentDecisionSummary: zones?.currentDecisionSummary || ai?.structured?.chartState || next.currentDecisionSummary,
-      ai: normalizeAi(ai)
-    };
-  } catch (error) {
-    return {
-      ...next,
-      source: "백엔드 연결 실패로 앱 내 학습용 예시 데이터를 표시합니다.",
-      loadError: error.message
-    };
+  const normalizedChart = normalizeChart(chart);
+  if (!normalizedChart.rows.length) {
+    throw new Error("실제 차트 데이터가 비어 있습니다.");
+  }
+
+  return {
+    ...next,
+    stock: { ...stock, name: chart?.name || stock.name, code: chart?.code || stock.code },
+    asOf: chart?.asOf || zones?.basisDate || next.asOf,
+    source: "백엔드 실제 시세·이벤트 API",
+    chart: normalizedChart,
+    zones: normalizeTradeZones(zones, next.zones),
+    events: Array.isArray(events?.events) ? events.events.map(normalizeEvent) : [],
+    indicatorSnapshot: zones?.indicatorSnapshot || ai?.structured?.chartState?.indicatorSnapshot || null,
+    currentDecisionSummary: zones?.currentDecisionSummary || ai?.structured?.chartState || null,
+    ai: normalizeAi(ai)
+  };
+}
+
+export async function loadStockOptions() {
+  try {
+    const remote = await requestJson("/api/stocks/universe?limit=300");
+    const remoteStocks = Array.isArray(remote?.stocks) ? remote.stocks.map(normalizeStockOption) : [];
+    const priority = ["005930", "000660"];
+    const prioritized = [
+      ...fallbackStocks.map(normalizeStockOption),
+      ...remoteStocks.filter((item) => priority.includes(item.code)),
+      ...remoteStocks
+    ];
+    return uniqueStockOptions(prioritized).slice(0, 40);
+  } catch {
+    return fallbackStocks.map(normalizeStockOption);
   }
 }
 
