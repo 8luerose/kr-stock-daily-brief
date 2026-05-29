@@ -213,9 +213,9 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `LLM_TIMEOUT_SECONDS` | No | AI service live LLM wait time before rule-based fallback |
 | `LLM_MAX_TOKENS` | No | Max live LLM response tokens |
 | `OLLAMA_BASE_URL` | No | Local Ollama URL. Docker Desktop default: `http://host.docker.internal:11434` |
-| `OLLAMA_MODEL` | No | Local Ollama model for `/api/ai/ollama/insights` and `LLM_PROVIDER=ollama` |
-| `OLLAMA_TIMEOUT_SECONDS` | No | Ollama wait time before rule-based fallback |
-| `OLLAMA_NUM_PREDICT` | No | Ollama max generated tokens |
+| `OLLAMA_MODEL` | No | Local Ollama model for `/api/ai/ollama/insights` and `LLM_PROVIDER=ollama`. Docker default: `llama3.1:latest` |
+| `OLLAMA_TIMEOUT_SECONDS` | No | Ollama wait time before rule-based fallback. Docker default: `45` |
+| `OLLAMA_NUM_PREDICT` | No | Ollama max generated tokens. Docker default: `420` |
 | `AI_CLIENT_CONNECT_TIMEOUT_SECONDS` | No | Backend connection timeout to ai-service |
 | `AI_CLIENT_READ_TIMEOUT_SECONDS` | No | Backend read timeout to ai-service |
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
@@ -251,7 +251,9 @@ Ollama 로컬 예:
 ollama pull llama3.1
 LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.1
+OLLAMA_MODEL=llama3.1:latest
+OLLAMA_TIMEOUT_SECONDS=45
+AI_CLIENT_READ_TIMEOUT_SECONDS=60
 docker compose up -d --build ai-service backend frontend
 curl http://localhost:8080/api/ai/status
 curl -X POST http://localhost:8080/api/ai/ollama/insights \

@@ -832,6 +832,7 @@ def _call_ollama_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[s
         "model": model,
         "messages": messages,
         "stream": False,
+        "format": "json",
         "options": {
             "temperature": 0.2,
             "num_predict": int(os.getenv("OLLAMA_NUM_PREDICT", os.getenv("LLM_MAX_TOKENS", "650"))),
@@ -1222,7 +1223,7 @@ def _fallback_ollama_insights(
             f"{subject}{f'({code})' if code else ''}은(는) 현재 {decision} 의견입니다. "
             f"{ma20['positionLabel']} 상태이고 뉴스/이벤트 점수는 {score}점입니다. 다음 거래일 확률은 상승 {probabilities['up']}%, "
             f"하락 {probabilities['down']}%, 횡보 {probabilities['flat']}%입니다. "
-            "Ollama 모델이 연결되면 같은 근거를 로컬 LLM이 더 자연스럽게 풀어씁니다."
+            "이 응답은 제공된 차트, 뉴스, 이벤트 근거를 바탕으로 한 조건형 참고입니다."
         ),
         "stockAdvice": {
             "title": "이 종목 지금 사도 되나요?",
@@ -1291,6 +1292,42 @@ def _fallback_ollama_insights(
     }
 
 
+PLACEHOLDER_TEXTS = (
+    "3개 기능을 한 문단으로 요약",
+    "조건형 의견을 한 문단으로 요약",
+    "차트, 재무/브리프, 뉴스/센티먼트를 합친 조건형 의견",
+    "매수 검토|관망|매도 검토",
+    "긍정 우위|중립|부정 우위",
+    "다음 거래일 방향 예측 설명",
+    "뉴스 헤드라인 또는 이벤트 신호",
+    "핵심 뉴스 신호",
+    "시장 분위기",
+    "장후 리포트용 LLM 코멘트",
+    "내일 확인할 것",
+    "초보자가 이해할 쉬운 설명",
+)
+
+
+def _is_placeholder_text(value: Any) -> bool:
+    text = _clean(value, "")
+    if not text:
+        return True
+    return any(marker in text for marker in PLACEHOLDER_TEXTS)
+
+
+def _merge_text_value(current: Any, generated: Any) -> Any:
+    if isinstance(generated, str) and not _is_placeholder_text(generated):
+        return _clean(generated, current)
+    return current
+
+
+def _merge_list_value(current: Any, generated: Any) -> Any:
+    if not isinstance(generated, list):
+        return current
+    values = [_clean(item, "") for item in generated if not _is_placeholder_text(item)]
+    return values[:3] if values else current
+
+
 def _merge_insight_dict(base: dict[str, Any], generated: dict[str, Any] | None) -> dict[str, Any]:
     if not generated:
         return base
@@ -1298,13 +1335,95 @@ def _merge_insight_dict(base: dict[str, Any], generated: dict[str, Any] | None) 
     for key in ["stockAdvice", "newsSentiment", "afterMarketReport"]:
         if isinstance(generated.get(key), dict):
             current = merged.get(key) if isinstance(merged.get(key), dict) else {}
-            merged[key] = {**current, **generated[key]}
+            next_value = {**current}
+            for field, value in generated[key].items():
+                if key == "newsSentiment" and field in {"score", "label", "nextTradingDay"}:
+                    continue
+                if key == "stockAdvice" and field == "decision" and value not in {"매수 검토", "관망", "매도 검토"}:
+                    continue
+                if isinstance(value, str):
+                    next_value[field] = _merge_text_value(current.get(field), value)
+                elif isinstance(value, list):
+                    next_value[field] = _merge_list_value(current.get(field), value)
+                elif value not in (None, "", []):
+                    next_value[field] = value
+            merged[key] = next_value
     for key in ["beginnerNotes", "limitations"]:
         if isinstance(generated.get(key), list):
-            merged[key] = generated[key]
-    if generated.get("answer"):
+            merged[key] = _merge_list_value(merged.get(key), generated[key])
+    if generated.get("answer") and not _is_placeholder_text(generated.get("answer")):
         merged["answer"] = _clean(generated.get("answer"), merged["answer"])
     return merged
+
+
+def _ollama_prompt_documents(documents: list[dict[str, str]]) -> list[dict[str, str]]:
+    selected: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    def add(doc: dict[str, str]) -> None:
+        doc_id = _clean(doc.get("id"), "")
+        if not doc_id or doc_id in seen:
+            return
+        selected.append(doc)
+        seen.add(doc_id)
+
+    priority_ids = {
+        "search-result",
+        "daily-summary",
+        "chart-snapshot",
+        "indicator-snapshot",
+        "trade-zones",
+        "current-decision-summary",
+        "portfolio-context",
+    }
+    for doc in documents:
+        if doc.get("id") in priority_ids:
+            add(doc)
+
+    limits = {
+        "news-headline-": 5,
+        "event-": 3,
+        "event-evidence": 3,
+        "event-causal": 3,
+        "term-": 2,
+    }
+    counts = {key: 0 for key in limits}
+    for doc in documents:
+        doc_id = _clean(doc.get("id"), "")
+        key = ""
+        if doc_id.startswith("news-headline-"):
+            key = "news-headline-"
+        elif "-evidence-" in doc_id:
+            key = "event-evidence"
+        elif "-causal-" in doc_id:
+            key = "event-causal"
+        elif doc_id.startswith("event-"):
+            key = "event-"
+        elif doc_id.startswith("term-"):
+            key = "term-"
+        if key and counts[key] < limits[key]:
+            add(doc)
+            counts[key] += 1
+
+    return selected[:24]
+
+
+def _compose_ollama_answer(subject: str, code: str, response: dict[str, Any]) -> str:
+    advice = response.get("stockAdvice") if isinstance(response.get("stockAdvice"), dict) else {}
+    sentiment = response.get("newsSentiment") if isinstance(response.get("newsSentiment"), dict) else {}
+    report = response.get("afterMarketReport") if isinstance(response.get("afterMarketReport"), dict) else {}
+    probabilities = sentiment.get("nextTradingDay") if isinstance(sentiment.get("nextTradingDay"), dict) else {}
+    decision = _clean(advice.get("decision"), "관망")
+    summary = _clean(advice.get("summary"), "조건 확인이 필요합니다.")
+    score = _clean(sentiment.get("score"), "0")
+    up = _clean(probabilities.get("up"), "확인 필요")
+    down = _clean(probabilities.get("down"), "확인 필요")
+    mood = _clean(report.get("mood"), "선별 접근")
+    return (
+        f"{subject}{f'({code})' if code else ''}은(는) 현재 {decision} 의견입니다. "
+        f"{summary} 뉴스/이벤트 점수는 {score}점이고 다음 거래일 참고 확률은 상승 {up}%, 하락 {down}%입니다. "
+        f"장후 분위기는 {mood}이며, 투자 지시가 아니라 조건 확인용 분석입니다."
+    )
 
 
 def _build_ollama_insights_prompt(
@@ -1314,15 +1433,17 @@ def _build_ollama_insights_prompt(
     basis_date: str,
     documents: list[dict[str, str]],
 ) -> list[dict[str, str]]:
+    prompt_documents = _ollama_prompt_documents(documents)
     context = "\n".join(
         f"[{doc['id']}] {doc['type']} | {doc['title']} | 기준일 {doc['basisDate']}\n{doc['text']}"
-        for doc in documents
+        for doc in prompt_documents
     )
     system = (
         "너는 한국 주식 초보자를 위한 로컬 Ollama 투자 학습 보조자다. "
         "반드시 제공된 근거 안에서만 답하고 투자 지시, 수익 보장, 확정 표현을 금지한다. "
         "결론은 매수 검토, 관망, 매도 검토 중 하나의 조건형 의견으로만 쓴다. "
-        "반드시 한국어 JSON 객체 하나만 반환한다."
+        "반드시 한국어 JSON 객체 하나만 반환하고, 각 배열은 최대 2개 항목으로 짧게 쓴다. "
+        "마크다운, 코드블록, JSON 밖 설명은 쓰지 않는다."
     )
     user = f"""
 대상: {subject}{f"({code})" if code else ""}
@@ -1333,31 +1454,26 @@ def _build_ollama_insights_prompt(
 
 다음 JSON 스키마를 지켜서 반환해라.
 {{
-  "answer": "3개 기능을 한 문단으로 요약",
+  "answer": "",
   "stockAdvice": {{
     "decision": "매수 검토|관망|매도 검토",
-    "summary": "차트, 재무/브리프, 뉴스/센티먼트를 합친 조건형 의견",
-    "buyConditions": ["매수 검토 조건"],
-    "watchConditions": ["관망 조건"],
-    "sellConditions": ["매도 검토 조건"],
-    "riskNotes": ["리스크와 한계"]
+    "summary": ""
   }},
   "newsSentiment": {{
     "score": 0,
     "label": "긍정 우위|중립|부정 우위",
-    "nextTradingDay": {{"up": 0, "down": 0, "flat": 0}},
-    "summary": "다음 거래일 방향 예측 설명",
-    "headlineSignals": ["뉴스 헤드라인 또는 이벤트 신호"]
+    "summary": "",
+    "headlineSignals": []
   }},
   "afterMarketReport": {{
-    "mood": "시장 분위기",
-    "keyPoints": ["핵심 포인트"],
-    "llmComment": "장후 리포트용 LLM 코멘트",
-    "nextWatch": ["내일 확인할 것"]
+    "mood": "",
+    "llmComment": "",
+    "nextWatch": []
   }},
-  "beginnerNotes": ["초보자가 이해할 쉬운 설명"],
-  "limitations": ["한계"]
+  "beginnerNotes": [],
+  "limitations": []
 }}
+빈 값에는 반드시 위 근거를 읽고 실제 한국어 문장을 채워라. 스키마 설명 문구를 복사하지 마라.
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -1383,6 +1499,20 @@ def ollama_insights(req: ChatRequest):
     generated = _json_object_from_text(llm_answer or "")
     response = _merge_insight_dict(fallback, generated)
     used_llm = bool(llm_answer)
+    if used_llm and not generated:
+        raw_answer = _compact(llm_answer, 900)
+        if raw_answer.lstrip().startswith("{"):
+            response["answer"] = (
+                f"{fallback['answer']} 로컬 Ollama 호출은 성공했지만 응답 JSON이 불완전해 "
+                "화면 카드에는 계산된 근거값을 유지했습니다."
+            )
+        else:
+            response["answer"] = raw_answer
+        response["limitations"] = [
+            "Ollama 로컬 LLM 응답은 받았지만 JSON 구조가 불완전해 카드 세부값은 규칙형 계산을 함께 사용했습니다.",
+            *[item for item in response.get("limitations", []) if item],
+        ][:5]
+    response["answer"] = _compose_ollama_answer(subject, code, response)
     response["mode"] = "ollama_llm" if used_llm else "ollama_fallback_rule_based"
     response["retrieval"]["llm"] = {**llm_meta, "used": used_llm}
     if used_llm:

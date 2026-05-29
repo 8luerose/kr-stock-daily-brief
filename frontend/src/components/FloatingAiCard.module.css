@@ -187,6 +187,18 @@
   word-break: keep-all;
 }
 
+.ollamaAnswer {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+  max-height: 74px;
+  overflow: hidden;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .ollamaGrid {
   display: grid;
   grid-template-columns: 1fr;

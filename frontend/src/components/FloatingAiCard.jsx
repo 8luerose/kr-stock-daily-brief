@@ -62,6 +62,9 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                 <h4 className={styles.sectionTitle}>로컬 Ollama 인사이트</h4>
                 <span>{ai.ollamaInsights.modeLabel}{ai.ollamaInsights.model ? ` · ${ai.ollamaInsights.model}` : ''}</span>
               </div>
+              {ai.ollamaInsights.answer && (
+                <p className={styles.ollamaAnswer}>{ai.ollamaInsights.answer}</p>
+              )}
               <div className={styles.ollamaGrid}>
                 <article className={styles.ollamaCard}>
                   <Cpu size={16} />

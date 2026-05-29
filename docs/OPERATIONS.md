@@ -100,7 +100,9 @@ Ollama 로컬 LLM은 별도 API로도 쓴다.
 ollama pull llama3.1
 LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.1
+OLLAMA_MODEL=llama3.1:latest
+OLLAMA_TIMEOUT_SECONDS=45
+AI_CLIENT_READ_TIMEOUT_SECONDS=60
 docker compose up -d --build ai-service backend frontend
 curl http://localhost:8080/api/ai/status
 curl -X POST http://localhost:8080/api/ai/ollama/insights \
