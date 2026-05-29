@@ -558,6 +558,12 @@ function compactEventsForAi(events = []) {
     opposite: event.opposite,
     confidence: event.confidence,
     sourceLimit: event.sourceLimit,
+    evidenceSources: (event.evidenceSources || []).slice(0, 4).map((source) => ({
+      type: source.type,
+      title: source.title,
+      description: source.description,
+      url: source.url
+    })),
     causalScores: (event.causalScores || []).slice(0, 3).map((score) => ({
       sourceType: score.sourceType,
       score: score.score,

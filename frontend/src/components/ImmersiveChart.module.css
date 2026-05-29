@@ -373,6 +373,66 @@
   overflow-wrap: anywhere;
 }
 
+.stockCodeForm {
+  display: grid;
+  gap: 7px;
+  margin-top: var(--spacing-3);
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.08);
+  padding: 9px;
+}
+
+.stockCodeForm label {
+  color: #bfdbfe;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.stockCodeForm div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.stockCodeForm input {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.72);
+  color: var(--color-text-primary);
+  font-size: 0.88rem;
+  font-weight: 850;
+  height: 36px;
+  padding: 0 10px;
+  letter-spacing: 0;
+}
+
+.stockCodeForm input:focus {
+  border-color: rgba(96, 165, 250, 0.72);
+  outline: none;
+}
+
+.stockCodeForm button {
+  border-radius: 7px;
+  background: rgba(96, 165, 250, 0.22);
+  color: #dbeafe;
+  font-size: 0.78rem;
+  font-weight: 900;
+  height: 36px;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+
+.stockCodeForm em {
+  color: #fecaca;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
 .stockList {
   display: grid;
   gap: var(--spacing-2);
@@ -529,8 +589,9 @@
     right: 12px;
     width: auto;
     max-width: none;
-    max-height: 68dvh;
+    max-height: 62dvh;
     overflow-y: auto;
+    background: rgba(10, 15, 24, 0.96);
     transform-origin: top left;
   }
 
@@ -549,6 +610,6 @@
   }
 
   .stockList {
-    max-height: 50dvh;
+    max-height: 32dvh;
   }
 }

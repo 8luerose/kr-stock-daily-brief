@@ -19,6 +19,13 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   const toolbarRef = useRef(null);
   const [activePanel, setActivePanel] = useState('none'); // 'none', 'stocks', 'guide', 'ai'
   const [guideTab, setGuideTab] = useState('ma'); // 'ma', 'beginner', 'event'
+  const [stockCodeInput, setStockCodeInput] = useState(stock?.code || '');
+  const [stockCodeError, setStockCodeError] = useState('');
+
+  useEffect(() => {
+    setStockCodeInput(stock?.code || '');
+    setStockCodeError('');
+  }, [stock?.code]);
 
   useEffect(() => {
     if (activePanel === 'none') return undefined;
@@ -129,6 +136,17 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   const visibleEvents = (events || []).slice(0, 2);
   const intervalLabel = interval === 'daily' ? '1일' : interval === 'weekly' ? '1주' : '1개월';
   const normalizedStockOptions = stockOptions.length ? stockOptions : [stock].filter(Boolean);
+  const handleStockCodeSubmit = (event) => {
+    event.preventDefault();
+    const nextCode = stockCodeInput.replace(/\D/g, '').slice(0, 6);
+    if (!/^\d{6}$/.test(nextCode)) {
+      setStockCodeError('6자리 종목코드를 입력하세요. 예: 005930');
+      return;
+    }
+    setStockCodeError('');
+    if (nextCode !== stock.code) onChangeStock?.(nextCode);
+    setActivePanel('none');
+  };
 
   return (
     <div className={styles.container}>
@@ -181,6 +199,27 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                   <p className={styles.stockSaveNotice}>
                     기업 선택은 화면의 차트와 AI 설명만 바꿉니다. DB에 저장하려면 포트폴리오 샌드박스에 담아야 합니다.
                   </p>
+                  <form className={styles.stockCodeForm} onSubmit={handleStockCodeSubmit}>
+                    <label htmlFor="stock-code-direct-input">종목코드 직접 입력</label>
+                    <div>
+                      <input
+                        id="stock-code-direct-input"
+                        value={stockCodeInput}
+                        inputMode="numeric"
+                        pattern="[0-9]{6}"
+                        maxLength={6}
+                        placeholder="005930"
+                        aria-invalid={Boolean(stockCodeError)}
+                        aria-describedby={stockCodeError ? 'stock-code-direct-error' : undefined}
+                        onChange={(event) => {
+                          setStockCodeInput(event.target.value.replace(/\D/g, '').slice(0, 6));
+                          setStockCodeError('');
+                        }}
+                      />
+                      <button type="submit">분석</button>
+                    </div>
+                    {stockCodeError && <em id="stock-code-direct-error">{stockCodeError}</em>}
+                  </form>
                 </div>
                 <div className={styles.stockList}>
                   {normalizedStockOptions.map((option) => {
