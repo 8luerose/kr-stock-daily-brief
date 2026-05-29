@@ -75,6 +75,28 @@
   white-space: normal;
 }
 
+.miniOllamaStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.miniOllamaStrip span {
+  min-width: 0;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: 999px;
+  background: rgba(96, 165, 250, 0.1);
+  color: #bfdbfe;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.2;
+  padding: 4px 7px;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .toggleBtn {
   width: 36px;
   height: 36px;
@@ -205,6 +227,57 @@
   white-space: normal;
   word-break: keep-all;
   overflow-wrap: anywhere;
+}
+
+.compactList {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.compactList li {
+  color: var(--color-text-tertiary);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.nextWatchBox {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.09);
+  padding: var(--spacing-3);
+}
+
+.nextWatchBox strong {
+  color: #fde68a;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.nextWatchBox ul {
+  display: grid;
+  gap: 5px;
+  padding: 0;
+  list-style: none;
+}
+
+.nextWatchBox li,
+.ollamaLimit {
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ollamaLimit {
+  margin: 0;
 }
 
 .conditionGrid {

@@ -157,6 +157,7 @@ export default function TradingViewPriceChart({
     const element = containerRef.current;
     if (!element || !prepared.candles.length) return undefined;
     let disposed = false;
+    let resizeTimer = null;
     let cleanupChart = () => {};
 
     loadTradingViewLibrary().then((library) => {
@@ -175,6 +176,7 @@ export default function TradingViewPriceChart({
 
       const initialSize = chartContainerSize(element);
       const chart = createChart(element, {
+      autoSize: true,
       width: initialSize.width,
       height: initialSize.height,
       layout: {
@@ -225,11 +227,19 @@ export default function TradingViewPriceChart({
         pinch: true
       }
     });
-      const resizeObserver = new ResizeObserver(() => {
+      const applyChartSize = () => {
         const nextSize = chartContainerSize(element);
-        chart.applyOptions({ width: nextSize.width, height: nextSize.height });
-      });
+        if (typeof chart.resize === 'function') {
+          chart.resize(nextSize.width, nextSize.height, true);
+        } else {
+          chart.applyOptions({ width: nextSize.width, height: nextSize.height });
+        }
+      };
+      const resizeObserver = new ResizeObserver(applyChartSize);
       resizeObserver.observe(element);
+      applyChartSize();
+      requestAnimationFrame(applyChartSize);
+      resizeTimer = window.setTimeout(applyChartSize, 120);
 
       const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',
@@ -324,6 +334,7 @@ export default function TradingViewPriceChart({
       chart.timeScale().fitContent();
 
       cleanupChart = () => {
+        if (resizeTimer) window.clearTimeout(resizeTimer);
         resizeObserver.disconnect();
         markerApi.setMarkers([]);
         priceLines.forEach((line) => candleSeries.removePriceLine(line));

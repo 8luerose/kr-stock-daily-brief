@@ -991,13 +991,105 @@ def _event_sentiment_score(events: list[dict[str, Any]]) -> int:
 def _probabilities_from_score(score: int) -> dict[str, int]:
     up = _clamp(45 + score * 0.32, 15, 75)
     down = _clamp(45 - score * 0.32, 15, 75)
-    flat = 10
-    total = up + down + flat
+    total = up + down + 10
+    up_value = round(up / total * 100)
+    down_value = round(down / total * 100)
     return {
-        "up": round(up / total * 100),
-        "down": round(down / total * 100),
-        "flat": round(flat / total * 100),
+        "up": up_value,
+        "down": down_value,
+        "flat": max(0, 100 - up_value - down_value),
     }
+
+
+def _price_text(value: Any) -> str:
+    number = _number(value, None)
+    if number is None:
+        return "확인 필요"
+    return f"{round(number):,}원"
+
+
+def _percent_text(value: Any) -> str:
+    number = _number(value, None)
+    if number is None:
+        return "확인 필요"
+    return f"{number:+.1f}%"
+
+
+def _latest_chart_row(req: ChatRequest) -> dict[str, Any]:
+    chart = req.chart if isinstance(req.chart, dict) else {}
+    latest = chart.get("latest") if isinstance(chart.get("latest"), dict) else {}
+    rows = chart.get("recentRows") if isinstance(chart.get("recentRows"), list) else []
+    if latest:
+        return latest
+    return rows[-1] if rows and isinstance(rows[-1], dict) else {}
+
+
+def _ma20_context(req: ChatRequest) -> dict[str, str]:
+    latest = _latest_chart_row(req)
+    indicator = req.indicatorSnapshot if isinstance(req.indicatorSnapshot, dict) else {}
+    moving = indicator.get("movingAverages") if isinstance(indicator.get("movingAverages"), dict) else {}
+    price_vs = indicator.get("priceVsMa20") if isinstance(indicator.get("priceVsMa20"), dict) else {}
+    close = latest.get("close")
+    ma20 = moving.get("ma20") or latest.get("ma20")
+    position = _clean(price_vs.get("position"), "")
+    distance = price_vs.get("distanceRate")
+    if not position and _number(close, None) is not None and _number(ma20, None) is not None:
+        position = "above" if _number(close, 0) >= _number(ma20, 0) else "below"
+    return {
+        "close": _price_text(close),
+        "ma20": _price_text(ma20),
+        "position": position,
+        "positionLabel": _label(position),
+        "distance": _percent_text(distance),
+    }
+
+
+def _decision_from_inputs(score: int, position: str) -> str:
+    if score >= 24 and position in {"above", "near"}:
+        return "매수 검토"
+    if score <= -24 and position == "below":
+        return "매도 검토"
+    if position == "below" and score < 10:
+        return "관망"
+    if score <= -35:
+        return "매도 검토"
+    return "관망"
+
+
+def _decision_reason(decision: str, score: int, ma20: dict[str, str]) -> str:
+    if decision == "매수 검토":
+        return (
+            f"현재가는 {ma20['ma20']} 기준 {ma20['positionLabel']}이고 뉴스/이벤트 점수는 {score}점입니다. "
+            "추격 매수보다 20일선 위 종가 유지, 거래량 증가, 저항선 돌파가 같이 확인될 때만 매수 검토가 맞습니다."
+        )
+    if decision == "매도 검토":
+        return (
+            f"현재가는 {ma20['ma20']} 기준 {ma20['positionLabel']}이고 뉴스/이벤트 점수는 {score}점입니다. "
+            "20일선 재이탈, 악재성 이벤트, 하락 거래량 증가가 겹치면 비중 축소나 손절 기준을 먼저 확인해야 합니다."
+        )
+    return (
+        f"현재가는 {ma20['ma20']} 기준 {ma20['positionLabel']}이고 뉴스/이벤트 점수는 {score}점입니다. "
+        "좋은 신호와 주의 신호가 섞여 있으므로 새 진입보다 다음 종가와 거래량 확인이 우선입니다."
+    )
+
+
+def _after_market_comment(subject: str, decision: str, score: int, probabilities: dict[str, int], summary_points: list[str]) -> str:
+    subject_label = f"{subject} 종목"
+    market_line = summary_points[0] if summary_points else "저장 브리프의 시장 대표 신호가 제한적입니다."
+    if decision == "매수 검토":
+        return (
+            f"{subject_label}은 장후 기준 관심 후보로 올려둘 수 있습니다. {market_line} "
+            f"다음 거래일 상승 확률은 {probabilities['up']}%로 계산되지만, 시초가 급등 추격보다 눌림과 거래량 유지 확인이 필요합니다."
+        )
+    if decision == "매도 검토":
+        return (
+            f"{subject_label}은 장후 기준 방어적으로 봐야 합니다. {market_line} "
+            f"다음 거래일 하락 확률은 {probabilities['down']}%로 계산되며, 지지선 이탈과 악재성 뉴스 확산 여부를 먼저 확인해야 합니다."
+        )
+    return (
+        f"{subject_label}은 장후 기준 관망 후보입니다. {market_line} "
+        f"상승 {probabilities['up']}%, 하락 {probabilities['down']}%로 한쪽 우위가 강하지 않아 가격 반응 확인 전 결론을 미루는 편이 낫습니다."
+    )
 
 
 def _headlines_from_events(events: list[dict[str, Any]]) -> list[str]:
@@ -1018,6 +1110,10 @@ def _summary_points(summary: dict[str, Any] | None) -> list[str]:
     if not isinstance(summary, dict):
         return ["저장된 장후 브리프가 부족해 종목 차트와 이벤트 중심으로 요약합니다."]
     points: list[str] = []
+    ai_report = summary.get("afterMarketAiReport") if isinstance(summary.get("afterMarketAiReport"), dict) else {}
+    report_points = ai_report.get("keyPoints") if isinstance(ai_report, dict) else []
+    if isinstance(report_points, list):
+        points.extend(_clean(point, "") for point in report_points[:4] if _clean(point, ""))
     if summary.get("topGainer"):
         points.append(f"시장 최대 상승 후보는 {summary.get('topGainer')}입니다.")
     if summary.get("topLoser"):
@@ -1026,7 +1122,7 @@ def _summary_points(summary: dict[str, Any] | None) -> list[str]:
         points.append(f"토론/언급 관심은 {summary.get('mostMentioned')}에 집중되었습니다.")
     if summary.get("effectiveDate"):
         points.append(f"브리프 기준 거래일은 {summary.get('effectiveDate')}입니다.")
-    return points or ["저장 브리프의 핵심 지표가 제한적입니다."]
+    return list(dict.fromkeys(points)) or ["저장 브리프의 핵심 지표가 제한적입니다."]
 
 
 def _fallback_ollama_insights(
@@ -1040,19 +1136,16 @@ def _fallback_ollama_insights(
     events = req.events or []
     score = _event_sentiment_score(events)
     probabilities = _probabilities_from_score(score)
-    indicator = req.indicatorSnapshot if isinstance(req.indicatorSnapshot, dict) else {}
-    price_vs = indicator.get("priceVsMa20") if isinstance(indicator, dict) else {}
-    position = _clean((price_vs or {}).get("position"), "")
-    decision = "관망"
-    if score >= 25 and position in {"above", "near"}:
-        decision = "매수 검토"
-    elif score <= -25 or position == "below":
-        decision = "매도 검토"
+    ma20 = _ma20_context(req)
+    position = ma20["position"]
+    decision = _decision_from_inputs(score, position)
     decision_summary = req.currentDecisionSummary if isinstance(req.currentDecisionSummary, dict) else {}
     headlines = _headlines_from_events(events)
     portfolio = _portfolio_guidance(req.portfolioContext if isinstance(req.portfolioContext, dict) else None)
     summary_points = _summary_points(req.summary)
     missing_reason = _clean(llm_meta.get("fallbackReason"), "Ollama 모델 설정 또는 호출 확인 필요")
+    decision_reason = _decision_reason(decision, score, ma20)
+    report_comment = _after_market_comment(subject, decision, score, probabilities, summary_points)
 
     return {
         "mode": "ollama_fallback_rule_based",
@@ -1061,27 +1154,29 @@ def _fallback_ollama_insights(
         "basisDate": basis_date,
         "answer": (
             f"{subject}{f'({code})' if code else ''}은(는) 현재 {decision} 의견입니다. "
-            f"뉴스/이벤트 점수는 {score}점이고 다음 거래일 확률은 상승 {probabilities['up']}%, "
+            f"{ma20['positionLabel']} 상태이고 뉴스/이벤트 점수는 {score}점입니다. 다음 거래일 확률은 상승 {probabilities['up']}%, "
             f"하락 {probabilities['down']}%, 횡보 {probabilities['flat']}%입니다. "
-            "Ollama 연결 전에는 규칙형 미리보기로 표시됩니다."
+            "Ollama 모델이 연결되면 같은 근거를 로컬 LLM이 더 자연스럽게 풀어씁니다."
         ),
         "stockAdvice": {
             "title": "이 종목 지금 사도 되나요?",
             "decision": decision,
             "summary": _clean(
                 decision_summary.get("summary") if isinstance(decision_summary, dict) else "",
-                f"{_label(position)}와 뉴스/이벤트 점수 {score}점을 함께 보면 새 진입은 조건 확인이 필요합니다.",
+                decision_reason,
             ),
             "buyConditions": [
-                _clean(decision_summary.get("buyReviewCondition") if isinstance(decision_summary, dict) else "", "20일선 위 종가 유지와 거래량 증가가 함께 필요합니다."),
+                _clean(decision_summary.get("buyReviewCondition") if isinstance(decision_summary, dict) else "", f"현재가 {ma20['close']}가 20일선 {ma20['ma20']} 위에서 마감하고 거래량이 늘어야 합니다."),
                 "호재 후보가 가격 반응과 거래량으로 확인될 때만 검토합니다.",
+                "저항선 근처라면 돌파 후 눌림 확인 전까지 한 번에 크게 들어가지 않습니다.",
             ],
             "watchConditions": [
                 _clean(decision_summary.get("watchCondition") if isinstance(decision_summary, dict) else "", "근거가 엇갈리면 다음 종가와 거래량을 기다립니다."),
-                "Ollama 연결 전에는 단정하지 않고 조건형으로만 봅니다.",
+                f"다음 거래일 확률이 상승 {probabilities['up']}%, 하락 {probabilities['down']}%로 갈리면 관망이 우선입니다.",
             ],
             "sellConditions": [
                 _clean(decision_summary.get("sellReviewCondition") if isinstance(decision_summary, dict) else "", "20일선 재이탈, 하락 거래량 증가, 저항선 실패가 겹치면 매도 검토입니다."),
+                "악재 후보가 늘고 반등 거래량이 약하면 손실 확대를 막는 기준을 먼저 세웁니다.",
             ],
             "riskNotes": [
                 portfolio["summary"],
@@ -1093,16 +1188,20 @@ def _fallback_ollama_insights(
             "score": score,
             "label": "긍정 우위" if score > 20 else "부정 우위" if score < -20 else "중립",
             "nextTradingDay": probabilities,
-            "summary": f"최근 이벤트와 뉴스 후보를 점수화하면 {score}점입니다. 상승/하락 확률은 참고용이며 원문 확인 전에는 낮은 확신을 유지합니다.",
+            "summary": (
+                f"최근 이벤트와 뉴스 후보를 점수화하면 {score}점입니다. "
+                f"상승 {probabilities['up']}%, 하락 {probabilities['down']}%, 횡보 {probabilities['flat']}%로 보고, "
+                "뉴스 원문과 장중 거래량으로 다시 검증해야 합니다."
+            ),
             "headlineSignals": headlines or ["뉴스/공시 원문 후보가 부족합니다."],
         },
         "afterMarketReport": {
             "title": "매일 장후 시장 요약 리포트",
             "mood": "위험 관리 우선" if score < -20 else "선별 접근" if score < 25 else "관심 확대",
             "keyPoints": summary_points,
-            "llmComment": "장후 브리프에 로컬 LLM 코멘트를 붙일 수 있는 구조입니다. 현재는 Ollama 연결 전 규칙형 코멘트입니다.",
+            "llmComment": report_comment,
             "nextWatch": [
-                "다음 거래일 시초가와 20일선 위치",
+                f"다음 거래일 현재가가 20일선 {ma20['ma20']}을 지키는지 확인",
                 "호재/악재 후보의 뉴스 원문과 공시 확인",
                 "거래량이 평균 대비 유지되는지 확인",
             ],

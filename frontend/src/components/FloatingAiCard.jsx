@@ -24,6 +24,13 @@ export default function FloatingAiCard({ ai, events, asOf }) {
         <div className={styles.summaryInfo}>
           <span className={styles.direction}>{ai.direction || '분석 중'}</span>
           <p className={styles.conclusion}>{ai.conclusion || '현재 종목의 주요 흐름을 파악하고 있습니다.'}</p>
+          {ai.ollamaInsights && (
+            <div className={styles.miniOllamaStrip} aria-label="Ollama 핵심 인사이트">
+              <span>{ai.ollamaInsights.stockAdvice.decision}</span>
+              <span>상승 {ai.ollamaInsights.newsSentiment.nextTradingDay.up}%</span>
+              <span>{ai.ollamaInsights.afterMarketReport.mood}</span>
+            </div>
+          )}
         </div>
         <span className={styles.toggleBtn} aria-hidden="true">
           {expanded ? <ChevronDown /> : <ChevronUp />}
@@ -77,9 +84,32 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                   <div>
                     <strong>{ai.ollamaInsights.afterMarketReport.mood}</strong>
                     <p>{ai.ollamaInsights.afterMarketReport.llmComment}</p>
+                    {ai.ollamaInsights.afterMarketReport.keyPoints?.length > 0 && (
+                      <ul className={styles.compactList}>
+                        {ai.ollamaInsights.afterMarketReport.keyPoints.slice(0, 3).map((item, index) => (
+                          <li key={`${item}-${index}`}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </article>
               </div>
+              {ai.ollamaInsights.afterMarketReport.nextWatch?.length > 0 && (
+                <div className={styles.nextWatchBox}>
+                  <strong>다음 거래일 확인할 것</strong>
+                  <ul>
+                    {ai.ollamaInsights.afterMarketReport.nextWatch.slice(0, 3).map((item, index) => (
+                      <li key={`${item}-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {ai.ollamaInsights.limitations?.length > 0 && (
+                <p className={styles.ollamaLimit}>
+                  {ai.ollamaInsights.configured ? '로컬 LLM 기준: ' : 'Ollama 모델 미설정: '}
+                  {ai.ollamaInsights.limitations[0]}
+                </p>
+              )}
             </div>
           )}
 

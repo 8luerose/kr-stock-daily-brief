@@ -36,6 +36,7 @@
   - `anomalies[]` (`symbol`, `name`, `rate`, `flags`, `oneLineReason`)
   - `rankingWarning`
   - `leaderExplanations` (`topGainer`, `topLoser` 각각 `level`, `summary`, `evidenceLinks`)
+  - `afterMarketAiReport` (`mood`, `keyPoints`, `llmComment`, `nextWatch`, `limitations`)
 
 ---
 
@@ -146,6 +147,23 @@
           "/api/summaries/2026-02-16/verification/krx#topLoser"
         ]
       }
+    },
+    "afterMarketAiReport": {
+      "mode": "rule_based_ai_ready",
+      "title": "매일 장후 시장 요약 리포트",
+      "mood": "선별 접근",
+      "keyPoints": [
+        "시장 최대 상승 후보는 SK증권우입니다.",
+        "시장 최대 하락 후보는 코퍼스코리아입니다."
+      ],
+      "llmComment": "장후 기준 시장 방향이 한쪽으로 강하게 쏠리지는 않았습니다.",
+      "nextWatch": [
+        "다음 거래일 시초가가 장후 분위기를 따라가는지 확인",
+        "상승 1위와 하락 1위의 뉴스 원문 확인"
+      ],
+      "limitations": [
+        "이 항목은 저장 브리프 기반 규칙형 코멘트이며, Ollama 모델 설정 시 로컬 LLM이 더 자연스럽게 보강합니다."
+      ]
     },
     "content": "Daily summary for 2026-02-16...",
     "generatedAt": "2026-02-16T08:11:13.000Z"

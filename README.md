@@ -132,6 +132,7 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 - 날짜 포맷은 ISO `YYYY-MM-DD`
 - 미래 날짜는 생성/백필/보관 모두 차단
 - 이미 존재하는 날짜의 재생성은 admin만 허용(일반 요청은 409)
+- 최신/기간 브리프 응답에는 `afterMarketAiReport`가 포함되어 장후 시장 분위기, 핵심 포인트, 다음 거래일 확인 항목을 바로 보여준다. Ollama 모델이 연결되면 `/api/ai/ollama/insights`가 같은 브리프 맥락을 로컬 LLM 코멘트로 보강한다.
 - 학습 도우미는 투자 지시가 아니라 용어 설명/체크리스트/주의점 제공 목적이다.
 - 종목 판단 패널은 교육용 분석 보조이며 “지금 사라/팔아라”가 아니라 조건, 리스크, 반대 신호를 제공한다.
 - 기업 선택은 React 화면 상태만 바꾸며 DB에 저장하지 않는다. AI 답변은 생성 직후 `ai_chat_interactions`에 감사 로그로 저장되고, 포트폴리오 샌드박스 입력은 `portfolio_items`에 저장된다.
