@@ -36,6 +36,10 @@
   user-select: none;
 }
 
+.header::-webkit-details-marker {
+  display: none;
+}
+
 .header:focus-visible {
   outline: 2px solid rgba(96, 165, 250, 0.72);
   outline-offset: -3px;
@@ -128,6 +132,11 @@
   min-height: 0;
   overflow-y: auto;
   animation: fadeIn var(--transition-fast) forwards;
+}
+
+.container:not([open]) .details,
+.details[hidden] {
+  display: none;
 }
 
 .section {

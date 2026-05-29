@@ -25,18 +25,17 @@ export default function FloatingAiCard({ ai, events, asOf }) {
   const reportStorageNote = marketReportStorageNote(ai.marketReport?.storage);
 
   return (
-    <section
+    <details
       className={clsx(styles.container, expanded && styles.expanded)}
       aria-label="AI 요약 카드"
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
       {/* Minimized View (1-line summary) */}
-      <button
-        type="button"
+      <summary
         className={styles.header}
         aria-expanded={expanded}
         aria-controls="floating-ai-card-details"
         aria-label={expanded ? 'AI 요약 접기' : 'AI 요약 펼치기'}
-        onClick={() => setExpanded((current) => !current)}
       >
         <div className={styles.iconWrapper}>
           <Bot size={24} className={styles.icon} />
@@ -57,10 +56,10 @@ export default function FloatingAiCard({ ai, events, asOf }) {
         <span className={styles.toggleBtn} aria-hidden="true">
           {expanded ? <ChevronDown /> : <ChevronUp />}
         </span>
-      </button>
+      </summary>
 
       {/* Expanded View (Conditions & News) */}
-      <div id="floating-ai-card-details" className={styles.details} hidden={!expanded}>
+      <div id="floating-ai-card-details" className={styles.details}>
           <div className={styles.runtimeNotice}>
             <Info size={15} />
             <span>
@@ -306,6 +305,6 @@ export default function FloatingAiCard({ ai, events, asOf }) {
             <span>신뢰도: {ai.confidence}</span>
           </div>
         </div>
-    </section>
+    </details>
   );
 }
