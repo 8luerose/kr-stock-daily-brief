@@ -308,11 +308,21 @@ function conciseAnswer(answer) {
 function aiRuntime(remoteAi) {
   const llm = remoteAi?.retrieval?.llm || {};
   const used = Boolean(llm.used || remoteAi?.mode === "rag_llm");
+  const provider = llm.provider || "";
+  const modeLabel = !used
+    ? "규칙형 근거 기반 답변"
+    : provider === "ollama"
+      ? "Ollama 로컬 LLM 답변"
+      : provider === "anthropic_compatible"
+        ? "외부 Anthropic 호환 LLM 답변"
+        : provider === "openai_compatible"
+          ? "외부 OpenAI 호환 LLM 답변"
+          : "실시간 LLM 답변";
   return {
     responseMode: remoteAi?.mode || (used ? "rag_llm" : "rag_fallback_rule_based"),
-    modeLabel: used ? "실시간 LLM 답변" : "규칙형 근거 기반 답변",
+    modeLabel,
     llmModel: llm.model || "",
-    llmProvider: llm.provider || "",
+    llmProvider: provider,
     llmUsed: used
   };
 }

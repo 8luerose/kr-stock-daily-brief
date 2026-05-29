@@ -813,7 +813,7 @@ def _ollama_model() -> str:
     return ""
 
 
-def _call_ollama_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
+def _call_ollama_llm(messages: list[dict[str, str]], *, json_mode: bool = False) -> tuple[str | None, dict[str, Any]]:
     model = _ollama_model()
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
     timeout = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", os.getenv("LLM_TIMEOUT_SECONDS", "20")))
@@ -828,16 +828,18 @@ def _call_ollama_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[s
             "timeoutSeconds": timeout,
         }
 
-    payload = json.dumps({
+    payload_data = {
         "model": model,
         "messages": messages,
         "stream": False,
-        "format": "json",
         "options": {
             "temperature": 0.2,
             "num_predict": int(os.getenv("OLLAMA_NUM_PREDICT", os.getenv("LLM_MAX_TOKENS", "650"))),
         },
-    }).encode("utf-8")
+    }
+    if json_mode:
+        payload_data["format"] = "json"
+    payload = json.dumps(payload_data).encode("utf-8")
     req = request.Request(
         _join_api_path(base_url, "/api/chat"),
         data=payload,
@@ -902,6 +904,8 @@ def _llm_status() -> dict[str, Any]:
         provider = "anthropic_compatible"
     elif preferred in {"openai", "openai_compatible"} and openai_configured:
         provider = "openai_compatible"
+    elif preferred in {"", "auto", "local_first"} and ollama_configured:
+        provider = "ollama"
     elif openai_configured:
         provider = "openai_compatible"
     elif anthropic_configured:
@@ -961,7 +965,7 @@ def _llm_status() -> dict[str, Any]:
 def _call_configured_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
     status = _llm_status()
     if status["provider"] == "ollama":
-        return _call_ollama_llm(messages)
+        return _call_ollama_llm(messages, json_mode=False)
     if status["provider"] == "anthropic_compatible":
         return _call_anthropic_compatible_llm(messages)
     return _call_openai_compatible_llm(messages)
@@ -1321,10 +1325,20 @@ def _merge_text_value(current: Any, generated: Any) -> Any:
     return current
 
 
+def _clean_generated_list_item(item: Any) -> str:
+    if isinstance(item, dict):
+        for key in ("title", "summary", "signal", "reason", "comment", "description", "text"):
+            text = _clean(item.get(key), "")
+            if text and not _is_placeholder_text(text):
+                return text
+        return _compact(item, 220)
+    return _clean(item, "")
+
+
 def _merge_list_value(current: Any, generated: Any) -> Any:
     if not isinstance(generated, list):
         return current
-    values = [_clean(item, "") for item in generated if not _is_placeholder_text(item)]
+    values = [_clean_generated_list_item(item) for item in generated if not _is_placeholder_text(item)]
     return values[:3] if values else current
 
 
@@ -1478,6 +1492,45 @@ def _build_ollama_insights_prompt(
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _build_ollama_chat_prompt(
+    req: ChatRequest,
+    subject: str,
+    code: str,
+    topic_type: str,
+    basis_date: str,
+    documents: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    prompt_documents = _ollama_prompt_documents(documents)[:12]
+    context = "\n".join(
+        f"[{doc['id']}] {doc['type']} | {doc['title']} | {doc['text'][:260]}"
+        for doc in prompt_documents
+    )
+    system = (
+        "너는 한국 주식 초보자를 위한 로컬 Ollama 상담 보조자다. "
+        "제공된 근거만 사용하고 수익 보장이나 매수/매도 지시는 금지한다. "
+        "답변은 900자 이내의 쉬운 한국어로 쓴다. "
+        "결론은 매수 검토, 관망, 매도 검토 중 하나로 조건형으로 말한다."
+    )
+    user = f"""
+질문: {_clean(req.question, "이 종목 지금 사도 되나요?")}
+대상: {subject}{f"({code})" if code else ""}
+분석 범위: {topic_type}
+기준일: {basis_date}
+
+근거:
+{context or "제공된 근거가 없습니다."}
+
+다음 순서로 짧게 답해라.
+1. 결론
+2. 20일선과 거래량 해석
+3. 매수 검토 조건
+4. 관망 또는 매도 검토 조건
+5. 뉴스/이벤트가 좋게 볼 이유인지 주의할 이유인지
+6. 초보자가 다음 거래일 확인할 것
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
 @app.get("/health")
 def health():
     return {"status": "UP"}
@@ -1494,7 +1547,10 @@ def ollama_insights(req: ChatRequest):
     code = _clean(req.stockCode, "")
     basis_date = _clean(req.contextDate, date.today().isoformat())
     documents = _build_retrieval_documents(req, subject, code, _clean(req.topicType, "stock"), basis_date)
-    llm_answer, llm_meta = _call_ollama_llm(_build_ollama_insights_prompt(req, subject, code, basis_date, documents))
+    llm_answer, llm_meta = _call_ollama_llm(
+        _build_ollama_insights_prompt(req, subject, code, basis_date, documents),
+        json_mode=True,
+    )
     fallback = _fallback_ollama_insights(req, subject, code, basis_date, documents, llm_meta)
     generated = _json_object_from_text(llm_answer or "")
     response = _merge_insight_dict(fallback, generated)
@@ -1596,9 +1652,12 @@ def chat(req: ChatRequest):
         sources.insert(3, {"title": "종목 뉴스 헤드라인 API", "type": "news", "url": f"/api/stocks/{code}/news"})
         sources.insert(4, {"title": "조건형 거래 구간 API", "type": "trade_zones", "url": f"/api/stocks/{code}/trade-zones"})
 
-    llm_answer, llm_meta = _call_configured_llm(
-        _build_llm_prompt(req, subject, code, topic_type, basis_date, retrieval_documents)
+    prompt = (
+        _build_ollama_chat_prompt(req, subject, code, topic_type, basis_date, retrieval_documents)
+        if _llm_status()["provider"] == "ollama"
+        else _build_llm_prompt(req, subject, code, topic_type, basis_date, retrieval_documents)
     )
+    llm_answer, llm_meta = _call_configured_llm(prompt)
     used_llm = bool(llm_answer)
 
     limitations = [

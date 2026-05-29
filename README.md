@@ -198,7 +198,7 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `MARKETDATA_BASE_URL` | No | Market data service URL (Docker internal) |
 | `AI_SERVICE_BASE_URL` | No | AI service URL (Docker internal) |
 | `QDRANT_URL` | No | Vector store URL for future RAG indexing |
-| `LLM_PROVIDER` | No | `anthropic_compatible`, `openai_compatible`, `anthropic`, or `openai` |
+| `LLM_PROVIDER` | No | `ollama`, `anthropic_compatible`, `openai_compatible`, `anthropic`, `openai`, or `auto`. Docker default is `ollama` |
 | `LLM_MODEL` | No | OpenAI-compatible model name |
 | `LLM_BASE_URL` | No | OpenAI-compatible API base URL |
 | `LLM_API_KEY` | No | Generic LLM API key. Never commit real values |
@@ -224,7 +224,22 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 
 ### LLM 모델 변경
 
-모델은 코드 수정 없이 `.env` 또는 배포 secret에서 환경변수만 바꾸면 된다. 로컬 `.env`는 commit하지 않는다.
+모델은 코드 수정 없이 `.env` 또는 배포 secret에서 환경변수만 바꾸면 된다. 로컬 `.env`는 commit하지 않는다. 이 프로젝트의 Docker 기본값은 로컬 Ollama 우선이다.
+
+Ollama 로컬 기본 예:
+```bash
+ollama pull llama3.1
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=llama3.1:latest
+OLLAMA_TIMEOUT_SECONDS=45
+AI_CLIENT_READ_TIMEOUT_SECONDS=60
+docker compose up -d --build ai-service backend frontend
+curl http://localhost:8080/api/ai/status
+curl -X POST http://localhost:8080/api/ai/ollama/insights \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"삼성전자 지금 사도 되나요?","context":{"stockCode":"005930","stockName":"삼성전자","newsHeadlines":[{"title":"삼성전자 반도체 실적 개선 기대","sentiment":"positive","matchedKeywords":["실적","반도체"]}]}}'
+```
 
 Anthropic-compatible 예:
 ```bash
@@ -244,21 +259,6 @@ LLM_BASE_URL=https://api.openai.com/v1
 OPENAI_API_KEY=...
 docker compose up -d --build ai-service backend
 curl http://localhost:8080/api/ai/status
-```
-
-Ollama 로컬 예:
-```bash
-ollama pull llama3.1
-LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.1:latest
-OLLAMA_TIMEOUT_SECONDS=45
-AI_CLIENT_READ_TIMEOUT_SECONDS=60
-docker compose up -d --build ai-service backend frontend
-curl http://localhost:8080/api/ai/status
-curl -X POST http://localhost:8080/api/ai/ollama/insights \
-  -H 'Content-Type: application/json' \
-  -d '{"question":"삼성전자 지금 사도 되나요?","context":{"stockCode":"005930","stockName":"삼성전자","newsHeadlines":[{"title":"삼성전자 반도체 실적 개선 기대","sentiment":"positive","matchedKeywords":["실적","반도체"]}]}}'
 ```
 
 Docker 내부 Ollama를 쓰려면 `docker compose --profile ollama up -d ollama`로 Ollama 컨테이너를 띄우고, `OLLAMA_BASE_URL=http://ollama:11434`와 `OLLAMA_MODEL`을 지정한다. 모델이 없거나 호출이 실패하면 화면은 규칙형 미리보기로 계속 동작한다.

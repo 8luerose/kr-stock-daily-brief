@@ -24,8 +24,35 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
           setData(workspaceData);
           setLoading(false);
           prefetchStockWorkspaces(activeCode, interval);
-          loadStockAi(workspaceData, interval)
-            .then((ai) => {
+          const loadAiLayer = async () => {
+            let ollamaInsights = null;
+            try {
+              ollamaInsights = await loadStockOllamaInsights(workspaceData, interval);
+              if (!mounted || requestId !== requestIdRef.current) return;
+              setData((current) => {
+                if (!current || current.stock?.code !== workspaceData.stock?.code || current.chart?.interval !== workspaceData.chart?.interval) {
+                  return current;
+                }
+                return {
+                  ...current,
+                  ai: {
+                    ...current.ai,
+                    ollamaInsights,
+                    modeLabel: ollamaInsights.modeLabel,
+                    llmModel: ollamaInsights.model,
+                    llmProvider: 'ollama',
+                    llmUsed: ollamaInsights.mode === 'ollama_llm'
+                  }
+                };
+              });
+            } catch {
+              // Keep the instant rule-based workspace visible while the slower AI layer fails or retries later.
+            }
+
+            if (ollamaInsights?.mode === 'ollama_llm') return;
+
+            try {
+              const ai = await loadStockAi(workspaceData, interval);
               if (!mounted || requestId !== requestIdRef.current) return;
               setData((current) => {
                 if (!current || current.stock?.code !== workspaceData.stock?.code || current.chart?.interval !== workspaceData.chart?.interval) {
@@ -33,19 +60,11 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
                 }
                 return { ...current, ai: { ...ai, ollamaInsights: current.ai?.ollamaInsights } };
               });
-            })
-            .catch(() => {});
-          loadStockOllamaInsights(workspaceData, interval)
-            .then((ollamaInsights) => {
-              if (!mounted || requestId !== requestIdRef.current) return;
-              setData((current) => {
-                if (!current || current.stock?.code !== workspaceData.stock?.code || current.chart?.interval !== workspaceData.chart?.interval) {
-                  return current;
-                }
-                return { ...current, ai: { ...current.ai, ollamaInsights } };
-              });
-            })
-            .catch(() => {});
+            } catch {
+              // The core chart remains usable without the secondary AI chat response.
+            }
+          };
+          loadAiLayer();
         }
       } catch (err) {
         if (mounted && requestId === requestIdRef.current) {

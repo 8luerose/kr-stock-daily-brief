@@ -67,9 +67,25 @@ make llm-benchmark
 curl 'http://localhost:8080/api/ai/chat/history?stockCode=005930'
 ```
 
-모델은 코드 수정 없이 환경변수로 바꾼다. 로컬 `.env`와 secret 값은 commit하지 않는다.
+모델은 코드 수정 없이 환경변수로 바꾼다. 로컬 `.env`와 secret 값은 commit하지 않는다. 현재 Docker 기본값은 로컬 Ollama 우선이다.
 
-Anthropic-compatible 기본 흐름:
+Ollama 로컬 기본 흐름:
+
+```bash
+ollama pull llama3.1
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=llama3.1:latest
+OLLAMA_TIMEOUT_SECONDS=45
+AI_CLIENT_READ_TIMEOUT_SECONDS=60
+docker compose up -d --build ai-service backend frontend
+curl http://localhost:8080/api/ai/status
+curl -X POST http://localhost:8080/api/ai/ollama/insights \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"삼성전자 지금 사도 되나요?","context":{"stockCode":"005930","stockName":"삼성전자","newsHeadlines":[{"title":"삼성전자 반도체 실적 개선 기대","sentiment":"positive","matchedKeywords":["실적","반도체"]}]}}'
+```
+
+Anthropic-compatible 흐름:
 
 ```bash
 LLM_PROVIDER=anthropic_compatible
@@ -91,24 +107,8 @@ docker compose up -d --build ai-service backend
 curl http://localhost:8080/api/ai/status
 ```
 
-응답 속도 조절은 `LLM_TIMEOUT_SECONDS`, `LLM_MAX_TOKENS`, `AI_CLIENT_READ_TIMEOUT_SECONDS`로 한다.
-`LLM_TIMEOUT_SECONDS`가 지나면 ai-service가 규칙형 근거 기반 응답으로 돌아가고, backend는 `AI_CLIENT_READ_TIMEOUT_SECONDS` 안에 응답을 받아야 한다.
-
-Ollama 로컬 LLM은 별도 API로도 쓴다.
-
-```bash
-ollama pull llama3.1
-LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.1:latest
-OLLAMA_TIMEOUT_SECONDS=45
-AI_CLIENT_READ_TIMEOUT_SECONDS=60
-docker compose up -d --build ai-service backend frontend
-curl http://localhost:8080/api/ai/status
-curl -X POST http://localhost:8080/api/ai/ollama/insights \
-  -H 'Content-Type: application/json' \
-  -d '{"question":"삼성전자 지금 사도 되나요?","context":{"stockCode":"005930","stockName":"삼성전자","newsHeadlines":[{"title":"삼성전자 반도체 실적 개선 기대","sentiment":"positive","matchedKeywords":["실적","반도체"]}]}}'
-```
+응답 속도 조절은 `LLM_TIMEOUT_SECONDS`, `LLM_MAX_TOKENS`, `OLLAMA_TIMEOUT_SECONDS`, `OLLAMA_NUM_PREDICT`, `AI_CLIENT_READ_TIMEOUT_SECONDS`로 한다.
+LLM timeout이 지나면 ai-service가 규칙형 근거 기반 응답으로 돌아가고, backend는 `AI_CLIENT_READ_TIMEOUT_SECONDS` 안에 응답을 받아야 한다.
 
 `/api/ai/ollama/insights`는 한 번에 세 가지를 반환한다.
 
