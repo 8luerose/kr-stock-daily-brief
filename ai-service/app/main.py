@@ -38,6 +38,21 @@ def _clean(value: Any, fallback: str = "-") -> str:
     return text if text else fallback
 
 
+def _friendly_llm_fallback_reason(value: Any) -> str:
+    reason = _clean(value, "")
+    if not reason:
+        return ""
+    if "TimeoutError" in reason or "timed out" in reason.lower():
+        return "Ollama 응답이 기준 시간 안에 끝나지 않아 계산된 근거를 먼저 보여줍니다."
+    if "content" in reason:
+        return "Ollama 응답 본문이 비어 있어 계산된 근거를 먼저 보여줍니다."
+    if "설정" in reason or "MODEL" in reason or "model" in reason:
+        return "Ollama 모델 설정을 확인하면 로컬 LLM 답변을 사용할 수 있습니다."
+    if "호출 실패" in reason:
+        return "Ollama 호출이 안정적으로 끝나지 않아 계산된 근거를 먼저 보여줍니다."
+    return reason
+
+
 def _label(value: Any) -> str:
     return {
         "above": "20일선 위",
@@ -1316,7 +1331,7 @@ def _fallback_ollama_insights(
     up_reasons, down_risks = _headline_reason_lists(news_headlines)
     portfolio = _portfolio_guidance(req.portfolioContext if isinstance(req.portfolioContext, dict) else None)
     summary_points = _summary_points(req.summary)
-    fallback_reason = _clean(llm_meta.get("fallbackReason"), "")
+    fallback_reason = _friendly_llm_fallback_reason(llm_meta.get("fallbackReason"))
     decision_reason = _decision_reason(decision, score, ma20)
     report_comment = _after_market_comment(subject, decision, score, probabilities, summary_points)
 
@@ -1651,7 +1666,7 @@ def _after_market_report_fallback(
     elif "관심" in mood:
         market_bias = "관심 확대"
 
-    fallback_reason = _clean(llm_meta.get("fallbackReason"), "")
+    fallback_reason = _friendly_llm_fallback_reason(llm_meta.get("fallbackReason"))
 
     return {
         "mode": "ollama_fallback_rule_based",
