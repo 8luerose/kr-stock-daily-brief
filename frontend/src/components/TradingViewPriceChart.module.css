@@ -3,9 +3,10 @@
   inset: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle at 18% 20%, rgba(34, 197, 94, 0.08), transparent 28%),
-    radial-gradient(circle at 80% 12%, rgba(96, 165, 250, 0.1), transparent 30%),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(148, 163, 184, 0.028) 1px, transparent 1px),
     linear-gradient(180deg, rgba(5, 8, 16, 0.28), rgba(5, 8, 16, 0.76));
+  background-size: 80px 80px, 80px 80px, auto;
 }
 
 .chart {
@@ -133,6 +134,82 @@
   font-size: 1.05rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.signalPanel {
+  position: absolute;
+  left: clamp(16px, 5vw, 72px);
+  top: 160px;
+  z-index: 4;
+  display: grid;
+  gap: 10px;
+  width: min(380px, 36vw);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(8, 13, 24, 0.62);
+  color: rgba(226, 232, 240, 0.84);
+  padding: 12px;
+  pointer-events: none;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.signalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.signalHeader span,
+.signalGrid span {
+  color: rgba(226, 232, 240, 0.58);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.signalHeader strong {
+  color: #f8fafc;
+  font-size: 0.94rem;
+  font-weight: 950;
+  line-height: 1.25;
+  text-align: right;
+  word-break: keep-all;
+}
+
+.signalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.signalGrid div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.42);
+  padding: 8px;
+}
+
+.signalGrid strong {
+  color: #f8fafc;
+  font-size: 0.92rem;
+  font-weight: 950;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.signalPanel p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.66);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.42;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .zoneRail {
@@ -306,10 +383,44 @@
     font-size: 0.94rem;
   }
 
+  .signalPanel {
+    left: 12px;
+    right: 12px;
+    top: 112px;
+    width: auto;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .signalHeader strong {
+    font-size: 0.84rem;
+  }
+
+  .signalGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .signalGrid div {
+    padding: 6px;
+  }
+
+  .signalGrid span {
+    font-size: 0.62rem;
+  }
+
+  .signalGrid strong {
+    font-size: 0.76rem;
+  }
+
+  .signalPanel p {
+    display: none;
+  }
+
   .zoneRail {
     left: 12px;
     right: 12px;
-    bottom: 16px;
+    bottom: calc(148px + env(safe-area-inset-bottom, 0px));
     width: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

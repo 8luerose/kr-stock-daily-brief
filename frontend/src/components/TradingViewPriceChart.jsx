@@ -40,6 +40,19 @@ function formatVolume(value) {
   return `${Math.round(number).toLocaleString()}주`;
 }
 
+function formatPercent(value) {
+  if (value === null || value === undefined || value === '') return '확인 필요';
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '확인 필요';
+  return `${number > 0 ? '+' : ''}${number.toFixed(1)}%`;
+}
+
+function averageVolume(rows, count = 20) {
+  const source = rows.slice(-count).map((row) => Number(row.volume)).filter(Number.isFinite);
+  if (!source.length) return null;
+  return source.reduce((sum, value) => sum + value, 0) / source.length;
+}
+
 function parsePriceRange(priceStr) {
   if (!priceStr) return null;
   const numbers = String(priceStr).replace(/,/g, '').match(/\d+/g);
@@ -153,6 +166,46 @@ export default function TradingViewPriceChart({
       .slice(0, 5)
   ), [zones]);
 
+  const chartMetrics = useMemo(() => {
+    const latest = prepared.rows[prepared.rows.length - 1];
+    const previous = prepared.rows[prepared.rows.length - 2];
+    if (!latest) return null;
+    const ma20 = Number(indicatorSnapshot?.movingAverages?.ma20 ?? latest.ma20);
+    const support = Number(indicatorSnapshot?.supportLevel);
+    const resistance = Number(indicatorSnapshot?.resistanceLevel);
+    const volumeAvg = averageVolume(prepared.rows);
+    const close = Number(latest.close);
+    const changeRate = previous?.close ? ((close - Number(previous.close)) / Number(previous.close)) * 100 : null;
+    const ma20Distance = Number.isFinite(ma20) && ma20 !== 0 ? ((close - ma20) / ma20) * 100 : null;
+    const resistanceDistance = Number.isFinite(resistance) && resistance !== 0 ? ((resistance - close) / close) * 100 : null;
+    const supportDistance = Number.isFinite(support) && support !== 0 ? ((close - support) / close) * 100 : null;
+    const volumeRatio = volumeAvg ? (Number(latest.volume) / volumeAvg) * 100 : null;
+    const aboveMa20 = Number.isFinite(ma20) && close >= ma20;
+    const nearResistance = Number.isFinite(resistanceDistance) && resistanceDistance >= 0 && resistanceDistance <= 3;
+    const nearSupport = Number.isFinite(supportDistance) && supportDistance >= 0 && supportDistance <= 3;
+
+    let focus = '관망 기준 확인';
+    if (nearResistance) focus = '저항선 근처';
+    else if (nearSupport) focus = '지지선 근처';
+    else if (aboveMa20 && Number(volumeRatio) >= 110) focus = '20일선 위 거래량 증가';
+    else if (!aboveMa20) focus = '20일선 회복 확인';
+
+    return {
+      latest,
+      changeRate,
+      ma20,
+      ma20Distance,
+      support,
+      supportDistance,
+      resistance,
+      resistanceDistance,
+      volumeAvg,
+      volumeRatio,
+      focus,
+      aboveMa20
+    };
+  }, [indicatorSnapshot, prepared.rows]);
+
   useEffect(() => {
     const element = containerRef.current;
     if (!element || !prepared.candles.length) return undefined;
@@ -176,7 +229,6 @@ export default function TradingViewPriceChart({
 
       const initialSize = chartContainerSize(element);
       const chart = createChart(element, {
-      autoSize: true,
       width: initialSize.width,
       height: initialSize.height,
       layout: {
@@ -373,6 +425,39 @@ export default function TradingViewPriceChart({
           <strong>{formatCurrency(latest.close)}</strong>
           <em>거래량 {formatVolume(latest.volume)}</em>
         </div>
+      )}
+      {chartMetrics && (
+        <aside className={styles.signalPanel} aria-label="현재 차트 핵심 신호">
+          <div className={styles.signalHeader}>
+            <span>현재 차트 핵심</span>
+            <strong>{chartMetrics.focus}</strong>
+          </div>
+          <div className={styles.signalGrid}>
+            <div>
+              <span>전일 대비</span>
+              <strong className={Number(chartMetrics.changeRate) >= 0 ? styles.up : styles.down}>
+                {formatPercent(chartMetrics.changeRate)}
+              </strong>
+            </div>
+            <div>
+              <span>20일선 거리</span>
+              <strong className={chartMetrics.aboveMa20 ? styles.up : styles.down}>
+                {formatPercent(chartMetrics.ma20Distance)}
+              </strong>
+            </div>
+            <div>
+              <span>저항선까지</span>
+              <strong>{formatPercent(chartMetrics.resistanceDistance)}</strong>
+            </div>
+            <div>
+              <span>거래량 강도</span>
+              <strong>{Number.isFinite(chartMetrics.volumeRatio) ? `${Math.round(chartMetrics.volumeRatio)}%` : '확인 필요'}</strong>
+            </div>
+          </div>
+          <p>
+            20일선 {formatCurrency(chartMetrics.ma20)} · 지지선 {formatCurrency(chartMetrics.support)} · 저항선 {formatCurrency(chartMetrics.resistance)}
+          </p>
+        </aside>
       )}
       {zoneSummaries.length > 0 && (
         <div className={styles.zoneRail} aria-label="AI 거래 구간">
