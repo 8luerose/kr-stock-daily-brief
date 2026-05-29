@@ -1492,6 +1492,135 @@ def _build_ollama_insights_prompt(
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _market_rate_text(entry: Any) -> str:
+    if not isinstance(entry, dict):
+        return _clean(entry, "")
+    name = _clean(entry.get("name"), "")
+    rate = entry.get("rate")
+    if _number(rate, None) is None:
+        return name
+    return f"{name} {_number(rate):+.2f}%"
+
+
+def _leader_list(summary: dict[str, Any], key: str, fallback_key: str) -> list[str]:
+    rows = summary.get(key) if isinstance(summary.get(key), list) else []
+    values = [_market_rate_text(row) for row in rows[:3] if _market_rate_text(row)]
+    if values:
+        return values
+    fallback = _clean(summary.get(fallback_key), "")
+    return [fallback] if fallback else []
+
+
+def _after_market_report_fallback(
+    summary: dict[str, Any],
+    basis_date: str,
+    llm_meta: dict[str, Any],
+) -> dict[str, Any]:
+    ai_report = summary.get("afterMarketAiReport") if isinstance(summary.get("afterMarketAiReport"), dict) else {}
+    top_gainers = _leader_list(summary, "topGainers", "topGainer")
+    top_losers = _leader_list(summary, "topLosers", "topLoser")
+    kospi_gainers = _leader_list(summary, "kospiTopGainers", "kospiTopGainer")
+    kosdaq_gainers = _leader_list(summary, "kosdaqTopGainers", "kosdaqTopGainer")
+    points = _summary_points(summary)
+    mood = _clean(ai_report.get("mood"), "선별 접근")
+    comment = _clean(ai_report.get("llmComment"), "장후 브리프를 기준으로 다음 거래일 확인 포인트를 정리했습니다.")
+    next_watch = ai_report.get("nextWatch") if isinstance(ai_report.get("nextWatch"), list) else []
+    if not next_watch:
+        next_watch = [
+            "다음 거래일 시초가와 전일 종가 대비 갭 확인",
+            "상승·하락 1위 종목의 뉴스 원문 확인",
+            "관심 종목의 20일선과 거래량 유지 여부 확인",
+        ]
+
+    market_bias = "중립"
+    if "위험" in mood:
+        market_bias = "방어 우선"
+    elif "관심" in mood:
+        market_bias = "관심 확대"
+
+    return {
+        "mode": "ollama_fallback_rule_based",
+        "provider": "ollama",
+        "model": _clean(llm_meta.get("model"), ""),
+        "basisDate": basis_date,
+        "title": "매일 장후 시장 요약 리포트",
+        "mood": mood,
+        "marketBias": market_bias,
+        "keyPoints": points[:4],
+        "llmComment": comment,
+        "nextWatch": [_clean(item, "") for item in next_watch[:4] if _clean(item, "")],
+        "beginnerNotes": [
+            "장후 리포트는 오늘 시장에서 무엇을 먼저 볼지 정리하는 기능입니다.",
+            "상승률 1위는 바로 매수 대상이 아니라 다음 거래일 거래량과 눌림을 확인할 후보입니다.",
+            "하락률 1위는 악재성 원인과 지지선 이탈 여부를 먼저 확인해야 합니다.",
+        ],
+        "marketLeaders": {
+            "topGainers": top_gainers,
+            "topLosers": top_losers,
+            "kospiTopGainers": kospi_gainers,
+            "kosdaqTopGainers": kosdaq_gainers,
+            "mostMentioned": _clean(summary.get("mostMentioned"), ""),
+        },
+        "limitations": [
+            _clean(llm_meta.get("fallbackReason"), "Ollama 모델 설정 또는 호출 확인 필요"),
+            "리포트는 저장된 장후 브리프와 제공된 시장 데이터 기준이며 실시간 장중 데이터는 아닙니다.",
+        ],
+        "retrieval": {
+            "documents": [
+                {
+                    "id": "latest-daily-summary",
+                    "type": "daily_summary",
+                    "title": "최신 저장 브리프",
+                    "basisDate": basis_date,
+                    "text": _compact(summary, 1400),
+                }
+            ],
+            "sourceCount": 1,
+            "llm": {**llm_meta, "used": False},
+        },
+        "confidence": "medium" if summary else "low",
+    }
+
+
+def _build_after_market_report_prompt(summary: dict[str, Any], basis_date: str) -> list[dict[str, str]]:
+    system = (
+        "너는 한국 주식 초보자를 위한 장후 시장 요약 리포트 작성자다. "
+        "반드시 제공된 저장 브리프만 근거로 쓰고 투자 지시, 수익 보장, 확정 표현을 금지한다. "
+        "한국어 JSON 객체 하나만 반환한다. 문장은 친근하지만 과장 없이 짧게 쓴다."
+    )
+    user = f"""
+기준일: {basis_date}
+
+저장 브리프:
+{json.dumps(summary, ensure_ascii=False, default=str)[:5000]}
+
+다음 JSON 스키마를 지켜서 반환해라.
+{{
+  "mood": "관심 확대|선별 접근|방어 우선|휴장",
+  "marketBias": "관심 확대|중립|방어 우선",
+  "keyPoints": [],
+  "llmComment": "",
+  "nextWatch": [],
+  "beginnerNotes": []
+}}
+빈 값에는 브리프를 읽고 실제 한국어 문장을 채워라. 배열은 최대 3개 항목만 쓴다.
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _merge_after_market_report(base: dict[str, Any], generated: dict[str, Any] | None) -> dict[str, Any]:
+    if not generated:
+        return base
+    merged = {**base}
+    for field in ["llmComment"]:
+        if isinstance(generated.get(field), str):
+            merged[field] = _merge_text_value(merged.get(field), generated[field])
+    for field in ["keyPoints", "nextWatch", "beginnerNotes", "limitations"]:
+        if isinstance(generated.get(field), list):
+            merged[field] = _merge_list_value(merged.get(field), generated[field])
+    return merged
+
+
 def _build_ollama_chat_prompt(
     req: ChatRequest,
     subject: str,
@@ -1574,6 +1703,33 @@ def ollama_insights(req: ChatRequest):
     if used_llm:
         response["limitations"] = [
             "Ollama 로컬 LLM이 제공된 근거 안에서 생성한 조건형 의견입니다.",
+            *[item for item in response.get("limitations", []) if item],
+        ][:5]
+    return response
+
+
+@app.post("/ollama/after-market-report")
+def ollama_after_market_report(req: ChatRequest):
+    summary = req.summary if isinstance(req.summary, dict) else {}
+    basis_date = _clean(
+        req.contextDate
+        or summary.get("effectiveDate")
+        or summary.get("date"),
+        date.today().isoformat(),
+    )
+    llm_answer, llm_meta = _call_ollama_llm(
+        _build_after_market_report_prompt(summary, basis_date),
+        json_mode=True,
+    )
+    fallback = _after_market_report_fallback(summary, basis_date, llm_meta)
+    generated = _json_object_from_text(llm_answer or "")
+    response = _merge_after_market_report(fallback, generated)
+    used_llm = bool(llm_answer)
+    response["mode"] = "ollama_llm" if used_llm else "ollama_fallback_rule_based"
+    response["retrieval"]["llm"] = {**llm_meta, "used": used_llm}
+    if used_llm:
+        response["limitations"] = [
+            "Ollama 로컬 LLM이 최신 저장 브리프를 읽고 생성한 장후 코멘트입니다.",
             *[item for item in response.get("limitations", []) if item],
         ][:5]
     return response

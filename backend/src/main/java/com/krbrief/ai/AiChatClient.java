@@ -36,6 +36,10 @@ public class AiChatClient {
     return postMap("/ollama/insights", request, "ai_service_ollama_insights_error");
   }
 
+  public Map<String, Object> ollamaAfterMarketReport(Map<String, Object> request) {
+    return postMap("/ollama/after-market-report", request, "ai_service_ollama_after_market_report_error");
+  }
+
   private Map<String, Object> postMap(String uri, Map<String, Object> request, String errorCode) {
     try {
       Map<String, Object> res =

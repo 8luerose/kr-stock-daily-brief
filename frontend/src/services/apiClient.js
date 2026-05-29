@@ -7,6 +7,7 @@ const AI_WORKSPACE_CACHE_MS = 2 * 60 * 1000;
 const coreWorkspaceCache = new Map();
 const aiWorkspaceCache = new Map();
 const ollamaInsightsCache = new Map();
+const afterMarketReportCache = new Map();
 
 function getRuntimeConfig() {
   return window.__CONFIG__ || { API_BASE_URL: DEFAULT_API_BASE_URL, GATE_ENABLED: false };
@@ -415,6 +416,28 @@ function normalizeOllamaInsights(remote = {}) {
   };
 }
 
+function normalizeAfterMarketReport(remote = {}) {
+  const llm = remote.retrieval?.llm || {};
+  return {
+    mode: remote.mode || "ollama_fallback_rule_based",
+    modeLabel: remote.mode === "ollama_llm" ? "Ollama 장후 리포트" : "Ollama 장후 미리보기",
+    provider: remote.provider || "ollama",
+    model: remote.model || llm.model || "",
+    configured: Boolean(llm.enabled || remote.mode === "ollama_llm"),
+    basisDate: remote.basisDate || "",
+    title: remote.title || "매일 장후 시장 요약 리포트",
+    mood: humanizeText(remote.mood || "선별 접근"),
+    marketBias: humanizeText(remote.marketBias || "중립"),
+    keyPoints: normalizeTextList(remote.keyPoints),
+    llmComment: humanizeText(remote.llmComment || "최신 저장 브리프를 기준으로 장후 확인 포인트를 정리합니다."),
+    nextWatch: normalizeTextList(remote.nextWatch),
+    beginnerNotes: normalizeTextList(remote.beginnerNotes),
+    marketLeaders: remote.marketLeaders || null,
+    limitations: normalizeTextList(remote.limitations),
+    storage: remote.storage || null
+  };
+}
+
 function formatApiDate(date) {
   return date.toISOString().slice(0, 10);
 }
@@ -618,6 +641,23 @@ export async function loadStockOllamaInsights(workspace, interval) {
     return await promise;
   } catch (error) {
     ollamaInsightsCache.delete(key);
+    throw error;
+  }
+}
+
+export async function loadLatestOllamaAfterMarketReport() {
+  const key = "latest:ollama:after-market-report";
+  const cached = getCachedPromise(afterMarketReportCache, key);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = requestJson("/api/ai/ollama/after-market-report/latest").then(normalizeAfterMarketReport);
+  setCachedPromise(afterMarketReportCache, key, promise, AI_WORKSPACE_CACHE_MS);
+  try {
+    return await promise;
+  } catch (error) {
+    afterMarketReportCache.delete(key);
     throw error;
   }
 }

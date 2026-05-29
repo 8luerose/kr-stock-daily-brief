@@ -247,6 +247,42 @@
   overflow-wrap: anywhere;
 }
 
+.marketReportBox {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: var(--spacing-3);
+  min-width: 0;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.13), rgba(59, 130, 246, 0.08));
+  padding: var(--spacing-3);
+}
+
+.marketReportBox svg {
+  color: #86efac;
+  margin-top: 1px;
+}
+
+.marketReportBox strong {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: 0.88rem;
+  line-height: 1.3;
+  margin-bottom: 4px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.marketReportBox p {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.42;
+  margin: 0;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .compactList {
   display: grid;
   gap: 4px;

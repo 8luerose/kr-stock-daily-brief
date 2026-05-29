@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { loadStockAi, loadStockCoreWorkspace, loadStockOllamaInsights, prefetchStockWorkspaces } from '../services/apiClient';
+import {
+  loadLatestOllamaAfterMarketReport,
+  loadStockAi,
+  loadStockCoreWorkspace,
+  loadStockOllamaInsights,
+  prefetchStockWorkspaces
+} from '../services/apiClient';
 
 export function useWorkspace(initialCode = '005930', initialInterval = 'daily') {
   const [activeCode, setActiveCode] = useState(initialCode);
@@ -24,6 +30,7 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
           ai: {
             ...workspaceData.ai,
             aiLayerStatus: 'loading',
+            marketReportStatus: 'loading',
             llmProvider: 'ollama',
             modeLabel: 'Ollama 로컬 LLM 준비 중'
           }
@@ -33,6 +40,29 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
           setData(workspaceWithPendingAi);
           setLoading(false);
           prefetchStockWorkspaces(activeCode, interval);
+          let marketReportStarted = false;
+          const attachAfterMarketReport = async () => {
+            if (marketReportStarted) return;
+            marketReportStarted = true;
+            try {
+              const marketReport = await loadLatestOllamaAfterMarketReport();
+              if (!mounted || requestId !== requestIdRef.current) return;
+              setData((current) => {
+                if (!current || current.stock?.code !== workspaceData.stock?.code || current.chart?.interval !== workspaceData.chart?.interval) {
+                  return current;
+                }
+                return { ...current, ai: { ...current.ai, marketReport, marketReportStatus: 'ready' } };
+              });
+            } catch {
+              if (!mounted || requestId !== requestIdRef.current) return;
+              setData((current) => {
+                if (!current || current.stock?.code !== workspaceData.stock?.code || current.chart?.interval !== workspaceData.chart?.interval) {
+                  return current;
+                }
+                return { ...current, ai: { ...current.ai, marketReportStatus: 'unavailable' } };
+              });
+            }
+          };
           const loadAiLayer = async () => {
             let ollamaInsights = null;
             try {
@@ -73,7 +103,10 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
               }
             }
 
-            if (ollamaInsights?.mode === 'ollama_llm') return;
+            attachAfterMarketReport();
+            if (ollamaInsights?.mode === 'ollama_llm') {
+              return;
+            }
 
             try {
               const ai = await loadStockAi(workspaceData, interval);
@@ -87,6 +120,8 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
                   ai: {
                     ...ai,
                     ollamaInsights: current.ai?.ollamaInsights,
+                    marketReport: current.ai?.marketReport,
+                    marketReportStatus: current.ai?.marketReportStatus,
                     aiLayerStatus: current.ai?.ollamaInsights ? 'ready' : 'fallback_ready',
                     modeLabel: current.ai?.ollamaInsights ? current.ai.modeLabel : ai.modeLabel,
                     llmModel: current.ai?.ollamaInsights ? current.ai.llmModel : ai.llmModel,
@@ -98,6 +133,8 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
             } catch {
               // The core chart remains usable without the secondary AI chat response.
             }
+
+            attachAfterMarketReport();
           };
           loadAiLayer();
         }

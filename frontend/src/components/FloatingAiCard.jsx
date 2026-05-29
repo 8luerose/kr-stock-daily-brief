@@ -42,6 +42,7 @@ export default function FloatingAiCard({ ai, events, asOf }) {
               <span>{ai.ollamaInsights.stockAdvice.decision}</span>
               <span>상승 {ai.ollamaInsights.newsSentiment.nextTradingDay.up}%</span>
               <span>{ai.ollamaInsights.afterMarketReport.mood}</span>
+              {ai.marketReport?.mood && <span>장후 {ai.marketReport.mood}</span>}
             </div>
           )}
         </div>
@@ -131,6 +132,56 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                   {ai.ollamaInsights.configured ? '로컬 LLM 기준: ' : 'Ollama 모델 미설정: '}
                   {ai.ollamaInsights.limitations[0]}
                 </p>
+              )}
+            </div>
+          )}
+
+          {(ai.marketReport || ai.marketReportStatus === 'loading' || ai.marketReportStatus === 'unavailable') && (
+            <div className={styles.section}>
+              <div className={styles.ollamaTitleRow}>
+                <h4 className={styles.sectionTitle}>시장 전체 장후 리포트</h4>
+                <span>
+                  {ai.marketReport
+                    ? `${ai.marketReport.modeLabel}${ai.marketReport.model ? ` · ${ai.marketReport.model}` : ''}`
+                    : ai.marketReportStatus === 'loading'
+                      ? 'Ollama 장후 리포트 준비 중'
+                      : '장후 리포트 확인 필요'}
+                </span>
+              </div>
+              <article className={styles.marketReportBox}>
+                <Newspaper size={17} />
+                <div>
+                  <strong>
+                    {ai.marketReport
+                      ? `${ai.marketReport.mood} · ${ai.marketReport.marketBias}`
+                      : ai.marketReportStatus === 'loading'
+                        ? '최신 저장 브리프를 읽는 중'
+                        : '장후 리포트를 불러오지 못했습니다'}
+                  </strong>
+                  <p>
+                    {ai.marketReport?.llmComment
+                      || (ai.marketReportStatus === 'loading'
+                        ? 'Ollama가 시장 상승·하락 후보와 다음 거래일 확인 포인트를 정리하고 있습니다.'
+                        : '최신 브리프가 없거나 AI 서비스 응답이 지연되었습니다.')}
+                  </p>
+                  {ai.marketReport?.keyPoints?.length > 0 && (
+                    <ul className={styles.compactList}>
+                      {ai.marketReport.keyPoints.slice(0, 3).map((item, index) => (
+                        <li key={`${item}-${index}`}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </article>
+              {ai.marketReport?.nextWatch?.length > 0 && (
+                <div className={styles.nextWatchBox}>
+                  <strong>장후 리포트 다음 확인</strong>
+                  <ul>
+                    {ai.marketReport.nextWatch.slice(0, 3).map((item, index) => (
+                      <li key={`${item}-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           )}
