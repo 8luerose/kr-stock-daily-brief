@@ -94,6 +94,28 @@ curl http://localhost:8080/api/ai/status
 응답 속도 조절은 `LLM_TIMEOUT_SECONDS`, `LLM_MAX_TOKENS`, `AI_CLIENT_READ_TIMEOUT_SECONDS`로 한다.
 `LLM_TIMEOUT_SECONDS`가 지나면 ai-service가 규칙형 근거 기반 응답으로 돌아가고, backend는 `AI_CLIENT_READ_TIMEOUT_SECONDS` 안에 응답을 받아야 한다.
 
+Ollama 로컬 LLM은 별도 API로도 쓴다.
+
+```bash
+ollama pull llama3.1
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=llama3.1
+docker compose up -d --build ai-service backend frontend
+curl http://localhost:8080/api/ai/status
+curl -X POST http://localhost:8080/api/ai/ollama/insights \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"삼성전자 지금 사도 되나요?","context":{"stockCode":"005930","stockName":"삼성전자"}}'
+```
+
+`/api/ai/ollama/insights`는 한 번에 세 가지를 반환한다.
+
+- "이 종목 지금 사도 되나요?" 조건형 매수/관망/매도 상담
+- 뉴스/이벤트 감성 점수와 다음 거래일 상승/하락/횡보 확률
+- 장후 시장 요약 리포트용 로컬 LLM 코멘트
+
+Ollama 모델명이 없거나 로컬 서버가 꺼져 있으면 `mode=ollama_fallback_rule_based`로 즉시 규칙형 미리보기를 반환한다.
+
 ## 원격 배포 smoke
 
 배포된 backend/frontend URL이 있으면 다음 명령으로 운영 URL을 직접 확인한다.

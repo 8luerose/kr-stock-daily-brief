@@ -770,6 +770,79 @@ def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str 
         }
 
 
+def _ollama_model() -> str:
+    preferred = os.getenv("LLM_PROVIDER", "").strip().lower()
+    model = os.getenv("OLLAMA_MODEL", "").strip()
+    if model:
+        return model
+    if preferred == "ollama":
+        return os.getenv("LLM_MODEL", "").strip()
+    return ""
+
+
+def _call_ollama_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
+    model = _ollama_model()
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+    timeout = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", os.getenv("LLM_TIMEOUT_SECONDS", "20")))
+
+    if not model:
+        return None, {
+            "enabled": False,
+            "provider": "ollama",
+            "model": "",
+            "baseUrl": base_url,
+            "fallbackReason": "OLLAMA_MODEL이 설정되지 않았습니다.",
+            "timeoutSeconds": timeout,
+        }
+
+    payload = json.dumps({
+        "model": model,
+        "messages": messages,
+        "stream": False,
+        "options": {
+            "temperature": 0.2,
+            "num_predict": int(os.getenv("OLLAMA_NUM_PREDICT", os.getenv("LLM_MAX_TOKENS", "650"))),
+        },
+    }).encode("utf-8")
+    req = request.Request(
+        _join_api_path(base_url, "/api/chat"),
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with request.urlopen(req, timeout=timeout) as res:
+            data = json.loads(res.read().decode("utf-8"))
+        content = _clean((data.get("message") or {}).get("content") or data.get("response"), "")
+        if not content:
+            return None, {
+                "enabled": True,
+                "provider": "ollama",
+                "model": model,
+                "baseUrl": base_url,
+                "fallbackReason": "Ollama 응답에 content가 없습니다.",
+                "timeoutSeconds": timeout,
+            }
+        return content, {
+            "enabled": True,
+            "provider": "ollama",
+            "model": model,
+            "baseUrl": base_url,
+            "fallbackReason": "",
+            "timeoutSeconds": timeout,
+        }
+    except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
+        return None, {
+            "enabled": True,
+            "provider": "ollama",
+            "model": model,
+            "baseUrl": base_url,
+            "fallbackReason": f"Ollama 호출 실패: {type(exc).__name__}",
+            "timeoutSeconds": timeout,
+        }
+
+
 def _llm_status() -> dict[str, Any]:
     openai_model = os.getenv("LLM_MODEL", "").strip()
     openai_base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -782,11 +855,16 @@ def _llm_status() -> dict[str, Any]:
         "ANTHROPIC_DEFAULT_HAIKU_MODEL",
     )
     anthropic_base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
+    ollama_model = _ollama_model()
+    ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
     preferred = os.getenv("LLM_PROVIDER", "").strip().lower()
 
     openai_configured = openai_key_set and bool(openai_model)
     anthropic_configured = anthropic_key_set and bool(anthropic_model)
-    if preferred in {"anthropic", "anthropic_compatible"} and anthropic_configured:
+    ollama_configured = bool(ollama_model)
+    if preferred == "ollama":
+        provider = "ollama"
+    elif preferred in {"anthropic", "anthropic_compatible"} and anthropic_configured:
         provider = "anthropic_compatible"
     elif preferred in {"openai", "openai_compatible"} and openai_configured:
         provider = "openai_compatible"
@@ -799,18 +877,25 @@ def _llm_status() -> dict[str, Any]:
     else:
         provider = "openai_compatible"
 
-    if provider == "anthropic_compatible":
+    if provider == "ollama":
+        api_key_set = False
+        model = ollama_model
+        base_url = ollama_base_url
+        configured = ollama_configured
+    elif provider == "anthropic_compatible":
         api_key_set = anthropic_key_set
         model = anthropic_model
         base_url = anthropic_base_url
+        configured = api_key_set and bool(model)
     else:
         api_key_set = openai_key_set
         model = openai_model
         base_url = openai_base_url
+        configured = api_key_set and bool(model)
 
     return {
         "provider": provider,
-        "configured": api_key_set and bool(model),
+        "configured": configured,
         "apiKeySet": api_key_set,
         "modelConfigured": bool(model),
         "model": model,
@@ -826,6 +911,12 @@ def _llm_status() -> dict[str, Any]:
                 "modelConfigured": bool(anthropic_model),
                 "configured": anthropic_configured,
             },
+            "ollama": {
+                "apiKeySet": False,
+                "modelConfigured": bool(ollama_model),
+                "configured": ollama_configured,
+                "baseUrl": ollama_base_url,
+            },
         },
         "fallbackMode": "rag_fallback_rule_based",
         "timeoutSeconds": float(os.getenv("LLM_TIMEOUT_SECONDS", "20")),
@@ -835,9 +926,275 @@ def _llm_status() -> dict[str, Any]:
 
 def _call_configured_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
     status = _llm_status()
+    if status["provider"] == "ollama":
+        return _call_ollama_llm(messages)
     if status["provider"] == "anthropic_compatible":
         return _call_anthropic_compatible_llm(messages)
     return _call_openai_compatible_llm(messages)
+
+
+def _json_object_from_text(text: str) -> dict[str, Any] | None:
+    raw = _clean(text, "")
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else None
+    except json.JSONDecodeError:
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        try:
+            data = json.loads(raw[start:end + 1])
+            return data if isinstance(data, dict) else None
+        except json.JSONDecodeError:
+            return None
+
+
+def _number(value: Any, fallback: float = 0.0) -> float:
+    try:
+        number = float(value)
+        return number if number == number else fallback
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
+def _event_sentiment_score(events: list[dict[str, Any]]) -> int:
+    score = 0.0
+    for event in events[:8]:
+        sentiment = _clean(event.get("sentimentForPrice") or event.get("sentiment") or event.get("type"), "").lower()
+        if sentiment == "positive":
+            score += 18
+        elif sentiment == "negative":
+            score -= 18
+        elif sentiment == "mixed":
+            score += 2
+        price_change = _number(event.get("priceChangeRate"), 0)
+        volume_change = _number(event.get("volumeChangeRate"), 0)
+        if price_change:
+            score += _clamp(price_change * 1.4, -12, 12)
+        if volume_change > 50 and price_change < 0:
+            score -= 6
+        elif volume_change > 50 and price_change > 0:
+            score += 6
+        for causal in (event.get("causalScores") or [])[:3]:
+            if isinstance(causal, dict):
+                score += _clamp(_number(causal.get("score"), 0) * 0.18, -8, 8)
+    return round(_clamp(score, -100, 100))
+
+
+def _probabilities_from_score(score: int) -> dict[str, int]:
+    up = _clamp(45 + score * 0.32, 15, 75)
+    down = _clamp(45 - score * 0.32, 15, 75)
+    flat = 10
+    total = up + down + flat
+    return {
+        "up": round(up / total * 100),
+        "down": round(down / total * 100),
+        "flat": round(flat / total * 100),
+    }
+
+
+def _headlines_from_events(events: list[dict[str, Any]]) -> list[str]:
+    headlines: list[str] = []
+    for event in events[:6]:
+        title = _clean(event.get("title"), "")
+        if title and title not in headlines:
+            headlines.append(title)
+        for source in (event.get("evidenceSources") or [])[:2]:
+            if isinstance(source, dict):
+                source_title = _clean(source.get("title") or source.get("description"), "")
+                if source_title and source_title not in headlines:
+                    headlines.append(source_title)
+    return headlines[:6]
+
+
+def _summary_points(summary: dict[str, Any] | None) -> list[str]:
+    if not isinstance(summary, dict):
+        return ["저장된 장후 브리프가 부족해 종목 차트와 이벤트 중심으로 요약합니다."]
+    points: list[str] = []
+    if summary.get("topGainer"):
+        points.append(f"시장 최대 상승 후보는 {summary.get('topGainer')}입니다.")
+    if summary.get("topLoser"):
+        points.append(f"시장 최대 하락 후보는 {summary.get('topLoser')}입니다.")
+    if summary.get("mostMentioned"):
+        points.append(f"토론/언급 관심은 {summary.get('mostMentioned')}에 집중되었습니다.")
+    if summary.get("effectiveDate"):
+        points.append(f"브리프 기준 거래일은 {summary.get('effectiveDate')}입니다.")
+    return points or ["저장 브리프의 핵심 지표가 제한적입니다."]
+
+
+def _fallback_ollama_insights(
+    req: ChatRequest,
+    subject: str,
+    code: str,
+    basis_date: str,
+    documents: list[dict[str, str]],
+    llm_meta: dict[str, Any],
+) -> dict[str, Any]:
+    events = req.events or []
+    score = _event_sentiment_score(events)
+    probabilities = _probabilities_from_score(score)
+    indicator = req.indicatorSnapshot if isinstance(req.indicatorSnapshot, dict) else {}
+    price_vs = indicator.get("priceVsMa20") if isinstance(indicator, dict) else {}
+    position = _clean((price_vs or {}).get("position"), "")
+    decision = "관망"
+    if score >= 25 and position in {"above", "near"}:
+        decision = "매수 검토"
+    elif score <= -25 or position == "below":
+        decision = "매도 검토"
+    decision_summary = req.currentDecisionSummary if isinstance(req.currentDecisionSummary, dict) else {}
+    headlines = _headlines_from_events(events)
+    portfolio = _portfolio_guidance(req.portfolioContext if isinstance(req.portfolioContext, dict) else None)
+    summary_points = _summary_points(req.summary)
+    missing_reason = _clean(llm_meta.get("fallbackReason"), "Ollama 모델 설정 또는 호출 확인 필요")
+
+    return {
+        "mode": "ollama_fallback_rule_based",
+        "provider": "ollama",
+        "model": _clean(llm_meta.get("model"), ""),
+        "basisDate": basis_date,
+        "answer": (
+            f"{subject}{f'({code})' if code else ''}은(는) 현재 {decision} 의견입니다. "
+            f"뉴스/이벤트 점수는 {score}점이고 다음 거래일 확률은 상승 {probabilities['up']}%, "
+            f"하락 {probabilities['down']}%, 횡보 {probabilities['flat']}%입니다. "
+            "Ollama 연결 전에는 규칙형 미리보기로 표시됩니다."
+        ),
+        "stockAdvice": {
+            "title": "이 종목 지금 사도 되나요?",
+            "decision": decision,
+            "summary": _clean(
+                decision_summary.get("summary") if isinstance(decision_summary, dict) else "",
+                f"{_label(position)}와 뉴스/이벤트 점수 {score}점을 함께 보면 새 진입은 조건 확인이 필요합니다.",
+            ),
+            "buyConditions": [
+                _clean(decision_summary.get("buyReviewCondition") if isinstance(decision_summary, dict) else "", "20일선 위 종가 유지와 거래량 증가가 함께 필요합니다."),
+                "호재 후보가 가격 반응과 거래량으로 확인될 때만 검토합니다.",
+            ],
+            "watchConditions": [
+                _clean(decision_summary.get("watchCondition") if isinstance(decision_summary, dict) else "", "근거가 엇갈리면 다음 종가와 거래량을 기다립니다."),
+                "Ollama 연결 전에는 단정하지 않고 조건형으로만 봅니다.",
+            ],
+            "sellConditions": [
+                _clean(decision_summary.get("sellReviewCondition") if isinstance(decision_summary, dict) else "", "20일선 재이탈, 하락 거래량 증가, 저항선 실패가 겹치면 매도 검토입니다."),
+            ],
+            "riskNotes": [
+                portfolio["summary"],
+                "평균단가와 실제 보유 수량은 아직 입력되지 않았으므로 투자 지시로 쓰면 안 됩니다.",
+            ],
+        },
+        "newsSentiment": {
+            "title": "뉴스 감성 기반 단기 방향 예측",
+            "score": score,
+            "label": "긍정 우위" if score > 20 else "부정 우위" if score < -20 else "중립",
+            "nextTradingDay": probabilities,
+            "summary": f"최근 이벤트와 뉴스 후보를 점수화하면 {score}점입니다. 상승/하락 확률은 참고용이며 원문 확인 전에는 낮은 확신을 유지합니다.",
+            "headlineSignals": headlines or ["뉴스/공시 원문 후보가 부족합니다."],
+        },
+        "afterMarketReport": {
+            "title": "매일 장후 시장 요약 리포트",
+            "mood": "위험 관리 우선" if score < -20 else "선별 접근" if score < 25 else "관심 확대",
+            "keyPoints": summary_points,
+            "llmComment": "장후 브리프에 로컬 LLM 코멘트를 붙일 수 있는 구조입니다. 현재는 Ollama 연결 전 규칙형 코멘트입니다.",
+            "nextWatch": [
+                "다음 거래일 시초가와 20일선 위치",
+                "호재/악재 후보의 뉴스 원문과 공시 확인",
+                "거래량이 평균 대비 유지되는지 확인",
+            ],
+        },
+        "beginnerNotes": [
+            "매수/관망/매도는 지시가 아니라 조건형 의견입니다.",
+            "확률은 예측 보조이며 실제 수익을 보장하지 않습니다.",
+            "뉴스 제목만으로 판단하지 말고 가격과 거래량 반응을 같이 봅니다.",
+        ],
+        "limitations": [
+            missing_reason,
+            "국내 뉴스 헤드라인은 이벤트 evidence 후보를 사용하며, 원문 수집 품질에 따라 정확도가 달라집니다.",
+            "재무 데이터는 현재 검색/브리프/학습 용어 수준의 제한된 맥락만 반영합니다.",
+        ],
+        "retrieval": {
+            "documents": documents,
+            "sourceCount": len(documents),
+            "llm": {**llm_meta, "used": False},
+        },
+        "confidence": "medium" if documents else "low",
+    }
+
+
+def _merge_insight_dict(base: dict[str, Any], generated: dict[str, Any] | None) -> dict[str, Any]:
+    if not generated:
+        return base
+    merged = {**base}
+    for key in ["stockAdvice", "newsSentiment", "afterMarketReport"]:
+        if isinstance(generated.get(key), dict):
+            current = merged.get(key) if isinstance(merged.get(key), dict) else {}
+            merged[key] = {**current, **generated[key]}
+    for key in ["beginnerNotes", "limitations"]:
+        if isinstance(generated.get(key), list):
+            merged[key] = generated[key]
+    if generated.get("answer"):
+        merged["answer"] = _clean(generated.get("answer"), merged["answer"])
+    return merged
+
+
+def _build_ollama_insights_prompt(
+    req: ChatRequest,
+    subject: str,
+    code: str,
+    basis_date: str,
+    documents: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    context = "\n".join(
+        f"[{doc['id']}] {doc['type']} | {doc['title']} | 기준일 {doc['basisDate']}\n{doc['text']}"
+        for doc in documents
+    )
+    system = (
+        "너는 한국 주식 초보자를 위한 로컬 Ollama 투자 학습 보조자다. "
+        "반드시 제공된 근거 안에서만 답하고 투자 지시, 수익 보장, 확정 표현을 금지한다. "
+        "결론은 매수 검토, 관망, 매도 검토 중 하나의 조건형 의견으로만 쓴다. "
+        "반드시 한국어 JSON 객체 하나만 반환한다."
+    )
+    user = f"""
+대상: {subject}{f"({code})" if code else ""}
+기준일: {basis_date}
+
+근거:
+{context or "제공된 근거가 없습니다."}
+
+다음 JSON 스키마를 지켜서 반환해라.
+{{
+  "answer": "3개 기능을 한 문단으로 요약",
+  "stockAdvice": {{
+    "decision": "매수 검토|관망|매도 검토",
+    "summary": "차트, 재무/브리프, 뉴스/센티먼트를 합친 조건형 의견",
+    "buyConditions": ["매수 검토 조건"],
+    "watchConditions": ["관망 조건"],
+    "sellConditions": ["매도 검토 조건"],
+    "riskNotes": ["리스크와 한계"]
+  }},
+  "newsSentiment": {{
+    "score": 0,
+    "label": "긍정 우위|중립|부정 우위",
+    "nextTradingDay": {{"up": 0, "down": 0, "flat": 0}},
+    "summary": "다음 거래일 방향 예측 설명",
+    "headlineSignals": ["뉴스 헤드라인 또는 이벤트 신호"]
+  }},
+  "afterMarketReport": {{
+    "mood": "시장 분위기",
+    "keyPoints": ["핵심 포인트"],
+    "llmComment": "장후 리포트용 LLM 코멘트",
+    "nextWatch": ["내일 확인할 것"]
+  }},
+  "beginnerNotes": ["초보자가 이해할 쉬운 설명"],
+  "limitations": ["한계"]
+}}
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
 @app.get("/health")
@@ -848,6 +1205,27 @@ def health():
 @app.get("/llm/status")
 def llm_status():
     return _llm_status()
+
+
+@app.post("/ollama/insights")
+def ollama_insights(req: ChatRequest):
+    subject = _clean(req.stockName or req.topicTitle, "선택한 종목")
+    code = _clean(req.stockCode, "")
+    basis_date = _clean(req.contextDate, date.today().isoformat())
+    documents = _build_retrieval_documents(req, subject, code, _clean(req.topicType, "stock"), basis_date)
+    llm_answer, llm_meta = _call_ollama_llm(_build_ollama_insights_prompt(req, subject, code, basis_date, documents))
+    fallback = _fallback_ollama_insights(req, subject, code, basis_date, documents, llm_meta)
+    generated = _json_object_from_text(llm_answer or "")
+    response = _merge_insight_dict(fallback, generated)
+    used_llm = bool(llm_answer)
+    response["mode"] = "ollama_llm" if used_llm else "ollama_fallback_rule_based"
+    response["retrieval"]["llm"] = {**llm_meta, "used": used_llm}
+    if used_llm:
+        response["limitations"] = [
+            "Ollama 로컬 LLM이 제공된 근거 안에서 생성한 조건형 의견입니다.",
+            *[item for item in response.get("limitations", []) if item],
+        ][:5]
+    return response
 
 
 @app.post("/chat")

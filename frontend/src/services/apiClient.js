@@ -6,6 +6,7 @@ const CORE_WORKSPACE_CACHE_MS = 5 * 60 * 1000;
 const AI_WORKSPACE_CACHE_MS = 2 * 60 * 1000;
 const coreWorkspaceCache = new Map();
 const aiWorkspaceCache = new Map();
+const ollamaInsightsCache = new Map();
 
 function getRuntimeConfig() {
   return window.__CONFIG__ || { API_BASE_URL: DEFAULT_API_BASE_URL, GATE_ENABLED: false };
@@ -322,6 +323,62 @@ function normalizeAi(remoteAi) {
   };
 }
 
+function normalizeProbability(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : 0;
+}
+
+function normalizeTextList(items, fallback = []) {
+  const source = Array.isArray(items) ? items : fallback;
+  return source.map((item) => humanizeText(item)).filter(Boolean);
+}
+
+function normalizeOllamaInsights(remote = {}) {
+  const advice = remote.stockAdvice || {};
+  const sentiment = remote.newsSentiment || {};
+  const report = remote.afterMarketReport || {};
+  const nextTradingDay = sentiment.nextTradingDay || {};
+  return {
+    mode: remote.mode || "ollama_fallback_rule_based",
+    modeLabel: remote.mode === "ollama_llm" ? "Ollama 로컬 LLM" : "Ollama 규칙형 미리보기",
+    provider: remote.provider || "ollama",
+    model: remote.model || remote.retrieval?.llm?.model || "",
+    configured: Boolean(remote.retrieval?.llm?.enabled || remote.mode === "ollama_llm"),
+    answer: humanizeText(remote.answer || ""),
+    stockAdvice: {
+      title: advice.title || "이 종목 지금 사도 되나요?",
+      decision: humanizeText(advice.decision || "관망"),
+      summary: humanizeText(advice.summary || "조건 확인이 필요합니다."),
+      buyConditions: normalizeTextList(advice.buyConditions),
+      watchConditions: normalizeTextList(advice.watchConditions),
+      sellConditions: normalizeTextList(advice.sellConditions),
+      riskNotes: normalizeTextList(advice.riskNotes)
+    },
+    newsSentiment: {
+      title: sentiment.title || "뉴스 감성 기반 단기 방향 예측",
+      score: Number.isFinite(Number(sentiment.score)) ? Math.round(Number(sentiment.score)) : 0,
+      label: humanizeText(sentiment.label || "중립"),
+      nextTradingDay: {
+        up: normalizeProbability(nextTradingDay.up),
+        down: normalizeProbability(nextTradingDay.down),
+        flat: normalizeProbability(nextTradingDay.flat)
+      },
+      summary: humanizeText(sentiment.summary || "뉴스/이벤트 후보가 부족합니다."),
+      headlineSignals: normalizeTextList(sentiment.headlineSignals)
+    },
+    afterMarketReport: {
+      title: report.title || "매일 장후 시장 요약 리포트",
+      mood: humanizeText(report.mood || "선별 접근"),
+      keyPoints: normalizeTextList(report.keyPoints),
+      llmComment: humanizeText(report.llmComment || "장후 브리프에 로컬 LLM 코멘트를 붙일 수 있습니다."),
+      nextWatch: normalizeTextList(report.nextWatch)
+    },
+    beginnerNotes: normalizeTextList(remote.beginnerNotes),
+    limitations: normalizeTextList(remote.limitations),
+    storage: remote.storage || null
+  };
+}
+
 function formatApiDate(date) {
   return date.toISOString().slice(0, 10);
 }
@@ -446,6 +503,25 @@ function compactEventsForAi(events = []) {
   }));
 }
 
+function buildAiContext(workspace, interval) {
+  return {
+    code: workspace.stock.code,
+    stockCode: workspace.stock.code,
+    stockName: workspace.stock.name,
+    interval: interval || workspace.chart.interval,
+    chart: compactChartForAi(workspace),
+    tradeZones: {
+      code: workspace.stock.code,
+      name: workspace.stock.name,
+      basisDate: workspace.asOf,
+      zones: compactZonesForAi(workspace.zones)
+    },
+    events: compactEventsForAi(workspace.events),
+    indicatorSnapshot: workspace.indicatorSnapshot,
+    currentDecisionSummary: workspace.currentDecisionSummary
+  };
+}
+
 export async function loadStockAi(workspace, interval) {
   const key = `${workspace?.stock?.code || "unknown"}:${interval || workspace?.chart?.interval || "daily"}:${workspace?.asOf || ""}`;
   const cached = getCachedPromise(aiWorkspaceCache, key);
@@ -457,22 +533,7 @@ export async function loadStockAi(workspace, interval) {
     method: "POST",
     body: JSON.stringify({
       question: `${workspace.stock.name} 차트의 매수·매도 검토 조건, 관망 구간, 분할매수 검토 구간, 리스크 관리 구간을 교육용으로 설명해줘`,
-      context: {
-        code: workspace.stock.code,
-        stockCode: workspace.stock.code,
-        stockName: workspace.stock.name,
-        interval: interval || workspace.chart.interval,
-        chart: compactChartForAi(workspace),
-        tradeZones: {
-          code: workspace.stock.code,
-          name: workspace.stock.name,
-          basisDate: workspace.asOf,
-          zones: compactZonesForAi(workspace.zones)
-        },
-        events: compactEventsForAi(workspace.events),
-        indicatorSnapshot: workspace.indicatorSnapshot,
-        currentDecisionSummary: workspace.currentDecisionSummary
-      }
+      context: buildAiContext(workspace, interval)
     })
   }).then(normalizeAi);
 
@@ -481,6 +542,30 @@ export async function loadStockAi(workspace, interval) {
     return await promise;
   } catch (error) {
     aiWorkspaceCache.delete(key);
+    throw error;
+  }
+}
+
+export async function loadStockOllamaInsights(workspace, interval) {
+  const key = `${workspace?.stock?.code || "unknown"}:${interval || workspace?.chart?.interval || "daily"}:${workspace?.asOf || ""}:ollama`;
+  const cached = getCachedPromise(ollamaInsightsCache, key);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = requestJson("/api/ai/ollama/insights", {
+    method: "POST",
+    body: JSON.stringify({
+      question: `${workspace.stock.name}을 지금 사도 되는지, 뉴스 감성 단기 방향과 장후 시장 요약까지 로컬 Ollama로 설명해줘`,
+      context: buildAiContext(workspace, interval)
+    })
+  }).then(normalizeOllamaInsights);
+
+  setCachedPromise(ollamaInsightsCache, key, promise, AI_WORKSPACE_CACHE_MS);
+  try {
+    return await promise;
+  } catch (error) {
+    ollamaInsightsCache.delete(key);
     throw error;
   }
 }

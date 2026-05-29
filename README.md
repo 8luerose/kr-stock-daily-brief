@@ -6,7 +6,7 @@
 - 저장/제공: `backend`가 요약을 생성/저장하고 REST API로 제공
 - 표시/학습: `frontend`에서 오늘의 시장 브리프, TOP3 종목 리서치 패널, 캔들차트, 월 달력, 초보자 용어 사전, 학습 도우미를 제공
 - AI 확장점: `/api/learning/assistant`는 내부 용어 사전 기반 응답을 제공하고, `/api/ai/chat`은 검색/브리프/차트/이벤트/용어 근거를 묶은 RAG 응답을 제공한다.
-- AI 서비스: `ai-service`가 `/chat`을 제공하고 backend가 `/api/ai/chat`으로 프록시한다. OpenAI-compatible 또는 Anthropic-compatible LLM 설정이 있으면 live `rag_llm`으로 응답하고, 설정이 없거나 실패하면 규칙형 RAG fallback으로 응답한다.
+- AI 서비스: `ai-service`가 `/chat`, `/ollama/insights`를 제공하고 backend가 `/api/ai/chat`, `/api/ai/ollama/insights`로 프록시한다. OpenAI-compatible, Anthropic-compatible, Ollama 설정이 있으면 live LLM으로 응답하고, 설정이 없거나 실패하면 규칙형 근거 기반 fallback으로 응답한다.
 
 > 추가 목표: Discord **웹훅(Webhook)**으로 지정 **스레드**에 자동 포스팅
 
@@ -120,6 +120,7 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 - `GET /api/learning/terms/{id}`
 - `POST /api/learning/assistant`
 - `POST /api/ai/chat`
+- `POST /api/ai/ollama/insights`
 - `GET /api/ai/chat/history?stockCode=005930`
 - `GET /api/ai/status`
 
@@ -208,6 +209,10 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `ANTHROPIC_VERSION` | No | Anthropic API version header |
 | `LLM_TIMEOUT_SECONDS` | No | AI service live LLM wait time before rule-based fallback |
 | `LLM_MAX_TOKENS` | No | Max live LLM response tokens |
+| `OLLAMA_BASE_URL` | No | Local Ollama URL. Docker Desktop default: `http://host.docker.internal:11434` |
+| `OLLAMA_MODEL` | No | Local Ollama model for `/api/ai/ollama/insights` and `LLM_PROVIDER=ollama` |
+| `OLLAMA_TIMEOUT_SECONDS` | No | Ollama wait time before rule-based fallback |
+| `OLLAMA_NUM_PREDICT` | No | Ollama max generated tokens |
 | `AI_CLIENT_CONNECT_TIMEOUT_SECONDS` | No | Backend connection timeout to ai-service |
 | `AI_CLIENT_READ_TIMEOUT_SECONDS` | No | Backend read timeout to ai-service |
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
@@ -237,6 +242,21 @@ OPENAI_API_KEY=...
 docker compose up -d --build ai-service backend
 curl http://localhost:8080/api/ai/status
 ```
+
+Ollama 로컬 예:
+```bash
+ollama pull llama3.1
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=llama3.1
+docker compose up -d --build ai-service backend frontend
+curl http://localhost:8080/api/ai/status
+curl -X POST http://localhost:8080/api/ai/ollama/insights \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"삼성전자 지금 사도 되나요?","context":{"stockCode":"005930","stockName":"삼성전자"}}'
+```
+
+Docker 내부 Ollama를 쓰려면 `docker compose --profile ollama up -d ollama`로 Ollama 컨테이너를 띄우고, `OLLAMA_BASE_URL=http://ollama:11434`와 `OLLAMA_MODEL`을 지정한다. 모델이 없거나 호출이 실패하면 화면은 규칙형 미리보기로 계속 동작한다.
 
 `/api/ai/status`에서 `provider`, `configured`, `model`, `baseUrl`, `timeoutSeconds`를 확인한다. live LLM이 느리거나 실패하면 `/api/ai/chat`은 규칙형 근거 기반 응답으로 돌아간다.
 

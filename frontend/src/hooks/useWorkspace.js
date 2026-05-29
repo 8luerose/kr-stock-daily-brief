@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { loadStockAi, loadStockCoreWorkspace, prefetchStockWorkspaces } from '../services/apiClient';
+import { loadStockAi, loadStockCoreWorkspace, loadStockOllamaInsights, prefetchStockWorkspaces } from '../services/apiClient';
 
 export function useWorkspace(initialCode = '005930', initialInterval = 'daily') {
   const [activeCode, setActiveCode] = useState(initialCode);
@@ -31,7 +31,18 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
                 if (!current || current.stock?.code !== workspaceData.stock?.code || current.chart?.interval !== workspaceData.chart?.interval) {
                   return current;
                 }
-                return { ...current, ai };
+                return { ...current, ai: { ...ai, ollamaInsights: current.ai?.ollamaInsights } };
+              });
+            })
+            .catch(() => {});
+          loadStockOllamaInsights(workspaceData, interval)
+            .then((ollamaInsights) => {
+              if (!mounted || requestId !== requestIdRef.current) return;
+              setData((current) => {
+                if (!current || current.stock?.code !== workspaceData.stock?.code || current.chart?.interval !== workspaceData.chart?.interval) {
+                  return current;
+                }
+                return { ...current, ai: { ...current.ai, ollamaInsights } };
               });
             })
             .catch(() => {});

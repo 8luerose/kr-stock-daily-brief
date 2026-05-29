@@ -42,6 +42,15 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
   ai-service:
     build:
       context: ./ai-service
@@ -66,6 +75,10 @@ services:
       ANTHROPIC_DEFAULT_HAIKU_MODEL: ${ANTHROPIC_DEFAULT_HAIKU_MODEL:-}
       ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.z.ai/api/anthropic}
       ANTHROPIC_VERSION: ${ANTHROPIC_VERSION:-2023-06-01}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+      OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-20}
+      OLLAMA_NUM_PREDICT: ${OLLAMA_NUM_PREDICT:-650}
     ports:
       - "${AI_SERVICE_PORT:-8100}:8100"
     depends_on:
@@ -129,3 +142,4 @@ services:
 volumes:
   mysql_data:
   qdrant_data:
+  ollama_data:

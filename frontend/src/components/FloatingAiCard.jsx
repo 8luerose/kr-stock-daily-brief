@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle, ShieldAlert, Clock3, Database, Info } from 'lucide-react';
+import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle, ShieldAlert, Clock3, Database, Info, Cpu, Newspaper, TrendingUp } from 'lucide-react';
 import clsx from 'clsx';
 import styles from './FloatingAiCard.module.css';
 
@@ -46,6 +46,40 @@ export default function FloatingAiCard({ ai, events, asOf }) {
               <span>
                 {ai.storage.saved ? `AI 답변 저장 완료: ${ai.storage.table}` : 'AI 답변은 저장되지 않았습니다.'}
               </span>
+            </div>
+          )}
+
+          {ai.ollamaInsights && (
+            <div className={styles.section}>
+              <div className={styles.ollamaTitleRow}>
+                <h4 className={styles.sectionTitle}>로컬 Ollama 인사이트</h4>
+                <span>{ai.ollamaInsights.modeLabel}{ai.ollamaInsights.model ? ` · ${ai.ollamaInsights.model}` : ''}</span>
+              </div>
+              <div className={styles.ollamaGrid}>
+                <article className={styles.ollamaCard}>
+                  <Cpu size={16} />
+                  <div>
+                    <strong>{ai.ollamaInsights.stockAdvice.decision}</strong>
+                    <p>{ai.ollamaInsights.stockAdvice.summary}</p>
+                  </div>
+                </article>
+                <article className={styles.ollamaCard}>
+                  <TrendingUp size={16} />
+                  <div>
+                    <strong>
+                      상승 {ai.ollamaInsights.newsSentiment.nextTradingDay.up}% · 하락 {ai.ollamaInsights.newsSentiment.nextTradingDay.down}%
+                    </strong>
+                    <p>{ai.ollamaInsights.newsSentiment.summary}</p>
+                  </div>
+                </article>
+                <article className={styles.ollamaCard}>
+                  <Newspaper size={16} />
+                  <div>
+                    <strong>{ai.ollamaInsights.afterMarketReport.mood}</strong>
+                    <p>{ai.ollamaInsights.afterMarketReport.llmComment}</p>
+                  </div>
+                </article>
+              </div>
             </div>
           )}
 

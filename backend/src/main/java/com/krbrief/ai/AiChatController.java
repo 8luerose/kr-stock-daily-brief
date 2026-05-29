@@ -31,6 +31,14 @@ public class AiChatController {
     return response;
   }
 
+  @PostMapping("/ollama/insights")
+  public Map<String, Object> ollamaInsights(@RequestBody(required = false) Map<String, Object> request) {
+    Map<String, Object> enriched = enricher.enrich(request == null ? Map.of() : request);
+    LinkedHashMap<String, Object> response = new LinkedHashMap<>(client.ollamaInsights(enriched));
+    response.put("storage", logService.save(enriched, response));
+    return response;
+  }
+
   @GetMapping("/status")
   public Map<String, Object> status() {
     return client.status();

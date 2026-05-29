@@ -817,6 +817,7 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
 - API key 값은 절대 반환하지 않는다.
 - `provider=openai_compatible`의 `configured=true`는 API key와 `LLM_MODEL`이 모두 설정된 상태를 뜻한다.
 - `provider=anthropic_compatible`의 `configured=true`는 `ANTHROPIC_AUTH_TOKEN` 또는 `ANTHROPIC_API_KEY`와 Anthropic-compatible model env가 설정된 상태를 뜻한다.
+- `provider=ollama`의 `configured=true`는 `OLLAMA_MODEL` 또는 `LLM_PROVIDER=ollama` 상태의 `LLM_MODEL`이 설정된 상태를 뜻한다. 실제 모델 pull 여부는 호출 시 확인된다.
 - `configured=false`이면 `/api/ai/chat`은 `mode=rag_fallback_rule_based`로 응답할 수 있다.
 
 ### `POST /api/ai/chat`
@@ -953,6 +954,67 @@ ai-service의 OpenAI-compatible 또는 Anthropic-compatible LLM 설정 상태를
 - live LLM 품질은 `make llm-benchmark`로 반복 검증한다. 이 벤치마크는 3개 고정 프롬프트에서 `mode=rag_llm`, `retrieval.llm.used=true`, `grounding.llmUsed=true`, 최소 source/claim 수, retrieval 문서 id 인용, 금지 투자문구 미포함을 확인한다.
 - “지금 사라/팔아라”가 아니라 조건, 리스크, 대안 시나리오로 설명한다.
 - 개인화 투자 조언이나 수익 보장을 하지 않는다.
+
+### `POST /api/ai/ollama/insights`
+
+선택 종목의 차트, 이벤트, 거래 구간, 브리프 맥락을 받아 로컬 Ollama 기반 인사이트 3종을 반환한다. Ollama 모델이 설정되지 않았거나 호출에 실패하면 같은 응답 구조로 `mode=ollama_fallback_rule_based` 규칙형 미리보기를 반환한다.
+
+#### 요청 예시
+
+```json
+{
+  "question": "삼성전자 지금 사도 되나요?",
+  "context": {
+    "stockCode": "005930",
+    "stockName": "삼성전자"
+  }
+}
+```
+
+#### 성공 응답 (200)
+
+```json
+{
+  "mode": "ollama_llm | ollama_fallback_rule_based",
+  "provider": "ollama",
+  "model": "llama3.1",
+  "stockAdvice": {
+    "title": "이 종목 지금 사도 되나요?",
+    "decision": "매수 검토 | 관망 | 매도 검토",
+    "summary": "차트, 재무/브리프, 뉴스/센티먼트를 합친 조건형 의견",
+    "buyConditions": ["20일선 위 종가 유지와 거래량 증가"],
+    "watchConditions": ["근거가 엇갈리면 다음 종가 확인"],
+    "sellConditions": ["20일선 재이탈과 하락 거래량 증가"],
+    "riskNotes": ["평균단가와 실제 보유 수량은 아직 반영하지 않음"]
+  },
+  "newsSentiment": {
+    "title": "뉴스 감성 기반 단기 방향 예측",
+    "score": 12,
+    "label": "중립",
+    "nextTradingDay": { "up": 49, "down": 42, "flat": 9 },
+    "summary": "뉴스/이벤트 후보를 점수화한 참고용 예측",
+    "headlineSignals": ["최근 이벤트 또는 뉴스 후보"]
+  },
+  "afterMarketReport": {
+    "title": "매일 장후 시장 요약 리포트",
+    "mood": "선별 접근",
+    "keyPoints": ["시장 최대 상승/하락/최다 언급 후보"],
+    "llmComment": "장후 브리프에 붙일 로컬 LLM 코멘트",
+    "nextWatch": ["다음 거래일 시초가와 20일선 위치"]
+  },
+  "storage": {
+    "saved": true,
+    "table": "ai_chat_interactions"
+  }
+}
+```
+
+#### 응답 정책
+
+- 매수/매도 지시가 아니라 조건형 의견만 제공한다.
+- `newsSentiment.nextTradingDay` 확률은 이벤트/뉴스 후보 기반 참고 지표이며 투자 성과를 보장하지 않는다.
+- 응답 생성 기록은 `/api/ai/chat`과 동일하게 `ai_chat_interactions`에 감사 로그로 저장된다.
+- 로컬 Ollama를 쓰려면 `OLLAMA_BASE_URL`, `OLLAMA_MODEL`을 지정한다.
 
 ### `GET /api/ai/chat/history?stockCode=005930`
 

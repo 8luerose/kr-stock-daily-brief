@@ -29,11 +29,19 @@ public class AiChatClient {
   }
 
   public Map<String, Object> chat(Map<String, Object> request) {
+    return postMap("/chat", request, "ai_service_chat_error");
+  }
+
+  public Map<String, Object> ollamaInsights(Map<String, Object> request) {
+    return postMap("/ollama/insights", request, "ai_service_ollama_insights_error");
+  }
+
+  private Map<String, Object> postMap(String uri, Map<String, Object> request, String errorCode) {
     try {
       Map<String, Object> res =
           http
               .post()
-              .uri("/chat")
+              .uri(uri)
               .contentType(MediaType.APPLICATION_JSON)
               .accept(MediaType.APPLICATION_JSON)
               .body(request == null ? Map.of() : request)
@@ -46,7 +54,7 @@ public class AiChatClient {
     } catch (ResponseStatusException e) {
       throw e;
     } catch (RestClientException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "ai_service_chat_error", e);
+      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, errorCode, e);
     }
   }
 
