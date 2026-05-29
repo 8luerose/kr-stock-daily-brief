@@ -98,7 +98,7 @@ function zoneMidPrice(zone) {
   return Number.isFinite(from) ? from : to;
 }
 
-function markerForEvent(event) {
+function markerForEvent(event, compact = false) {
   const positive = event?.type === 'positive' || event?.sentimentForPrice === 'positive';
   const negative = event?.type === 'negative' || event?.sentimentForPrice === 'negative';
   return {
@@ -106,7 +106,7 @@ function markerForEvent(event) {
     position: negative ? 'belowBar' : 'aboveBar',
     color: positive ? '#22c55e' : negative ? '#ef4444' : '#f59e0b',
     shape: negative ? 'arrowDown' : positive ? 'arrowUp' : 'circle',
-    text: positive ? '호재 후보' : negative ? '주의 후보' : '확인'
+    text: compact ? '' : positive ? '호재 후보' : negative ? '주의 후보' : '확인'
   };
 }
 
@@ -302,6 +302,7 @@ export default function TradingViewPriceChart({
       } = library;
 
       const initialSize = chartContainerSize(element);
+      const compactChart = initialSize.width < 720;
       const chart = createChart(element, {
       width: initialSize.width,
       height: initialSize.height,
@@ -418,7 +419,10 @@ export default function TradingViewPriceChart({
 
       const markerApi = createSeriesMarkers(
       candleSeries,
-      events.filter((event) => event?.date).slice(0, 12).map(markerForEvent)
+      events
+        .filter((event) => event?.date)
+        .slice(0, compactChart ? 5 : 12)
+        .map((event) => markerForEvent(event, compactChart))
     );
 
       const priceLines = [];
@@ -430,8 +434,8 @@ export default function TradingViewPriceChart({
         color,
         lineWidth: 1,
         lineStyle: style,
-        axisLabelVisible: true,
-        title
+        axisLabelVisible: !compactChart,
+        title: compactChart ? '' : title
       }));
     };
 

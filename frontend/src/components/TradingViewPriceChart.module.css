@@ -304,7 +304,7 @@
 .zoneRail {
   position: absolute;
   right: clamp(16px, 5vw, 72px);
-  bottom: clamp(18px, 4vw, 50px);
+  bottom: clamp(120px, 14vh, 156px);
   z-index: 4;
   display: grid;
   gap: 7px;

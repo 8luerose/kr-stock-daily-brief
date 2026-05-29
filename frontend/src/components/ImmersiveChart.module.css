@@ -83,7 +83,7 @@
   position: absolute;
   top: 24px;
   left: clamp(16px, 5vw, 72px);
-  right: clamp(16px, 5vw, 72px);
+  right: clamp(190px, 16vw, 260px);
   display: flex;
   gap: var(--spacing-3);
   justify-content: space-between;
@@ -453,6 +453,23 @@
   line-height: 1.3;
 }
 
+@media (min-width: 769px) and (max-width: 1180px) {
+  .topToolbar {
+    right: clamp(150px, 15vw, 190px);
+  }
+
+  .actionGroup {
+    gap: var(--spacing-2);
+  }
+
+  .actionBtn {
+    gap: 6px;
+    min-height: 40px;
+    padding: 9px 12px;
+    font-size: 0.82rem;
+  }
+}
+
 @media (max-width: 768px) {
   .heroName { font-size: 4rem; }
   .heroRate { font-size: 2rem; }
@@ -460,10 +477,10 @@
   .topToolbar {
     top: 12px;
     left: 12px;
-    right: 12px;
+    right: 104px;
     justify-content: flex-start;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     overflow: visible;
     overflow-y: visible;
   }
@@ -473,8 +490,9 @@
   }
 
   .intervalBtn {
-    padding: 8px 12px;
-    font-size: 0.82rem;
+    min-width: 36px;
+    padding: 7px 8px;
+    font-size: 0.78rem;
   }
 
   .intervalStatus {
@@ -484,15 +502,15 @@
   .actionGroup {
     flex: 1 1 auto;
     justify-content: flex-start;
-    gap: 8px;
+    gap: 6px;
   }
 
   .actionBtn {
     justify-content: center;
-    width: 40px;
+    width: 36px;
     padding: 0;
     font-size: 0;
-    min-height: 40px;
+    min-height: 36px;
     border-radius: 50%;
   }
 
