@@ -755,6 +755,10 @@ export default function TradingViewPriceChart({
             <span>재무 <strong>{aiDecision.fundamentalLabel}</strong></span>
             <span>장후 <strong>{aiDecision.mood}</strong></span>
           </div>
+          <div className={styles.aiDecisionQuickLine}>
+            <b>다음 확인</b>
+            <span>{aiDecision.primaryCondition || aiDecision.nextWatch}</span>
+          </div>
           {aiDecision.factors.length > 0 && (
             <div className={styles.aiFactorGrid} aria-label="차트 재무 뉴스 센티멘트 판단 근거">
               {aiDecision.factors.map((factor) => (
