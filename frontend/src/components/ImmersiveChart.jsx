@@ -22,7 +22,34 @@ function pipelineStateLabel(state) {
   return '대기';
 }
 
-export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, stockOptions = [], onChangeStock, learningMode, onTermClick, aiCardExpanded = false }) {
+function compactPanelText(value, fallback = '확인 필요', limit = 92) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return fallback;
+  return text.length > limit ? `${text.slice(0, limit - 3)}...` : text;
+}
+
+function normalizePanelDecision(value) {
+  const text = compactPanelText(value, '관망', 24);
+  if (text === 'buy' || text === 'buy_review') return '매수 검토';
+  if (text === 'sell' || text === 'sell_review') return '매도 검토';
+  if (text === 'watch' || text === 'neutral') return '관망';
+  return text;
+}
+
+function stockAdviceTone(decision) {
+  if (String(decision || '').includes('매수')) return 'buy';
+  if (String(decision || '').includes('매도')) return 'sell';
+  if (String(decision || '').includes('분석')) return 'loading';
+  return 'watch';
+}
+
+function firstPanelItem(items, fallback, limit = 90) {
+  if (!Array.isArray(items)) return compactPanelText(fallback, fallback, limit);
+  const found = items.find((item) => String(item || '').trim());
+  return compactPanelText(found || fallback, fallback, limit);
+}
+
+export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, stockOptions = [], onChangeStock, learningMode, onTermClick, aiCardExpanded = false, onPanelOpenChange }) {
   const toolbarRef = useRef(null);
   const [activePanel, setActivePanel] = useState('none'); // 'none', 'stocks', 'guide', 'ai'
   const [guideTab, setGuideTab] = useState('ma'); // 'ma', 'beginner', 'event'
@@ -50,6 +77,10 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [activePanel]);
+
+  useEffect(() => {
+    onPanelOpenChange?.(activePanel !== 'none');
+  }, [activePanel, onPanelOpenChange]);
 
   const chartData = useMemo(() => {
     if (!chart?.rows) return [];
@@ -163,6 +194,67 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       tone: hasLoading ? 'loading' : hasDelayed ? 'delayed' : readyCount === aiExecutionSteps.length ? 'ready' : 'waiting'
     };
   }, [ai, aiExecutionSteps]);
+
+  const stockPanelAdvice = useMemo(() => {
+    const insights = ai?.ollamaInsights;
+    const ollamaStatus = ai?.ollamaInsightsStatus
+      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const loading = ollamaStatus === 'loading' && !insights;
+    const delayed = ollamaStatus === 'failed' && !insights;
+    const advice = insights?.stockAdvice || {};
+    const sentiment = insights?.newsSentiment || {};
+    const coach = insights?.beginnerCoach || {};
+    const latest = chartData[chartData.length - 1] || null;
+    const ma20 = indicatorSnapshot?.movingAverages?.ma20 || latest?.ma20;
+    const decision = loading
+      ? '분석 중'
+      : normalizePanelDecision(advice.decision || ai?.chartState?.state || '관망');
+    const summary = loading
+      ? 'Ollama가 차트, 재무, 뉴스, 센티멘트를 합쳐 이 종목을 사도 되는지 계산하고 있습니다.'
+      : compactPanelText(
+        coach.plainSummary || advice.summary || ai?.conclusion || decisionSummary?.summary,
+        delayed ? 'Ollama 응답이 지연되어 현재는 차트와 뉴스 기반 규칙형 판단을 먼저 보여줍니다.' : '차트와 뉴스 근거를 확인 중입니다.',
+        108
+      );
+    const nextAction = loading
+      ? '계산이 끝나기 전에는 현재가와 20일선, 거래량을 먼저 확인하세요.'
+      : compactPanelText(
+        coach.nextAction,
+        '',
+        96
+      ) || firstPanelItem(
+        advice.watchConditions || advice.buyConditions || advice.sellConditions,
+        decisionSummary?.watchCondition || '다음 종가와 거래량을 확인한 뒤 판단합니다.',
+        96
+      );
+    const caution = loading
+      ? 'AI 응답 전 추격 매수는 피하고, 장 마감 후 리포트와 뉴스 원문을 함께 확인하세요.'
+      : compactPanelText(
+        coach.cautionReason || coach.avoidAction,
+        '',
+        96
+      ) || firstPanelItem(
+        sentiment.downRisks || advice.riskNotes,
+        sentiment.caution || decisionSummary?.riskCondition || '반대 신호와 지지선 이탈 여부를 확인합니다.',
+        96
+      );
+    const news = sentiment.nextTradingDay || {};
+    const newsLabel = Number.isFinite(Number(news.up)) && Number.isFinite(Number(news.down))
+      ? `상승 ${Math.round(Number(news.up))}% · 하락 ${Math.round(Number(news.down))}%`
+      : loading ? '뉴스 계산 중' : '뉴스 확인 필요';
+
+    return {
+      decision,
+      tone: stockAdviceTone(decision),
+      summary,
+      nextAction,
+      caution,
+      priceLabel: formatCurrency(latest?.close),
+      ma20Label: formatCurrency(ma20),
+      newsLabel,
+      sourceLabel: insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : loading ? 'Ollama 계산 중' : delayed ? '규칙형 유지' : '근거 계산'
+    };
+  }, [ai, chartData, decisionSummary, indicatorSnapshot]);
 
   if (!chartData || chartData.length === 0) return null;
 
@@ -312,6 +404,37 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                     </div>
                     {stockCodeError && <em id="stock-code-direct-error">{stockCodeError}</em>}
                   </form>
+                  <div
+                    className={clsx(
+                      styles.stockAdviceSnapshot,
+                      stockPanelAdvice.tone === 'buy' && styles.stockAdviceBuy,
+                      stockPanelAdvice.tone === 'sell' && styles.stockAdviceSell,
+                      stockPanelAdvice.tone === 'loading' && styles.stockAdviceLoading
+                    )}
+                    aria-label="선택 종목 즉시 AI 상담 요약"
+                  >
+                    <div className={styles.stockAdviceTopline}>
+                      <span>이 종목 지금 사도 되나요?</span>
+                      <strong>{stockPanelAdvice.decision}</strong>
+                    </div>
+                    <p>{stockPanelAdvice.summary}</p>
+                    <div className={styles.stockAdviceMetrics}>
+                      <span>현재가 <b>{stockPanelAdvice.priceLabel}</b></span>
+                      <span>20일선 <b>{stockPanelAdvice.ma20Label}</b></span>
+                      <span>뉴스 <b>{stockPanelAdvice.newsLabel}</b></span>
+                      <span>근거 <b>{stockPanelAdvice.sourceLabel}</b></span>
+                    </div>
+                    <div className={styles.stockAdviceActions}>
+                      <article>
+                        <b>다음 확인</b>
+                        <span>{stockPanelAdvice.nextAction}</span>
+                      </article>
+                      <article>
+                        <b>주의할 점</b>
+                        <span>{stockPanelAdvice.caution}</span>
+                      </article>
+                    </div>
+                  </div>
                   <div className={styles.aiPipelinePanel} aria-label="종목 선택 후 Ollama 실행 흐름">
                     <b>종목을 고르면 AI가 바로 확인하는 3가지</b>
                     <div className={styles.aiPipelineSummary} aria-label="Ollama 실행 상태 요약">

@@ -101,6 +101,7 @@ function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
   const [aiCardExpanded, setAiCardExpanded] = useState(false);
+  const [chartPanelOpen, setChartPanelOpen] = useState(false);
   const [stockOptions, setStockOptions] = useState([]);
   const pipelineToast = useMemo(
     () => buildPipelineToast({ data, activeCode, interval, loading }),
@@ -141,6 +142,7 @@ function App() {
 
   useEffect(() => {
     setAiCardExpanded(false);
+    setChartPanelOpen(false);
   }, [activeCode, interval]);
 
   const handleToggleLearningMode = () => {
@@ -198,6 +200,7 @@ function App() {
             learningMode={learningMode}
             onTermClick={handleSelectTerm}
             aiCardExpanded={aiCardExpanded}
+            onPanelOpenChange={setChartPanelOpen}
           />
         )}
       </div>
@@ -254,7 +257,7 @@ function App() {
             </button>
           </div>
         )}
-        {data && !loading && (
+        {data && !loading && !chartPanelOpen && (
           <FloatingAiCard
             ai={data.ai}
             events={data.events}
