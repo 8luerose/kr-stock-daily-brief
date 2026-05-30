@@ -433,6 +433,93 @@
   line-height: 1.35;
 }
 
+.aiPipelinePanel {
+  display: grid;
+  gap: 8px;
+  margin-top: var(--spacing-3);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 10px;
+}
+
+.aiPipelinePanel > b {
+  color: var(--color-text-primary);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.3;
+  word-break: keep-all;
+}
+
+.aiPipelineRow {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+}
+
+.aiPipelineDot {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.75);
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.08);
+}
+
+.aiPipelineReady {
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+.aiPipelineLoading {
+  background: #60a5fa;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.14);
+}
+
+.aiPipelineDelayed {
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
+}
+
+.aiPipelineRow div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aiPipelineRow strong,
+.aiPipelineRow em,
+.aiPipelineRow p {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.aiPipelineRow strong {
+  color: var(--color-text-primary);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.aiPipelineRow em {
+  color: #bfdbfe;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
+.aiPipelineRow p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.38;
+}
+
 .stockList {
   display: grid;
   gap: var(--spacing-2);
@@ -584,14 +671,14 @@
   
   .dropdownPanel {
     position: fixed;
-    top: 64px;
+    top: 58px;
     left: 12px;
     right: 12px;
     width: auto;
     max-width: none;
-    max-height: 62dvh;
+    max-height: calc(100dvh - 170px);
     overflow-y: auto;
-    background: rgba(10, 15, 24, 0.96);
+    background: #060a12;
     transform-origin: top left;
   }
 
@@ -610,6 +697,42 @@
   }
 
   .stockList {
-    max-height: 32dvh;
+    max-height: 24dvh;
+  }
+
+  .stockSaveNotice {
+    font-size: 0.74rem;
+  }
+
+  .aiPipelinePanel {
+    gap: 7px;
+    padding: 9px;
+  }
+
+  .aiPipelinePanel > b {
+    font-size: 0.75rem;
+  }
+
+  .aiPipelineRow {
+    grid-template-columns: 8px minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  .aiPipelineDot {
+    width: 8px;
+    height: 8px;
+    margin-top: 4px;
+  }
+
+  .aiPipelineRow strong {
+    font-size: 0.72rem;
+  }
+
+  .aiPipelineRow em {
+    font-size: 0.7rem;
+  }
+
+  .aiPipelineRow p {
+    display: none;
   }
 }

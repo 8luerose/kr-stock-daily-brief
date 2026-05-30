@@ -75,6 +75,49 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     return temp;
   }, [chart, events]);
 
+  const aiExecutionSteps = useMemo(() => {
+    const insights = ai?.ollamaInsights;
+    const aiLayerStatus = ai?.aiLayerStatus || (insights ? 'ready' : '');
+    const marketReportStatus = ai?.marketReportStatus || (ai?.marketReport ? 'ready' : '');
+    const isLoading = aiLayerStatus === 'loading';
+    const isDelayed = aiLayerStatus === 'ollama_failed';
+    const adviceDecision = insights?.stockAdvice?.decision || (isLoading ? '분석 중' : '대기');
+    const newsDirection = insights?.newsSentiment?.nextTradingDay;
+    const newsText = insights
+      ? `상승 ${newsDirection?.up ?? '확인 중'}% · 하락 ${newsDirection?.down ?? '확인 중'}%`
+      : isLoading
+        ? '뉴스와 이벤트 문맥 확인 중'
+        : '뉴스 방향 대기';
+    const reportText = ai?.marketReport
+      ? (ai.marketReport.storage?.cached ? 'DB 저장본 재사용' : '장후 리포트 준비 완료')
+      : marketReportStatus === 'loading'
+        ? '최신 저장 브리프 확인 중'
+        : '장후 리포트 대기';
+    const state = insights ? 'ready' : isLoading ? 'loading' : isDelayed ? 'delayed' : 'waiting';
+    const reportState = ai?.marketReport ? 'ready' : marketReportStatus === 'loading' ? 'loading' : 'waiting';
+
+    return [
+      {
+        label: '1. 이 종목 지금 사도 되나요?',
+        value: adviceDecision,
+        detail: '차트, 재무, 뉴스, 센티멘트를 합쳐 조건형 상담',
+        state
+      },
+      {
+        label: '2. 뉴스 감성 단기 방향',
+        value: newsText,
+        detail: '헤드라인 문맥을 읽고 다음 거래일 방향 확률 표시',
+        state
+      },
+      {
+        label: '3. 장후 시장 요약 리포트',
+        value: reportText,
+        detail: '저장된 일간 브리프에 Ollama 코멘트 추가',
+        state: reportState
+      }
+    ];
+  }, [ai]);
+
   if (!chartData || chartData.length === 0) return null;
 
   const latestPoint = chartData[chartData.length - 1];
@@ -222,6 +265,24 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                     </div>
                     {stockCodeError && <em id="stock-code-direct-error">{stockCodeError}</em>}
                   </form>
+                  <div className={styles.aiPipelinePanel} aria-label="종목 선택 후 Ollama 실행 흐름">
+                    <b>종목을 고르면 AI가 바로 확인하는 3가지</b>
+                    {aiExecutionSteps.map((step) => (
+                      <div className={styles.aiPipelineRow} key={step.label}>
+                        <span className={clsx(
+                          styles.aiPipelineDot,
+                          step.state === 'ready' && styles.aiPipelineReady,
+                          step.state === 'loading' && styles.aiPipelineLoading,
+                          step.state === 'delayed' && styles.aiPipelineDelayed
+                        )} />
+                        <div>
+                          <strong>{step.label}</strong>
+                          <em>{step.value}</em>
+                          <p>{step.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className={styles.stockList}>
                   {normalizedStockOptions.map((option) => {
