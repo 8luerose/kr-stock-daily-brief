@@ -49,6 +49,13 @@ function firstPanelItem(items, fallback, limit = 90) {
   return compactPanelText(found || fallback, fallback, limit);
 }
 
+function newsEffectTone(effect = '') {
+  const text = String(effect || '');
+  if (text.includes('상승') || text.includes('우호') || text.includes('긍정')) return 'positive';
+  if (text.includes('하락') || text.includes('주의') || text.includes('부정') || text.includes('위험')) return 'negative';
+  return 'neutral';
+}
+
 export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, stockOptions = [], onChangeStock, learningMode, onTermClick, aiCardExpanded = false, onPanelOpenChange }) {
   const toolbarRef = useRef(null);
   const [activePanel, setActivePanel] = useState('none'); // 'none', 'stocks', 'guide', 'ai'
@@ -256,6 +263,44 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     };
   }, [ai, chartData, decisionSummary, indicatorSnapshot]);
 
+  const stockPanelNews = useMemo(() => {
+    const insights = ai?.ollamaInsights;
+    const sentiment = insights?.newsSentiment || {};
+    const ollamaStatus = ai?.ollamaInsightsStatus
+      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const loading = ollamaStatus === 'loading' && !insights;
+    const headline = sentiment.headlineAnalyses?.[0] || null;
+    const fallbackHeadline = sentiment.headlineSignals?.[0] || events?.[0]?.title;
+    const upReason = firstPanelItem(
+      sentiment.upReasons,
+      loading ? '뉴스와 이벤트 문맥을 로컬 AI가 읽는 중입니다.' : '상승 쪽 근거는 가격 반응과 거래량으로 확인해야 합니다.',
+      92
+    );
+    const downRisk = firstPanelItem(
+      sentiment.downRisks,
+      loading ? '계산 중에는 뉴스 제목 하나만 보고 추격 매수하지 않습니다.' : sentiment.caution || '하락 쪽 반대 근거와 지지선 이탈 여부를 확인합니다.',
+      92
+    );
+    const action = firstPanelItem(
+      sentiment.actionGuide || sentiment.tradingScenarios,
+      loading ? '로컬 AI 답변이 붙기 전까지는 원문 뉴스와 거래량 변화를 함께 봅니다.' : '뉴스 원문과 거래량 반응을 함께 확인합니다.',
+      98
+    );
+    const effect = headline?.effect || (loading ? '문맥 계산 중' : sentiment.label || '확인 필요');
+
+    return {
+      title: compactPanelText(headline?.title || fallbackHeadline, loading ? '뉴스 헤드라인 문맥 계산 중' : '뉴스 헤드라인 확인 필요', 96),
+      effect: compactPanelText(effect, '확인 필요', 28),
+      reason: compactPanelText(headline?.reason || sentiment.llmContextReason || sentiment.summary, loading ? '뉴스 제목과 이벤트를 함께 읽어 단기 방향을 계산합니다.' : '뉴스 문맥 근거를 확인합니다.', 104),
+      upReason,
+      downRisk,
+      action,
+      scoreLabel: Number.isFinite(Number(sentiment.score)) ? `${Number(sentiment.score) > 0 ? '+' : ''}${Math.round(Number(sentiment.score))}점` : loading ? '계산 중' : '확인 필요',
+      confidence: compactPanelText(sentiment.confidence || sentiment.evidenceQuality, loading ? '근거 수집 중' : '근거 확인 필요', 34),
+      tone: newsEffectTone(effect)
+    };
+  }, [ai, events]);
+
   if (!chartData || chartData.length === 0) return null;
 
   const latestPoint = chartData[chartData.length - 1];
@@ -434,6 +479,38 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                         <span>{stockPanelAdvice.caution}</span>
                       </article>
                     </div>
+                  </div>
+                  <div className={styles.stockNewsSnapshot} aria-label="뉴스 감성 호재 악재 근거">
+                    <div className={styles.stockNewsTopline}>
+                      <span>뉴스가 왜 호재/악재인가요?</span>
+                      <strong
+                        className={clsx(
+                          stockPanelNews.tone === 'positive' && styles.stockNewsPositive,
+                          stockPanelNews.tone === 'negative' && styles.stockNewsNegative
+                        )}
+                      >
+                        {stockPanelNews.effect}
+                      </strong>
+                    </div>
+                    <article className={styles.stockNewsHeadline}>
+                      <b>{stockPanelNews.title}</b>
+                      <span>{stockPanelNews.reason}</span>
+                    </article>
+                    <div className={styles.stockNewsReasonGrid}>
+                      <article>
+                        <b>좋게 볼 이유</b>
+                        <span>{stockPanelNews.upReason}</span>
+                      </article>
+                      <article>
+                        <b>주의할 이유</b>
+                        <span>{stockPanelNews.downRisk}</span>
+                      </article>
+                    </div>
+                    <div className={styles.stockNewsFooter}>
+                      <span>감성 {stockPanelNews.scoreLabel}</span>
+                      <span>{stockPanelNews.confidence}</span>
+                    </div>
+                    <p>{stockPanelNews.action}</p>
                   </div>
                   <div className={styles.aiPipelinePanel} aria-label="종목 선택 후 Ollama 실행 흐름">
                     <b>종목을 고르면 AI가 바로 확인하는 3가지</b>

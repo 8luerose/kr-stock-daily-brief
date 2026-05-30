@@ -577,6 +577,145 @@
   line-height: 1.36;
 }
 
+.stockNewsSnapshot {
+  display: grid;
+  gap: 8px;
+  margin-top: var(--spacing-3);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(37, 99, 235, 0.1));
+  padding: 10px;
+}
+
+.stockNewsTopline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stockNewsTopline span,
+.stockNewsTopline strong,
+.stockNewsHeadline b,
+.stockNewsHeadline span,
+.stockNewsReasonGrid b,
+.stockNewsReasonGrid span,
+.stockNewsFooter span,
+.stockNewsSnapshot p {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.stockNewsTopline span {
+  color: #bfdbfe;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.stockNewsTopline strong {
+  flex: 0 0 auto;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.48);
+  color: #e5e7eb;
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1.2;
+  padding: 5px 8px;
+}
+
+.stockNewsTopline .stockNewsPositive {
+  border-color: rgba(34, 197, 94, 0.25);
+  color: #bbf7d0;
+}
+
+.stockNewsTopline .stockNewsNegative {
+  border-color: rgba(239, 68, 68, 0.28);
+  color: #fecaca;
+}
+
+.stockNewsHeadline {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid rgba(96, 165, 250, 0.14);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.38);
+  padding: 8px;
+}
+
+.stockNewsHeadline b {
+  color: var(--color-text-primary);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.stockNewsHeadline span {
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 720;
+  line-height: 1.36;
+}
+
+.stockNewsReasonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.stockNewsReasonGrid article {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.34);
+  padding: 8px;
+}
+
+.stockNewsReasonGrid b {
+  color: #dbeafe;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.stockNewsReasonGrid span {
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 720;
+  line-height: 1.36;
+}
+
+.stockNewsFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stockNewsFooter span {
+  border: 1px solid rgba(96, 165, 250, 0.14);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #bfdbfe;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 4px 7px;
+}
+
+.stockNewsSnapshot p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 720;
+  line-height: 1.38;
+}
+
 .aiPipelinePanel {
   display: grid;
   gap: 8px;
@@ -933,6 +1072,25 @@
 
   .stockAdviceActions {
     grid-template-columns: 1fr;
+  }
+
+  .stockNewsSnapshot {
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .stockNewsTopline {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stockNewsReasonGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .stockNewsHeadline b {
+    font-size: 0.74rem;
   }
 
   .aiPipelinePanel {
