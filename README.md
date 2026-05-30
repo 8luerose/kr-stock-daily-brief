@@ -199,9 +199,13 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `AI_SERVICE_BASE_URL` | No | AI service URL (Docker internal) |
 | `QDRANT_URL` | No | Vector store URL used by ai-service to store and retrieve AI grounding documents |
 | `QDRANT_ENABLED` | No | Enable or disable Qdrant grounding memory. Default: `true` |
-| `QDRANT_COLLECTION` | No | Qdrant collection for AI grounding memory. Default: `kr_stock_ai_memory` |
-| `QDRANT_VECTOR_SIZE` | No | Deterministic hash-vector size for lightweight local RAG. Default: `64` |
+| `QDRANT_COLLECTION` | No | Qdrant collection for AI grounding memory. Default: `kr_stock_ai_memory_ollama` |
+| `QDRANT_VECTOR_PROVIDER` | No | Qdrant vector source: `ollama`, `hash`, or `auto`. Default: `ollama` |
+| `QDRANT_EMBEDDING_MODEL` | No | Ollama model used for semantic Qdrant vectors. Default: `llama3.1:latest` |
+| `QDRANT_VECTOR_SIZE` | No | Qdrant vector size. Ollama `llama3.1:latest` uses `4096`; hash fallback can use smaller sizes |
+| `QDRANT_MAX_DOCUMENTS` | No | Maximum grounding documents stored per AI request. Default: `16` |
 | `QDRANT_TIMEOUT_SECONDS` | No | Qdrant HTTP timeout. Default: `2.5` |
+| `QDRANT_EMBEDDING_TIMEOUT_SECONDS` | No | Ollama embedding timeout for Qdrant vectorization. Default: `20` |
 | `LLM_PROVIDER` | No | `ollama`, `anthropic_compatible`, `openai_compatible`, `anthropic`, `openai`, or `auto`. Docker default is `ollama` |
 | `LLM_MODEL` | No | OpenAI-compatible model name |
 | `LLM_BASE_URL` | No | OpenAI-compatible API base URL |

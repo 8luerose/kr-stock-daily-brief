@@ -66,8 +66,13 @@ export default function FloatingAiCard({ ai, events, asOf }) {
   const afterMarketReport = insights?.afterMarketReport || {};
   const decisionFactors = Array.isArray(insights?.decisionFactors) ? insights.decisionFactors.slice(0, 4) : [];
   const qdrant = insights?.qdrant || ai.marketReport?.qdrant || null;
+  const qdrantModeLabel = qdrant?.embeddingUsed
+    ? 'Ollama 의미검색'
+    : qdrant?.vectorProvider === 'hash'
+      ? '해시 검색'
+      : '벡터 검색';
   const qdrantLabel = qdrant?.enabled
-    ? `Qdrant 검색 ${qdrant.retrievedCount || 0}개 · 저장 ${qdrant.storedCount || 0}개`
+    ? `Qdrant ${qdrantModeLabel} ${qdrant.retrievedCount || 0}개 · 저장 ${qdrant.storedCount || 0}개`
     : '';
   const personalRisk = stockAdvice.personalRisk || ai.portfolioGuidance?.positionDiagnostics || null;
   const visibleHeadlineCount = newsSentiment?.headlineSignals?.length || 0;

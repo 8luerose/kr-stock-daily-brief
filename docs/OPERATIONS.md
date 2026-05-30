@@ -33,6 +33,7 @@ docker compose up -d --build
 - `GET /actuator/health`가 `{"status":"UP"}`
 - `GET /api/stocks/005930/chart` 응답에 `data[]` 존재
 - `POST /api/ai/chat` 응답에 `sources`, `limitations`, `oppositeSignals`, `retrieval.qdrant` 존재
+- `retrieval.qdrant.embeddingUsed=true`이면 Ollama embedding 기반 의미 검색, `false`이면 해시 벡터 fallback이다.
 - 브라우저에서 첫 화면, 종목 차트, AI 차트 해석 버튼, 포트폴리오 샌드박스가 보임
 
 ## Live LLM 품질 점검

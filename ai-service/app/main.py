@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 app = FastAPI(title="kr-stock-daily-brief ai-service", version="0.1.0")
 
 _QDRANT_READY_COLLECTIONS: set[str] = set()
+_QDRANT_EMBEDDING_CACHE: dict[str, list[float]] = {}
 
 
 class ChatRequest(BaseModel):
@@ -315,14 +316,37 @@ def _qdrant_url() -> str:
 
 
 def _qdrant_collection() -> str:
-    return os.getenv("QDRANT_COLLECTION", "kr_stock_ai_memory").strip() or "kr_stock_ai_memory"
+    return os.getenv("QDRANT_COLLECTION", "kr_stock_ai_memory_ollama").strip() or "kr_stock_ai_memory_ollama"
+
+
+def _qdrant_vector_provider() -> str:
+    provider = os.getenv("QDRANT_VECTOR_PROVIDER", "ollama").strip().lower()
+    return provider if provider in {"ollama", "hash", "auto"} else "ollama"
+
+
+def _qdrant_embedding_model() -> str:
+    return (
+        os.getenv("QDRANT_EMBEDDING_MODEL", "").strip()
+        or os.getenv("OLLAMA_EMBEDDING_MODEL", "").strip()
+        or os.getenv("OLLAMA_MODEL", "").strip()
+        or os.getenv("LLM_MODEL", "").strip()
+        or "llama3.1:latest"
+    )
 
 
 def _qdrant_vector_size() -> int:
+    default_size = "64" if _qdrant_vector_provider() == "hash" else "4096"
     try:
-        return max(16, min(512, int(os.getenv("QDRANT_VECTOR_SIZE", "64"))))
+        return max(16, min(8192, int(os.getenv("QDRANT_VECTOR_SIZE", default_size))))
     except ValueError:
-        return 64
+        return int(default_size)
+
+
+def _qdrant_max_documents() -> int:
+    try:
+        return max(4, min(36, int(os.getenv("QDRANT_MAX_DOCUMENTS", "16"))))
+    except ValueError:
+        return 16
 
 
 def _qdrant_timeout() -> float:
@@ -332,12 +356,24 @@ def _qdrant_timeout() -> float:
         return 2.5
 
 
+def _qdrant_embedding_timeout() -> float:
+    try:
+        return max(1.0, min(30.0, float(os.getenv("QDRANT_EMBEDDING_TIMEOUT_SECONDS", "20"))))
+    except ValueError:
+        return 20.0
+
+
 def _qdrant_meta_base() -> dict[str, Any]:
     return {
         "enabled": _qdrant_enabled(),
         "collection": _qdrant_collection(),
         "baseUrl": _qdrant_url(),
         "vectorSize": _qdrant_vector_size(),
+        "vectorProvider": _qdrant_vector_provider(),
+        "embeddingModel": _qdrant_embedding_model() if _qdrant_vector_provider() != "hash" else "",
+        "embeddingUsed": False,
+        "fallbackReason": "",
+        "maxDocuments": _qdrant_max_documents(),
         "storedCount": 0,
         "retrievedCount": 0,
         "error": "",
@@ -357,19 +393,35 @@ def _qdrant_json(method: str, path: str, payload: dict[str, Any] | None = None) 
     return json.loads(body) if body else {}
 
 
-def _ensure_qdrant_collection() -> None:
+def _qdrant_collection_vector_size(response: dict[str, Any]) -> int | None:
+    vectors = (
+        response.get("result", {})
+        .get("config", {})
+        .get("params", {})
+        .get("vectors")
+    )
+    if isinstance(vectors, dict) and isinstance(vectors.get("size"), int):
+        return vectors.get("size")
+    return None
+
+
+def _ensure_qdrant_collection(vector_size: int | None = None) -> None:
     collection = _qdrant_collection()
     if collection in _QDRANT_READY_COLLECTIONS:
         return
     path = f"collections/{collection}"
+    expected_size = vector_size or _qdrant_vector_size()
     try:
-        _qdrant_json("GET", path)
+        response = _qdrant_json("GET", path)
+        current_size = _qdrant_collection_vector_size(response)
+        if current_size and current_size != expected_size:
+            raise ValueError(f"Qdrant collection vector size mismatch: current={current_size}, expected={expected_size}")
     except error.HTTPError as exc:
         if exc.code != 404:
             raise
         _qdrant_json("PUT", path, {
             "vectors": {
-                "size": _qdrant_vector_size(),
+                "size": expected_size,
                 "distance": "Cosine",
             }
         })
@@ -394,6 +446,115 @@ def _hash_vector(text: str, size: int) -> list[float]:
     return [round(value / norm, 6) for value in values]
 
 
+def _normalize_vector(vector: list[Any]) -> list[float]:
+    out = [float(value) for value in vector]
+    norm = sum(value * value for value in out) ** 0.5 or 1.0
+    return [round(value / norm, 8) for value in out]
+
+
+def _ollama_embedding_vectors(texts: list[str]) -> list[list[float]]:
+    model = _qdrant_embedding_model()
+    if not model:
+        raise ValueError("QDRANT_EMBEDDING_MODEL이 설정되지 않았습니다.")
+    normalized_texts = [_compact(text, 2000) for text in texts]
+    cache_keys = [
+        hashlib.sha256(f"{model}|{text}".encode("utf-8")).hexdigest()
+        for text in normalized_texts
+    ]
+    output: list[list[float] | None] = []
+    missing_texts: list[str] = []
+    missing_indexes: list[int] = []
+    for index, key in enumerate(cache_keys):
+        cached = _QDRANT_EMBEDDING_CACHE.get(key)
+        output.append(cached)
+        if cached is None:
+            missing_indexes.append(index)
+            missing_texts.append(normalized_texts[index])
+    if not missing_texts:
+        return [vector for vector in output if vector is not None]
+
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+    payload = {
+        "model": model,
+        "input": missing_texts,
+    }
+    data = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+    req = request.Request(
+        f"{base_url}/api/embed",
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with request.urlopen(req, timeout=_qdrant_embedding_timeout()) as res:
+        body = json.loads(res.read().decode("utf-8"))
+    embeddings = body.get("embeddings")
+    if not isinstance(embeddings, list) or len(embeddings) != len(missing_texts):
+        raise ValueError("Ollama embedding 응답이 비어 있습니다.")
+    vectors = [_normalize_vector(vector) for vector in embeddings if isinstance(vector, list) and vector]
+    if len(vectors) != len(missing_texts):
+        raise ValueError("Ollama embedding 응답 개수가 맞지 않습니다.")
+    for index, vector in zip(missing_indexes, vectors):
+        output[index] = vector
+        _QDRANT_EMBEDDING_CACHE[cache_keys[index]] = vector
+    if len(_QDRANT_EMBEDDING_CACHE) > 512:
+        for key in list(_QDRANT_EMBEDDING_CACHE.keys())[:128]:
+            _QDRANT_EMBEDDING_CACHE.pop(key, None)
+    return [vector for vector in output if vector is not None]
+
+
+def _ollama_embedding_vector(text: str) -> list[float]:
+    vectors = _ollama_embedding_vectors([text])
+    if not vectors:
+        raise ValueError("Ollama embedding 응답이 비어 있습니다.")
+    return vectors[0]
+
+
+def _qdrant_vector_for_text(text: str) -> tuple[list[float], dict[str, Any]]:
+    provider = _qdrant_vector_provider()
+    meta = {
+        "vectorProvider": provider,
+        "embeddingModel": _qdrant_embedding_model() if provider != "hash" else "",
+        "embeddingUsed": False,
+        "fallbackReason": "",
+    }
+    if provider != "hash":
+        try:
+            vector = _ollama_embedding_vector(text)
+            meta["vectorProvider"] = "ollama"
+            meta["embeddingUsed"] = True
+            return vector, meta
+        except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError, ValueError) as exc:
+            meta["fallbackReason"] = f"Ollama embedding 실패: {type(exc).__name__}"
+            if provider == "ollama":
+                # Keep the app usable; the meta makes the quality downgrade visible.
+                return _hash_vector(text, _qdrant_vector_size()), meta
+    meta["vectorProvider"] = "hash"
+    return _hash_vector(text, _qdrant_vector_size()), meta
+
+
+def _qdrant_vectors_for_texts(texts: list[str]) -> tuple[list[list[float]], dict[str, Any]]:
+    provider = _qdrant_vector_provider()
+    meta = {
+        "vectorProvider": provider,
+        "embeddingModel": _qdrant_embedding_model() if provider != "hash" else "",
+        "embeddingUsed": False,
+        "fallbackReason": "",
+    }
+    if provider != "hash":
+        try:
+            vectors = _ollama_embedding_vectors(texts)
+            if len(vectors) == len(texts):
+                meta["vectorProvider"] = "ollama"
+                meta["embeddingUsed"] = True
+                return vectors, meta
+        except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError, ValueError) as exc:
+            meta["fallbackReason"] = f"Ollama embedding 실패: {type(exc).__name__}"
+            if provider == "ollama":
+                return [_hash_vector(text, _qdrant_vector_size()) for text in texts], meta
+    meta["vectorProvider"] = "hash"
+    return [_hash_vector(text, _qdrant_vector_size()) for text in texts], meta
+
+
 def _qdrant_point_id(doc: dict[str, str], code: str, basis_date: str) -> str:
     source = "|".join([
         _clean(code, "market"),
@@ -410,20 +571,27 @@ def _qdrant_upsert_documents(
     code: str,
     topic_type: str,
     basis_date: str,
-) -> int:
+) -> tuple[int, dict[str, Any]]:
     if not documents:
-        return 0
-    size = _qdrant_vector_size()
+        return 0, {}
     points = []
-    for doc in documents[:36]:
-        text = " ".join([
+    limited_documents = documents[:_qdrant_max_documents()]
+    texts = []
+    for doc in limited_documents:
+        texts.append(" ".join([
             _clean(doc.get("title"), ""),
             _clean(doc.get("type"), ""),
             _clean(doc.get("text"), ""),
-        ])
+        ]))
+    vectors, aggregate_meta = _qdrant_vectors_for_texts(texts)
+    if not vectors:
+        return 0, aggregate_meta
+    aggregate_meta["vectorSize"] = len(vectors[0])
+    _ensure_qdrant_collection(len(vectors[0]))
+    for doc, text, vector in zip(limited_documents, texts, vectors):
         points.append({
             "id": _qdrant_point_id(doc, code, basis_date),
-            "vector": _hash_vector(text, size),
+            "vector": vector,
             "payload": {
                 "docId": _clean(doc.get("id"), ""),
                 "type": _clean(doc.get("type"), ""),
@@ -433,22 +601,28 @@ def _qdrant_upsert_documents(
                 "stockCode": _clean(code, ""),
                 "subject": _clean(subject, ""),
                 "topicType": _clean(topic_type, ""),
+                "vectorProvider": aggregate_meta.get("vectorProvider", _qdrant_vector_provider()),
+                "embeddingModel": aggregate_meta.get("embeddingModel", ""),
+                "embeddingUsed": bool(aggregate_meta.get("embeddingUsed")),
                 "source": "ai-service-retrieval-document",
             },
         })
     _qdrant_json("PUT", f"collections/{_qdrant_collection()}/points?wait=true", {"points": points})
-    return len(points)
+    return len(points), aggregate_meta
 
 
-def _qdrant_search(query: str, limit: int = 4) -> list[dict[str, Any]]:
+def _qdrant_search(query: str, limit: int = 4) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    vector, vector_meta = _qdrant_vector_for_text(query)
+    _ensure_qdrant_collection(len(vector))
     payload = {
-        "vector": _hash_vector(query, _qdrant_vector_size()),
+        "vector": vector,
         "limit": max(1, min(8, limit)),
         "with_payload": True,
     }
     data = _qdrant_json("POST", f"collections/{_qdrant_collection()}/points/search", payload)
     result = data.get("result")
-    return result if isinstance(result, list) else []
+    vector_meta["vectorSize"] = len(vector)
+    return result if isinstance(result, list) else [], vector_meta
 
 
 def _qdrant_hits_to_documents(hits: list[dict[str, Any]], basis_date: str) -> list[dict[str, str]]:
@@ -488,8 +662,8 @@ def _augment_with_qdrant_documents(
         meta["error"] = "QDRANT_ENABLED=false"
         return documents, meta
     try:
-        _ensure_qdrant_collection()
-        meta["storedCount"] = _qdrant_upsert_documents(documents, subject, code, topic_type, basis_date)
+        stored_count, stored_vector_meta = _qdrant_upsert_documents(documents, subject, code, topic_type, basis_date)
+        meta["storedCount"] = stored_count
         query = query_text or " ".join([
             _clean(req.question, ""),
             _clean(subject, ""),
@@ -498,7 +672,12 @@ def _augment_with_qdrant_documents(
             _compact(req.indicatorSnapshot, 220),
             _compact(req.newsHeadlines[:3], 360),
         ])
-        hits = _qdrant_search(query, limit=4)
+        hits, query_vector_meta = _qdrant_search(query, limit=4)
+        meta["vectorProvider"] = query_vector_meta.get("vectorProvider") or stored_vector_meta.get("vectorProvider") or meta["vectorProvider"]
+        meta["embeddingModel"] = query_vector_meta.get("embeddingModel") or stored_vector_meta.get("embeddingModel") or meta["embeddingModel"]
+        meta["embeddingUsed"] = bool(stored_vector_meta.get("embeddingUsed")) and bool(query_vector_meta.get("embeddingUsed"))
+        meta["fallbackReason"] = stored_vector_meta.get("fallbackReason") or query_vector_meta.get("fallbackReason") or ""
+        meta["vectorSize"] = query_vector_meta.get("vectorSize") or stored_vector_meta.get("vectorSize") or meta["vectorSize"]
         qdrant_docs = _qdrant_hits_to_documents(hits, basis_date)
         meta["retrievedCount"] = len(qdrant_docs)
         return [*documents, *qdrant_docs], meta
@@ -1271,7 +1450,11 @@ def _llm_status() -> dict[str, Any]:
             "collection": _qdrant_collection(),
             "baseUrl": _qdrant_url(),
             "vectorSize": _qdrant_vector_size(),
+            "vectorProvider": _qdrant_vector_provider(),
+            "embeddingModel": _qdrant_embedding_model() if _qdrant_vector_provider() != "hash" else "",
+            "maxDocuments": _qdrant_max_documents(),
             "timeoutSeconds": _qdrant_timeout(),
+            "embeddingTimeoutSeconds": _qdrant_embedding_timeout(),
         },
     }
 
