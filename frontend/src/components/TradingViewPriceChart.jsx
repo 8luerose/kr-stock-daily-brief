@@ -792,7 +792,7 @@ export default function TradingViewPriceChart({
     );
 
       const priceLines = [];
-      const addPriceLine = (price, title, color, style = LineStyle.Dashed) => {
+      const addPriceLine = (price, title, color, style = LineStyle.Dashed, options = {}) => {
       const numericPrice = Number(price);
       if (!Number.isFinite(numericPrice)) return;
       priceLines.push(candleSeries.createPriceLine({
@@ -800,7 +800,7 @@ export default function TradingViewPriceChart({
         color,
         lineWidth: 1,
         lineStyle: style,
-        axisLabelVisible: !compactChart,
+        axisLabelVisible: options.axisLabelVisible ?? !compactChart,
         title: compactChart ? '' : title
       }));
     };
@@ -808,7 +808,13 @@ export default function TradingViewPriceChart({
       addPriceLine(indicatorSnapshot?.supportLevel, '지지선', '#22c55e');
       addPriceLine(indicatorSnapshot?.resistanceLevel, '저항선', '#ef4444');
       if (visibleLayers.zones) {
-        zoneSummaries.forEach((zone) => addPriceLine(zone.midPrice, zone.label || 'AI 구간', zone.color, LineStyle.Dotted));
+        zoneSummaries.forEach((zone) => addPriceLine(
+          zone.midPrice,
+          zone.label || 'AI 구간',
+          zone.color,
+          LineStyle.Dotted,
+          { axisLabelVisible: false }
+        ));
       }
       if (visibleLayers.personal) {
         personalPriceLines.forEach((line) => {

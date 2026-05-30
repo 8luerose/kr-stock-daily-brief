@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-install frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check llm-benchmark deploy-smoke ci-test-report
+.PHONY: up down rebuild logs ps backend-logs mysql-logs frontend-logs backend-test frontend-install frontend-quality quality backend-e2e health generate-today check-month latest qa ops-check llm-benchmark deploy-smoke ci-test-report ollama-up ollama-pull ollama-status
 
 DOCKER_SOCK ?= /var/run/docker.sock
 
@@ -54,6 +54,16 @@ check-month:
 
 latest:
 	curl -sS "http://localhost:$${BACKEND_PORT:-8080}/api/summaries/latest"
+
+ollama-up:
+	docker compose --profile ollama up -d ollama
+
+ollama-pull:
+	docker compose --profile ollama up -d ollama
+	docker compose exec ollama ollama pull $${OLLAMA_MODEL:-llama3.1:latest}
+
+ollama-status:
+	curl -sS "http://localhost:$${BACKEND_PORT:-8080}/api/ai/status"
 
 qa:
 	$(MAKE) ops-check

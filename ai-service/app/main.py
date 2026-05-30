@@ -1362,7 +1362,39 @@ def _ollama_config_meta() -> dict[str, Any]:
     }
 
 
-def _llm_status() -> dict[str, Any]:
+def _ollama_runtime_status(base_url: str, model: str) -> dict[str, Any]:
+    timeout = float(os.getenv("OLLAMA_STATUS_TIMEOUT_SECONDS", "1.2"))
+    status = {
+        "reachable": False,
+        "modelAvailable": False,
+        "installedModels": [],
+        "checkedEndpoint": _join_api_path(base_url, "/api/tags"),
+        "checkTimeoutSeconds": timeout,
+        "reason": "",
+    }
+    if not model:
+        status["reason"] = "OLLAMA_MODEL이 설정되지 않았습니다."
+        return status
+    try:
+        with request.urlopen(status["checkedEndpoint"], timeout=timeout) as res:
+            data = json.loads(res.read().decode("utf-8"))
+        models = [
+            _clean(item.get("name"), "")
+            for item in data.get("models", [])
+            if isinstance(item, dict) and _clean(item.get("name"), "")
+        ]
+        status["reachable"] = True
+        status["installedModels"] = models[:12]
+        status["modelAvailable"] = model in models or any(item.split(":")[0] == model.split(":")[0] for item in models)
+        if not status["modelAvailable"]:
+            status["reason"] = f"Ollama는 응답했지만 {model} 모델이 설치 목록에 없습니다."
+        return status
+    except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
+        status["reason"] = f"Ollama 상태 확인 실패: {type(exc).__name__}"
+        return status
+
+
+def _llm_status(check_runtime: bool = True) -> dict[str, Any]:
     openai_model = os.getenv("LLM_MODEL", "").strip()
     openai_base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     openai_key_set = bool(_openai_compatible_api_key(openai_base_url))
@@ -1378,6 +1410,7 @@ def _llm_status() -> dict[str, Any]:
     ollama_model = _ollama_model()
     ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
     ollama_timeout = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", os.getenv("LLM_TIMEOUT_SECONDS", "20")))
+    ollama_runtime = _ollama_runtime_status(ollama_base_url, ollama_model) if check_runtime else {}
     preferred = os.getenv("LLM_PROVIDER", "").strip().lower()
 
     openai_configured = openai_key_set and bool(openai_model)
@@ -1440,8 +1473,10 @@ def _llm_status() -> dict[str, Any]:
                 "configured": ollama_configured,
                 "baseUrl": ollama_base_url,
                 "timeoutSeconds": ollama_timeout,
+                "runtime": ollama_runtime,
             },
         },
+        "runtime": ollama_runtime if provider == "ollama" else {},
         "fallbackMode": "rag_fallback_rule_based",
         "timeoutSeconds": ollama_timeout if provider == "ollama" else llm_timeout,
         "maxTokens": int(os.getenv("LLM_MAX_TOKENS", "650")),
@@ -1460,7 +1495,7 @@ def _llm_status() -> dict[str, Any]:
 
 
 def _call_configured_llm(messages: list[dict[str, str]]) -> tuple[str | None, dict[str, Any]]:
-    status = _llm_status()
+    status = _llm_status(check_runtime=False)
     if status["provider"] == "ollama":
         return _call_ollama_llm(messages, json_mode=False)
     if status["provider"] == "anthropic_compatible":
