@@ -16,6 +16,12 @@ function marketReportStorageNote(storage) {
   return `${storage.note || '장후 AI 리포트 전체 응답을 DB에 저장했습니다.'} ${auditId}`;
 }
 
+function probabilityLabel(value) {
+  if (value === null || value === undefined || value === '') return '확인 중';
+  const text = String(value).trim();
+  return text.includes('%') ? text : `${text}%`;
+}
+
 export default function FloatingAiCard({ ai, events, asOf }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -23,6 +29,21 @@ export default function FloatingAiCard({ ai, events, asOf }) {
 
   const reportStorageLabel = marketReportStorageLabel(ai.marketReport?.storage);
   const reportStorageNote = marketReportStorageNote(ai.marketReport?.storage);
+  const insights = ai.ollamaInsights;
+  const stockAdvice = insights?.stockAdvice || {};
+  const newsSentiment = insights?.newsSentiment || {};
+  const nextTradingDay = newsSentiment?.nextTradingDay || {};
+  const afterMarketReport = insights?.afterMarketReport || {};
+  const visibleHeadlineCount = newsSentiment?.headlineSignals?.length || 0;
+  const adviceDecision = stockAdvice.decision || '관망';
+  const adviceSummary = stockAdvice.summary || '차트, 재무, 뉴스, 센티멘트를 합쳐 매수·관망·매도 조건을 정리합니다.';
+  const sentimentLabel = newsSentiment.label || '뉴스 감성 확인';
+  const sentimentConfidence = newsSentiment.confidence || '확인 중';
+  const sentimentSummary = newsSentiment.summary || '뉴스 헤드라인이 다음 거래일 가격 방향에 줄 수 있는 영향을 정리합니다.';
+  const reportMood = ai.marketReport
+    ? [ai.marketReport.mood, ai.marketReport.marketBias].filter(Boolean).join(' · ')
+    : afterMarketReport.mood || '장후 리포트 확인 중';
+  const reportSummary = ai.marketReport?.llmComment || afterMarketReport.llmComment || '장후 브리프와 시장 분위기 코멘트를 확인합니다.';
 
   return (
     <details
@@ -43,11 +64,11 @@ export default function FloatingAiCard({ ai, events, asOf }) {
         <div className={styles.summaryInfo}>
           <span className={styles.direction}>{ai.direction || '분석 중'}</span>
           <p className={styles.conclusion}>{ai.conclusion || '현재 종목의 주요 흐름을 파악하고 있습니다.'}</p>
-          {ai.ollamaInsights && (
+          {insights && (
             <div className={styles.miniOllamaStrip} aria-label="Ollama 핵심 인사이트">
-              <span>{ai.ollamaInsights.stockAdvice.decision}</span>
-              <span>상승 {ai.ollamaInsights.newsSentiment.nextTradingDay.up}%</span>
-              <span>{ai.ollamaInsights.afterMarketReport.mood}</span>
+              <span>상담 {adviceDecision}</span>
+              <span>뉴스 상승 {probabilityLabel(nextTradingDay.up)}</span>
+              <span>장후 {afterMarketReport.mood || '확인 중'}</span>
               {ai.marketReport?.mood && <span>장후 {ai.marketReport.mood}</span>}
               {reportStorageLabel && <span>{reportStorageLabel}</span>}
             </div>
@@ -76,65 +97,94 @@ export default function FloatingAiCard({ ai, events, asOf }) {
             </div>
           )}
 
-          {ai.ollamaInsights && (
+          {insights && (
+            <div className={styles.ollamaWorkflowGrid} aria-label="Ollama 로컬 LLM 기능 실행 상태">
+              <article className={styles.workflowCard}>
+                <Cpu size={16} />
+                <div>
+                  <span>1. 종목 상담</span>
+                  <strong>{adviceDecision}</strong>
+                  <p>{adviceSummary}</p>
+                </div>
+              </article>
+              <article className={styles.workflowCard}>
+                <TrendingUp size={16} />
+                <div>
+                  <span>2. 뉴스 방향</span>
+                  <strong>상승 {probabilityLabel(nextTradingDay.up)} · 하락 {probabilityLabel(nextTradingDay.down)}</strong>
+                  <p>{sentimentLabel} · 근거 {sentimentConfidence}{visibleHeadlineCount ? ` · 헤드라인 ${visibleHeadlineCount}개` : ''}</p>
+                </div>
+              </article>
+              <article className={styles.workflowCard}>
+                <Newspaper size={16} />
+                <div>
+                  <span>3. 장후 리포트</span>
+                  <strong>{reportMood}</strong>
+                  <p>{reportStorageLabel || reportSummary}</p>
+                </div>
+              </article>
+            </div>
+          )}
+
+          {insights && (
             <div className={styles.section}>
               <div className={styles.ollamaTitleRow}>
                 <h4 className={styles.sectionTitle}>로컬 Ollama 인사이트</h4>
-                <span>{ai.ollamaInsights.modeLabel}{ai.ollamaInsights.model ? ` · ${ai.ollamaInsights.model}` : ''}</span>
+                <span>{insights.modeLabel}{insights.model ? ` · ${insights.model}` : ''}</span>
               </div>
-              {ai.ollamaInsights.answer && (
-                <p className={styles.ollamaAnswer}>{ai.ollamaInsights.answer}</p>
+              {insights.answer && (
+                <p className={styles.ollamaAnswer}>{insights.answer}</p>
               )}
               <div className={styles.ollamaGrid}>
                 <article className={styles.ollamaCard}>
                   <Cpu size={16} />
                   <div>
-                    <strong>{ai.ollamaInsights.stockAdvice.decision}</strong>
-                    <p>{ai.ollamaInsights.stockAdvice.summary}</p>
+                    <strong>{adviceDecision}</strong>
+                    <p>{adviceSummary}</p>
                   </div>
                 </article>
                 <article className={styles.ollamaCard}>
                   <TrendingUp size={16} />
                   <div>
                     <strong>
-                      상승 {ai.ollamaInsights.newsSentiment.nextTradingDay.up}% · 하락 {ai.ollamaInsights.newsSentiment.nextTradingDay.down}%
+                      상승 {probabilityLabel(nextTradingDay.up)} · 하락 {probabilityLabel(nextTradingDay.down)}
                     </strong>
                     <span className={styles.sentimentMeta}>
-                      {ai.ollamaInsights.newsSentiment.label} · 근거 {ai.ollamaInsights.newsSentiment.confidence}
+                      {sentimentLabel} · 근거 {sentimentConfidence}
                     </span>
-                    <p>{ai.ollamaInsights.newsSentiment.summary}</p>
-                    {ai.ollamaInsights.newsSentiment.headlineSignals?.length > 0 && (
+                    <p>{sentimentSummary}</p>
+                    {newsSentiment.headlineSignals?.length > 0 && (
                       <ul className={styles.compactList}>
-                        {ai.ollamaInsights.newsSentiment.headlineSignals.slice(0, 3).map((item, index) => (
+                        {newsSentiment.headlineSignals.slice(0, 3).map((item, index) => (
                           <li key={`${item}-${index}`}>{item}</li>
                         ))}
                       </ul>
                     )}
-                    {(ai.ollamaInsights.newsSentiment.upReasons?.length > 0 || ai.ollamaInsights.newsSentiment.downRisks?.length > 0) && (
+                    {(newsSentiment.upReasons?.length > 0 || newsSentiment.downRisks?.length > 0) && (
                       <div className={styles.sentimentReasonGrid}>
                         <div>
                           <b>상승 쪽 근거</b>
-                          <span>{ai.ollamaInsights.newsSentiment.upReasons?.[0] || '가격과 거래량 확인 필요'}</span>
+                          <span>{newsSentiment.upReasons?.[0] || '가격과 거래량 확인 필요'}</span>
                         </div>
                         <div>
                           <b>주의할 근거</b>
-                          <span>{ai.ollamaInsights.newsSentiment.downRisks?.[0] || ai.ollamaInsights.newsSentiment.caution}</span>
+                          <span>{newsSentiment.downRisks?.[0] || newsSentiment.caution}</span>
                         </div>
                       </div>
                     )}
-                    {ai.ollamaInsights.newsSentiment.caution && (
-                      <p className={styles.sentimentCaution}>{ai.ollamaInsights.newsSentiment.caution}</p>
+                    {newsSentiment.caution && (
+                      <p className={styles.sentimentCaution}>{newsSentiment.caution}</p>
                     )}
                   </div>
                 </article>
                 <article className={styles.ollamaCard}>
                   <Newspaper size={16} />
                   <div>
-                    <strong>{ai.ollamaInsights.afterMarketReport.mood}</strong>
-                    <p>{ai.ollamaInsights.afterMarketReport.llmComment}</p>
-                    {ai.ollamaInsights.afterMarketReport.keyPoints?.length > 0 && (
+                    <strong>{afterMarketReport.mood || '장후 확인 중'}</strong>
+                    <p>{afterMarketReport.llmComment || reportSummary}</p>
+                    {afterMarketReport.keyPoints?.length > 0 && (
                       <ul className={styles.compactList}>
-                        {ai.ollamaInsights.afterMarketReport.keyPoints.slice(0, 3).map((item, index) => (
+                        {afterMarketReport.keyPoints.slice(0, 3).map((item, index) => (
                           <li key={`${item}-${index}`}>{item}</li>
                         ))}
                       </ul>
@@ -142,57 +192,57 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                   </div>
                 </article>
               </div>
-              {(ai.ollamaInsights.stockAdvice.buyConditions?.length > 0
-                || ai.ollamaInsights.stockAdvice.watchConditions?.length > 0
-                || ai.ollamaInsights.stockAdvice.sellConditions?.length > 0) && (
+              {(stockAdvice.buyConditions?.length > 0
+                || stockAdvice.watchConditions?.length > 0
+                || stockAdvice.sellConditions?.length > 0) && (
                 <div className={styles.ollamaConditionGrid} aria-label="Ollama 매매 조건 체크">
                   <article>
                     <CheckCircle2 size={15} className={styles.posIcon} />
                     <div>
                       <b>매수 검토 조건</b>
-                      <span>{ai.ollamaInsights.stockAdvice.buyConditions?.[0] || '20일선과 거래량 확인 필요'}</span>
+                      <span>{stockAdvice.buyConditions?.[0] || '20일선과 거래량 확인 필요'}</span>
                     </div>
                   </article>
                   <article>
                     <Clock3 size={15} className={styles.waitIcon} />
                     <div>
                       <b>관망 조건</b>
-                      <span>{ai.ollamaInsights.stockAdvice.watchConditions?.[0] || '다음 종가와 거래량 확인 필요'}</span>
+                      <span>{stockAdvice.watchConditions?.[0] || '다음 종가와 거래량 확인 필요'}</span>
                     </div>
                   </article>
                   <article>
                     <XCircle size={15} className={styles.negIcon} />
                     <div>
                       <b>매도 검토 조건</b>
-                      <span>{ai.ollamaInsights.stockAdvice.sellConditions?.[0] || '지지선 이탈 여부 확인 필요'}</span>
+                      <span>{stockAdvice.sellConditions?.[0] || '지지선 이탈 여부 확인 필요'}</span>
                     </div>
                   </article>
                 </div>
               )}
-              {ai.ollamaInsights.afterMarketReport.nextWatch?.length > 0 && (
+              {afterMarketReport.nextWatch?.length > 0 && (
                 <div className={styles.nextWatchBox}>
                   <strong>다음 거래일 확인할 것</strong>
                   <ul>
-                    {ai.ollamaInsights.afterMarketReport.nextWatch.slice(0, 3).map((item, index) => (
+                    {afterMarketReport.nextWatch.slice(0, 3).map((item, index) => (
                       <li key={`${item}-${index}`}>{item}</li>
                     ))}
                   </ul>
                 </div>
               )}
-              {ai.ollamaInsights.beginnerNotes?.length > 0 && (
+              {insights.beginnerNotes?.length > 0 && (
                 <div className={styles.beginnerNoteBox}>
                   <strong>초보자 기준으로 기억할 것</strong>
                   <ul>
-                    {ai.ollamaInsights.beginnerNotes.slice(0, 3).map((item, index) => (
+                    {insights.beginnerNotes.slice(0, 3).map((item, index) => (
                       <li key={`${item}-${index}`}>{item}</li>
                     ))}
                   </ul>
                 </div>
               )}
-              {ai.ollamaInsights.limitations?.length > 0 && (
+              {insights.limitations?.length > 0 && (
                 <p className={styles.ollamaLimit}>
-                  {ai.ollamaInsights.configured ? '로컬 LLM 기준: ' : 'Ollama 모델 미설정: '}
-                  {ai.ollamaInsights.limitations[0]}
+                  {insights.configured ? '로컬 LLM 기준: ' : 'Ollama 모델 미설정: '}
+                  {insights.limitations[0]}
                 </p>
               )}
             </div>
