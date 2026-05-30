@@ -12,7 +12,8 @@
   position: relative;
   flex: 1;
   width: 100%;
-  height: calc(100% - 76px);
+  height: auto;
+  min-height: 0;
   z-index: 1;
 }
 
@@ -66,12 +67,13 @@
   min-width: 240px;
 }
 
-/* Top Toss Unified Toolbar (스크롤 겹침 완전 차단형 고정 상단바) */
+/* Top Toss Unified Toolbar (스크롤 겹침 완전 차단형 sticky 상단바) */
 .topToolbar {
-  position: relative;
+  position: sticky;
+  top: 0;
   width: 100%;
   height: 76px;
-  background: rgba(10, 13, 20, 0.96);
+  background: rgba(10, 13, 20, 0.98);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--color-border);
@@ -79,7 +81,7 @@
   gap: var(--spacing-4);
   justify-content: space-between;
   align-items: center;
-  z-index: 1500;
+  z-index: 2000;
   padding: 0 32px;
   pointer-events: auto;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
@@ -555,17 +557,26 @@
 
 @media (max-width: 1024px) {
   .topToolbar {
-    top: 16px;
-    left: 16px;
-    right: 16px;
-    flex-wrap: wrap;
-    gap: 12px;
-    justify-content: center;
+    position: sticky;
+    top: 0;
+    height: auto;
+    padding: 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
   }
 
   .actionGroup {
-    flex: 1 1 100%;
-    justify-content: center;
+    flex: 1 1 auto;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .quickSearchForm {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 auto;
   }
 
   .heroInfo {

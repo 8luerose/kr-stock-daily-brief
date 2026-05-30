@@ -171,10 +171,10 @@ function zoneMeta(type) {
 }
 
 function simpleZoneLabel(zone) {
-  if (zone.type === 'buy') return '매수 검토 기준';
-  if (zone.type === 'sell') return '매도 검토 기준';
-  if (zone.type === 'risk') return '손실 방어 기준';
-  return '관망 기준';
+  if (zone.type === 'buy') return '매수 기준(상승돌파)';
+  if (zone.type === 'sell') return '매도 기준(차익실현)';
+  if (zone.type === 'risk') return '방어 기준(손실제한)';
+  return '관망 기준(흐름대기)';
 }
 
 function zoneRange(zone) {
@@ -1359,28 +1359,28 @@ export default function TradingViewPriceChart({
           </div>
           <div className={styles.signalGrid}>
             <div>
-              <span>{getPeriodLabel(interval)} 대비 (단기 변동)</span>
+              <span>{getPeriodLabel(interval)} 대비 (기간변동)</span>
               <strong className={Number(chartMetrics.changeRate) >= 0 ? styles.up : styles.down}>
                 {formatPercent(chartMetrics.changeRate)}
               </strong>
             </div>
             <div>
-              <span>20일선 거리 (기준선 이탈)</span>
+              <span>20일선 거리 (1달평균갭)</span>
               <strong className={chartMetrics.aboveMa20 ? styles.up : styles.down}>
                 {formatPercent(chartMetrics.ma20Distance)}
               </strong>
             </div>
             <div>
-              <span>저항선까지 (상승 목표)</span>
+              <span>저항선까지 (상승장벽)</span>
               <strong>{formatPercent(chartMetrics.resistanceDistance)}</strong>
             </div>
             <div>
-              <span>거래량 강도 (매매 활성)</span>
+              <span>거래량 강도 (매매수량)</span>
               <strong>{Number.isFinite(chartMetrics.volumeRatio) ? `${Math.round(chartMetrics.volumeRatio)}%` : '확인 필요'}</strong>
             </div>
           </div>
           <p>
-            20일선 (기준선) {formatCurrency(chartMetrics.ma20)} · 지지선 (바닥선) {formatCurrency(chartMetrics.support)} · 저항선 (천장선) {formatCurrency(chartMetrics.resistance)}
+            20일선(1달평균) {formatCurrency(chartMetrics.ma20)} · 지지선(하락방어) {formatCurrency(chartMetrics.support)} · 저항선(상승장벽) {formatCurrency(chartMetrics.resistance)}
           </p>
         </aside>
       )}

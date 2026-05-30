@@ -1055,11 +1055,33 @@ export async function loadLearningTerms() {
   }
 }
 
-export async function loadSummaryArchive() {
+export async function searchStocks(query) {
+  const q = String(query || "").trim();
+  if (!q) return [];
+  try {
+    const results = await requestJson(`/api/search?query=${encodeURIComponent(q)}&limit=15`);
+    return results
+      .filter((item) => item.type === "stock")
+      .map((item) => ({
+        code: item.code || item.stockCode,
+        name: item.title || item.stockName || item.name,
+        market: item.market || "KRX",
+        label: item.title || item.stockName
+      }));
+  } catch (error) {
+    console.error("검색 API 호출 실패:", error);
+    return [];
+  }
+}
+
+export async function loadSummaryArchive(year = 2026, month = 5) {
+  const startDay = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDayVal = new Date(year, month, 0).getDate();
+  const endDay = `${year}-${String(month).padStart(2, "0")}-${String(lastDayVal).padStart(2, "0")}`;
   try {
     const [latest, list] = await Promise.all([
       requestJson("/api/summaries/latest"),
-      requestJson("/api/summaries?from=2026-05-01&to=2026-05-31")
+      requestJson(`/api/summaries?from=${startDay}&to=${endDay}`)
     ]);
     return { latest, list: Array.isArray(list) ? list : [], source: "백엔드 API" };
   } catch {

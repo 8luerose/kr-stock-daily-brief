@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { RefreshCw } from 'lucide-react';
 import TradingViewPriceChart from './TradingViewPriceChart';
-import { loadSummaryArchive, loadSummaryByDate } from '../services/apiClient';
+import { loadSummaryArchive, loadSummaryByDate, searchStocks } from '../services/apiClient';
 import styles from './ImmersiveChart.module.css';
 
 function formatCurrency(value) {
@@ -125,10 +125,11 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   }, [activePanel, onPanelOpenChange]);
 
   useEffect(() => {
-    if (summaryArchive || summaryArchiveLoading) return;
     let mounted = true;
     setSummaryArchiveLoading(true);
-    loadSummaryArchive()
+    const targetYear = calendarDate.getFullYear();
+    const targetMonth = calendarDate.getMonth() + 1;
+    loadSummaryArchive(targetYear, targetMonth)
       .then((archive) => {
         if (mounted) setSummaryArchive(archive);
       })
@@ -139,7 +140,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         if (mounted) setSummaryArchiveLoading(false);
       });
     return () => { mounted = false; };
-  }, [summaryArchive, summaryArchiveLoading]);
+  }, [calendarDate]);
 
   const chartData = useMemo(() => {
     if (!chart?.rows) return [];
@@ -549,23 +550,43 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   const normalizedStockOptions = stockOptions.length ? stockOptions : [stock].filter(Boolean);
   const summaryDates = Array.isArray(summaryArchive?.list) ? summaryArchive.list.slice(0, 6) : [];
   const latestBrief = summaryArchive?.latest || null;
-  const handleStockCodeSubmit = (event) => {
+  const handleStockCodeSubmit = async (event) => {
     event.preventDefault();
     const keyword = stockCodeInput.trim();
-    const digitCode = keyword.replace(/\D/g, '').slice(0, 6);
-    const normalizedKeyword = keyword.toLowerCase();
-    const matchedOption = normalizedStockOptions.find((option) => {
-      const fields = [option.code, option.name, option.label].filter(Boolean).map((value) => String(value).toLowerCase());
-      return fields.some((value) => value === normalizedKeyword || value.includes(normalizedKeyword));
-    });
-    const nextCode = matchedOption?.code || (/^\d{6}$/.test(digitCode) ? digitCode : '');
-    if (!/^\d{6}$/.test(nextCode)) {
-      setStockCodeError('기업명이나 6자리 종목코드를 입력하세요.');
+    if (!keyword) {
+      setStockCodeError('검색어를 입력하세요.');
       return;
     }
     setStockCodeError('');
-    if (nextCode !== stock.code) onChangeStock?.(nextCode);
-    setActivePanel('none');
+    
+    // 6자리 종목코드인 경우 즉시 바로 이동
+    const digitCode = keyword.replace(/\D/g, '').slice(0, 6);
+    if (/^\d{6}$/.test(digitCode)) {
+      if (digitCode !== stock.code) {
+        onChangeStock?.(digitCode);
+      }
+      setActivePanel('none');
+      return;
+    }
+
+    // 6자리 종목코드가 아닌 경우 백엔드 API 검색 호출
+    try {
+      setStockCodeError('검색 중...');
+      const searchResults = await searchStocks(keyword);
+      if (searchResults && searchResults.length > 0) {
+        const bestMatch = searchResults[0];
+        setStockCodeError('');
+        if (bestMatch.code !== stock.code) {
+          onChangeStock?.(bestMatch.code);
+        }
+        setStockCodeInput(bestMatch.name);
+        setActivePanel('none');
+      } else {
+        setStockCodeError('일치하는 종목을 찾지 못했습니다.');
+      }
+    } catch (e) {
+      setStockCodeError('검색 중 오류가 발생했습니다.');
+    }
   };
 
   // 캘린더 그리드 계산 헬퍼
@@ -688,7 +709,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
               <span>▦</span> 기업 선택 <span className={styles.chevron}>▼</span>
             </button>
             {activePanel === 'stocks' && (
-              <div className={styles.dropdownPanel} data-testid="stock-selector-panel" role="listbox" aria-label="기업 목록">
+              <div className={clsx(styles.dropdownPanel, styles.dropdownRight)} data-testid="stock-selector-panel" role="listbox" aria-label="기업 목록">
                 <div className={styles.stockPanelHeader}>
                   <span>기업 검색</span>
                   <strong>{stock.name} ({stock.code})</strong>
