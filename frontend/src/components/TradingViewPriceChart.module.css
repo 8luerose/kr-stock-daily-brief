@@ -595,8 +595,8 @@
   z-index: 4;
   display: grid;
   gap: 8px;
-  width: min(440px, 30vw);
-  min-width: 360px;
+  width: min(470px, 32vw);
+  min-width: 380px;
   transform: translateX(-50%);
   border: 1px solid rgba(96, 165, 250, 0.18);
   border-radius: 8px;
@@ -618,6 +618,11 @@
   background: linear-gradient(135deg, rgba(8, 13, 24, 0.66), rgba(249, 115, 22, 0.12));
 }
 
+.forecastHudMixed {
+  border-color: rgba(245, 158, 11, 0.34);
+  background: linear-gradient(135deg, rgba(8, 13, 24, 0.66), rgba(245, 158, 11, 0.12));
+}
+
 .forecastHudTopline {
   display: flex;
   align-items: center;
@@ -630,8 +635,12 @@
 .forecastHudTopline strong,
 .forecastHud p,
 .forecastHud em,
+.forecastHud small,
 .forecastLevelGrid span,
-.forecastLevelGrid b {
+.forecastLevelGrid b,
+.forecastSignalStrip span,
+.forecastSignalStrip em,
+.forecastSignalStrip b {
   min-width: 0;
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -653,13 +662,18 @@
 }
 
 .forecastHud p,
-.forecastHud em {
+.forecastHud em,
+.forecastHud small {
   margin: 0;
   color: rgba(226, 232, 240, 0.74);
   font-size: 0.74rem;
   font-style: normal;
   font-weight: 740;
   line-height: 1.34;
+}
+
+.forecastHud small {
+  color: rgba(226, 232, 240, 0.56);
 }
 
 .forecastHud p {
@@ -692,6 +706,52 @@
   font-size: 0.74rem;
   font-weight: 950;
   line-height: 1.2;
+}
+
+.forecastSignalStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.forecastSignalStrip span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.36);
+  padding: 6px;
+}
+
+.forecastSignalStrip em {
+  color: rgba(226, 232, 240, 0.56);
+  font-size: 0.64rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.forecastSignalStrip b {
+  color: rgba(226, 232, 240, 0.84);
+  font-size: 0.7rem;
+  font-weight: 920;
+  line-height: 1.2;
+}
+
+.forecastSignalPositive {
+  border-color: rgba(34, 197, 94, 0.26) !important;
+}
+
+.forecastSignalPositive b {
+  color: #bbf7d0;
+}
+
+.forecastSignalNegative {
+  border-color: rgba(249, 115, 22, 0.3) !important;
+}
+
+.forecastSignalNegative b {
+  color: #fed7aa;
 }
 
 .personalRiskOverlay {
@@ -1485,7 +1545,9 @@
   }
 
   .forecastHud p,
-  .forecastHud em {
+  .forecastHud em,
+  .forecastHud small,
+  .forecastSignalStrip {
     display: none;
   }
 

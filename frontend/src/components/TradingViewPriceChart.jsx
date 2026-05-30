@@ -557,6 +557,7 @@ export default function TradingViewPriceChart({
 
   const forecastGuide = useMemo(() => {
     if (!chartMetrics?.latest || !aiDecision) return null;
+    const consensus = ai?.ollamaInsights?.crossFeatureConsensus || null;
     const close = priceLineValue(chartMetrics.latest.close);
     if (!close) return null;
     const resistance = priceLineValue(chartMetrics.resistance);
@@ -573,7 +574,7 @@ export default function TradingViewPriceChart({
     const defenseBase = support && support < close ? support : ma20 && ma20 < close ? ma20 : close * 0.975;
     const watchBase = ma20 || close;
     const decisionText = aiDecision.decision || '관망';
-    const tone = decisionText.includes('매수')
+    const baseTone = decisionText.includes('매수')
       ? 'positive'
       : decisionText.includes('매도')
         ? 'negative'
@@ -582,16 +583,32 @@ export default function TradingViewPriceChart({
           : hasProbability && downProbability >= upProbability + 8
             ? 'negative'
             : 'neutral';
+    const consensusTone = ['positive', 'negative', 'mixed', 'neutral'].includes(consensus?.tone)
+      ? consensus.tone
+      : '';
+    const tone = consensusTone || baseTone;
     const headline = tone === 'positive'
-      ? '상승 확인선 돌파 후 거래량을 봅니다.'
+      ? compactText(consensus?.headline, '상승 확인선 돌파 후 거래량을 봅니다.', 88)
       : tone === 'negative'
-        ? '방어 기준선 이탈 여부를 먼저 봅니다.'
-        : '확인선과 방어선 사이에서는 관망 기준을 봅니다.';
-    const nextAction = tone === 'positive'
+        ? compactText(consensus?.headline, '방어 기준선 이탈 여부를 먼저 봅니다.', 88)
+        : tone === 'mixed'
+          ? compactText(consensus?.headline, '상담·뉴스·장후 신호가 엇갈려 확인선을 나누어 봅니다.', 88)
+          : compactText(consensus?.headline, '확인선과 방어선 사이에서는 관망 기준을 봅니다.', 88);
+    const priceAction = tone === 'positive'
       ? `종가가 ${formatCurrency(upTrigger)} 위에서 유지되는지 확인합니다.`
       : tone === 'negative'
         ? `${formatCurrency(defenseBase)} 이탈과 하락 거래량 증가를 같이 확인합니다.`
         : `${formatCurrency(watchBase)} 부근에서 거래량이 붙는지 확인합니다.`;
+    const nextAction = consensus?.nextAction
+      ? `${compactText(consensus.nextAction, '', 84)} ${priceAction}`
+      : priceAction;
+    const signals = Array.isArray(consensus?.signals)
+      ? consensus.signals.slice(0, 3).map((signal) => ({
+        label: compactText(signal?.label, '근거', 12),
+        state: compactText(signal?.state, '확인 필요', 28),
+        tone: ['positive', 'negative', 'neutral'].includes(signal?.tone) ? signal.tone : 'neutral'
+      }))
+      : [];
     return {
       tone,
       headline,
@@ -599,10 +616,13 @@ export default function TradingViewPriceChart({
       upTrigger,
       defenseBase,
       watchBase,
+      agreementLabel: consensus?.agreement ? `종합 ${compactText(consensus.agreement, '', 18)}` : '상담·뉴스·장후 대기',
+      consensusSummary: compactText(consensus?.summary, '상담, 뉴스 확률, 장후 리포트를 함께 연결합니다.', 96),
+      signals,
       probabilityLabel: hasProbability ? `상승 ${upProbability}% · 하락 ${downProbability}%` : '확률 계산 중',
       modeLabel: aiDecision.live ? 'Ollama LLM 기준' : aiDecision.modeLabel || '근거 계산 기준'
     };
-  }, [aiDecision, chartMetrics]);
+  }, [ai, aiDecision, chartMetrics]);
 
   const hoverInsight = useMemo(() => {
     if (!hover || !aiDecision) return null;
@@ -947,13 +967,14 @@ export default function TradingViewPriceChart({
           className={clsx(
             styles.forecastHud,
             forecastGuide.tone === 'positive' && styles.forecastHudPositive,
-            forecastGuide.tone === 'negative' && styles.forecastHudNegative
+            forecastGuide.tone === 'negative' && styles.forecastHudNegative,
+            forecastGuide.tone === 'mixed' && styles.forecastHudMixed
           )}
           aria-label="TradingView 차트 AI 기준선"
         >
           <div className={styles.forecastHudTopline}>
             <span>TradingView AI 기준선</span>
-            <strong>{forecastGuide.probabilityLabel}</strong>
+            <strong>{forecastGuide.agreementLabel}</strong>
           </div>
           <p>{forecastGuide.headline}</p>
           <div className={styles.forecastLevelGrid}>
@@ -961,6 +982,23 @@ export default function TradingViewPriceChart({
             <span>관망 기준 <b>{formatCurrency(forecastGuide.watchBase)}</b></span>
             <span>방어 기준 <b>{formatCurrency(forecastGuide.defenseBase)}</b></span>
           </div>
+          {forecastGuide.signals.length > 0 && (
+            <div className={styles.forecastSignalStrip} aria-label="상담 뉴스 장후 연결 상태">
+              {forecastGuide.signals.map((signal) => (
+                <span
+                  key={`${signal.label}-${signal.state}`}
+                  className={clsx(
+                    signal.tone === 'positive' && styles.forecastSignalPositive,
+                    signal.tone === 'negative' && styles.forecastSignalNegative
+                  )}
+                >
+                  <em>{signal.label}</em>
+                  <b>{signal.state}</b>
+                </span>
+              ))}
+            </div>
+          )}
+          <small>{forecastGuide.probabilityLabel} · {forecastGuide.consensusSummary}</small>
           <em>{forecastGuide.nextAction} · {forecastGuide.modeLabel}</em>
         </aside>
       )}
