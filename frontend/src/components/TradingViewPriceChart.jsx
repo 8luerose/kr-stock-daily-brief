@@ -341,6 +341,7 @@ export default function TradingViewPriceChart({
     const advice = insights?.stockAdvice || {};
     const sentiment = insights?.newsSentiment || {};
     const report = insights?.afterMarketReport || {};
+    const beginnerCoach = insights?.beginnerCoach || {};
     const probabilities = sentiment?.nextTradingDay || {};
     const decision = isWaitingForOllama
       ? '분석 중'
@@ -356,13 +357,15 @@ export default function TradingViewPriceChart({
     const down = Number(probabilities.down);
     const flat = Number(probabilities.flat);
     const primaryCondition = decision.includes('매수')
-      ? firstCompact(advice.buyConditions, '20일선 위 유지와 거래량 증가가 함께 필요합니다.')
+      ? compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.buyConditions, '20일선 위 유지와 거래량 증가가 함께 필요합니다.')
       : decision.includes('매도')
-        ? firstCompact(advice.sellConditions, '지지선 이탈과 하락 거래량 증가를 먼저 확인합니다.')
-        : firstCompact(advice.watchConditions, '다음 종가와 거래량을 확인할 때까지 관망합니다.');
-    const positiveReason = firstCompact(sentiment.upReasons, '좋게 볼 근거는 가격 반응과 거래량으로 재확인해야 합니다.');
-    const cautionReason = firstCompact(sentiment.downRisks, sentiment.caution || '반대 신호와 뉴스 원문을 확인해야 합니다.');
-    const nextWatch = firstCompact(report.nextWatch, primaryCondition);
+        ? compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.sellConditions, '지지선 이탈과 하락 거래량 증가를 먼저 확인합니다.')
+        : compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.watchConditions, '다음 종가와 거래량을 확인할 때까지 관망합니다.');
+    const positiveReason = compactText(beginnerCoach.goodReason, '', 88) || firstCompact(sentiment.upReasons, '좋게 볼 근거는 가격 반응과 거래량으로 재확인해야 합니다.');
+    const cautionReason = compactText(beginnerCoach.cautionReason, '', 88) || firstCompact(sentiment.downRisks, sentiment.caution || '반대 신호와 뉴스 원문을 확인해야 합니다.');
+    const nextWatch = compactText(beginnerCoach.nextAction, '', 104) || firstCompact(report.nextWatch, primaryCondition);
+    const avoidAction = compactText(beginnerCoach.avoidAction, '', 96);
+    const coachSummary = compactText(beginnerCoach.plainSummary, '', 112);
     const fundamentalLabel = fundamentalStatusLabel(ai?.fundamentalGuidance?.summary, advice.riskNotes).replace(/^재무\s*/, '');
     const model = insights?.model || ai?.llmModel || '';
     const modeLabel = insights?.modeLabel || ai?.modeLabel || '근거 기반 AI';
@@ -394,6 +397,8 @@ export default function TradingViewPriceChart({
       positiveReason,
       cautionReason,
       nextWatch,
+      avoidAction,
+      coachSummary,
       title,
       modeLabel: compactText(statusLabel, '근거 기반 AI', 48),
       live: insights?.mode === 'ollama_llm' || ai?.llmUsed,
@@ -802,6 +807,12 @@ export default function TradingViewPriceChart({
             <b>다음 확인</b>
             <span>{aiDecision.primaryCondition || aiDecision.nextWatch}</span>
           </div>
+          {aiDecision.avoidAction && (
+            <div className={styles.aiCoachLine}>
+              <b>피할 행동</b>
+              <span>{aiDecision.avoidAction}</span>
+            </div>
+          )}
           {aiDecision.factors.length > 0 && (
             <div className={styles.aiFactorGrid} aria-label="차트 재무 뉴스 센티멘트 판단 근거">
               {aiDecision.factors.map((factor) => (
@@ -830,8 +841,25 @@ export default function TradingViewPriceChart({
               <span>{aiDecision.nextWatch || aiDecision.primaryCondition}</span>
             </div>
           </div>
+          {aiDecision.coachSummary && <em className={styles.aiCoachSummary}>{aiDecision.coachSummary}</em>}
           <small>{aiDecision.modeLabel}</small>
         </aside>
+      )}
+      {aiDecision && (
+        <div className={styles.mobileChartLens} aria-label="모바일 AI 차트 렌즈">
+          <span>
+            <b>AI</b>
+            <strong>{aiDecision.decision}</strong>
+          </span>
+          <span>
+            <b>뉴스</b>
+            <strong>상승 {aiDecision.up === null ? '확인' : `${aiDecision.up}%`} · 하락 {aiDecision.down === null ? '확인' : `${aiDecision.down}%`}</strong>
+          </span>
+          <span>
+            <b>다음</b>
+            <strong>{aiDecision.nextWatch || aiDecision.primaryCondition}</strong>
+          </span>
+        </div>
       )}
       {visibleLayers.personal && personalRisk && personalRisk.status !== 'not_saved' && (
         <aside
