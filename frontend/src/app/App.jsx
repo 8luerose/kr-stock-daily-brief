@@ -267,7 +267,7 @@ function App() {
         </div>
       )}
 
-      {pipelineToast && (
+      {pipelineToast && !chartPanelOpen && (
         <div
           className={clsx(styles.pipelineToast, styles[`pipelineToast_${pipelineToast.tone}`])}
           data-testid="pipeline-toast"

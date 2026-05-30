@@ -376,6 +376,62 @@
   overflow-wrap: anywhere;
 }
 
+.stockFlowStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: var(--spacing-3);
+}
+
+.stockFlowStrip article {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 8px;
+  background: rgba(6, 78, 59, 0.16);
+  padding: 7px;
+}
+
+.stockFlowLoading article {
+  border-color: rgba(96, 165, 250, 0.22);
+  background: rgba(37, 99, 235, 0.13);
+}
+
+.stockFlowDelayed article {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(120, 53, 15, 0.14);
+}
+
+.stockFlowStrip b,
+.stockFlowStrip span {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.stockFlowStrip b {
+  color: #bbf7d0;
+  font-size: 0.64rem;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.stockFlowLoading b {
+  color: #bfdbfe;
+}
+
+.stockFlowDelayed b {
+  color: #fde68a;
+}
+
+.stockFlowStrip span {
+  color: rgba(226, 232, 240, 0.82);
+  font-size: 0.66rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
 .stockCodeForm {
   display: grid;
   gap: 7px;
@@ -1421,6 +1477,10 @@
 
   .stockSaveNotice {
     font-size: 0.74rem;
+  }
+
+  .stockFlowStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stockAdviceSnapshot {

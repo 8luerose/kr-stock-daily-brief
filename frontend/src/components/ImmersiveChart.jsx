@@ -257,6 +257,45 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     };
   }, [ai, aiExecutionSteps]);
 
+  const stockFlowSummary = useMemo(() => {
+    const insights = ai?.ollamaInsights;
+    const refreshStatus = ai?.ollamaInsightsRefreshStatus || '';
+    const ollamaStatus = resolveOllamaStatus(ai, insights);
+    const storedLabel = refreshStatus === 'refreshing'
+      ? '저장본 먼저 표시'
+      : refreshStatus === 'fresh'
+        ? '새 결과 반영'
+        : refreshStatus === 'kept_cached'
+          ? '저장본 유지'
+          : insights?.storage?.saved
+            ? '상담 DB 저장됨'
+            : '저장본 확인 전';
+    const computeLabel = refreshStatus === 'refreshing' || ollamaStatus === 'loading'
+      ? '새 계산 중'
+      : refreshStatus === 'fresh'
+        ? '최신 결과'
+        : isOllamaDelayed(ollamaStatus)
+          ? '지연 시 fallback'
+          : '자동 실행';
+    const reportLabel = ai?.marketReport?.storage?.cached
+      ? '장후 DB 재사용'
+      : ai?.marketReport?.storage?.saved
+        ? '장후 DB 저장'
+        : ai?.marketReportStatus === 'loading'
+          ? '장후 확인 중'
+          : '장후 연결';
+    return {
+      storedLabel,
+      computeLabel,
+      reportLabel,
+      tone: refreshStatus === 'refreshing' || ollamaStatus === 'loading'
+        ? 'loading'
+        : isOllamaDelayed(ollamaStatus)
+          ? 'delayed'
+          : 'ready'
+    };
+  }, [ai]);
+
   const stockPanelAdvice = useMemo(() => {
     const insights = ai?.ollamaInsights;
     const ollamaStatus = resolveOllamaStatus(ai, insights);
@@ -574,8 +613,33 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                   <span>기준 기업</span>
                   <strong>{stock.name} ({stock.code})</strong>
                   <p className={styles.stockSaveNotice}>
-                    기업 선택은 화면의 차트와 AI 설명만 바꿉니다. DB에 저장하려면 포트폴리오 샌드박스에 담아야 합니다.
+                    기업 선택은 화면만 바꾸고, 저장은 상담 로그·장후 리포트·샌드박스에서만 발생합니다.
                   </p>
+                  <div
+                    className={clsx(
+                      styles.stockFlowStrip,
+                      stockFlowSummary.tone === 'loading' && styles.stockFlowLoading,
+                      stockFlowSummary.tone === 'delayed' && styles.stockFlowDelayed
+                    )}
+                    aria-label="종목 선택 후 저장과 Ollama 실행 흐름"
+                  >
+                    <article>
+                      <b>1 선택</b>
+                      <span>차트만 변경</span>
+                    </article>
+                    <article>
+                      <b>2 저장본</b>
+                      <span>{stockFlowSummary.storedLabel}</span>
+                    </article>
+                    <article>
+                      <b>3 Ollama</b>
+                      <span>{stockFlowSummary.computeLabel}</span>
+                    </article>
+                    <article>
+                      <b>장후</b>
+                      <span>{stockFlowSummary.reportLabel}</span>
+                    </article>
+                  </div>
                   <form className={styles.stockCodeForm} onSubmit={handleStockCodeSubmit}>
                     <label htmlFor="stock-code-direct-input">종목코드 직접 입력</label>
                     <div>
