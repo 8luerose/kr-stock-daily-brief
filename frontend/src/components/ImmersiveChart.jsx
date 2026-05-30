@@ -133,6 +133,11 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     const insights = ai?.ollamaInsights;
     const qdrant = insights?.qdrant || ai?.marketReport?.qdrant;
     const storage = insights?.storage || ai?.storage;
+    const runtimeCache = insights?.runtimeCache;
+    const reportRuntimeCache = ai?.marketReport?.runtimeCache;
+    const ollamaStatus = ai?.ollamaInsightsStatus
+      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const marketReportStatus = ai?.marketReportStatus || (ai?.marketReport ? 'ready' : 'waiting');
     const status = hasLoading
       ? 'AI 실행 중'
       : hasDelayed
@@ -144,8 +149,16 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       status,
       readyCount,
       totalCount: aiExecutionSteps.length,
-      mode: insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : '근거 계산',
-      storageLabel: storage?.saved ? `상담 DB #${storage.id || '저장'}` : '기업 선택 저장 안 함',
+      mode: ollamaStatus === 'loading' ? 'Ollama LLM 준비' : insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : '근거 계산',
+      storageLabel: runtimeCache?.label
+        || (ollamaStatus === 'loading' ? '새 Ollama 계산 중'
+          : ollamaStatus === 'failed' ? '규칙형 근거 유지'
+            : storage?.saved ? `상담 DB #${storage.id || '저장'}` : '기업 선택 저장 안 함'),
+      reportStorageLabel: reportRuntimeCache?.label
+        || (ai?.marketReport?.storage?.cached ? '장후 DB 재사용'
+          : ai?.marketReport?.storage?.saved ? '장후 DB 저장'
+            : marketReportStatus === 'loading' ? '장후 확인 중'
+              : marketReportStatus === 'unavailable' ? '장후 리포트 지연' : '장후 대기'),
       qdrantLabel: qdrant?.enabled ? `Qdrant ${qdrant.retrievedCount || 0}개` : 'Qdrant 대기',
       tone: hasLoading ? 'loading' : hasDelayed ? 'delayed' : readyCount === aiExecutionSteps.length ? 'ready' : 'waiting'
     };
@@ -312,6 +325,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                       <span>{aiPipelineSummary.readyCount}/{aiPipelineSummary.totalCount} 완료</span>
                       <span>{aiPipelineSummary.mode}</span>
                       <span>{aiPipelineSummary.storageLabel}</span>
+                      <span>{aiPipelineSummary.reportStorageLabel}</span>
                       <span>{aiPipelineSummary.qdrantLabel}</span>
                     </div>
                     <p className={styles.aiPipelineHint}>

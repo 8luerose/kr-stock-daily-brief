@@ -27,6 +27,11 @@ function setCachedPromise(cache, key, promise, ttlMs) {
   cache.set(key, { promise, expiresAt: Date.now() + ttlMs });
 }
 
+function withRuntimeCacheMeta(value, runtimeCache) {
+  if (!value || typeof value !== "object") return value;
+  return { ...value, runtimeCache };
+}
+
 export function invalidateAiCachesForStock(code) {
   const safeCode = String(code || "").trim();
   if (!safeCode) return;
@@ -740,7 +745,12 @@ export async function loadStockOllamaInsights(workspace, interval) {
   const key = `${workspace?.stock?.code || "unknown"}:${interval || workspace?.chart?.interval || "daily"}:${workspace?.asOf || ""}:ollama`;
   const cached = getCachedPromise(ollamaInsightsCache, key);
   if (cached) {
-    return cached;
+    return cached.then((value) => withRuntimeCacheMeta(value, {
+      hit: true,
+      source: "frontend_memory",
+      label: "프론트 2분 캐시 재사용",
+      note: "같은 종목·주기 요청이라 방금 받은 Ollama 결과를 다시 보여줍니다."
+    }));
   }
 
   const promise = requestJson("/api/ai/ollama/insights", {
@@ -749,7 +759,14 @@ export async function loadStockOllamaInsights(workspace, interval) {
       question: `${workspace.stock.name}을 지금 사도 되는지, 뉴스 감성 단기 방향과 장후 시장 요약까지 로컬 Ollama로 설명해줘`,
       context: buildAiContext(workspace, interval)
     })
-  }).then(normalizeOllamaInsights);
+  }).then(normalizeOllamaInsights).then((value) => withRuntimeCacheMeta(value, {
+    hit: false,
+    source: "fresh_ollama",
+    label: value.storage?.saved ? "새 계산 후 DB 감사 로그 저장" : "새 계산 완료",
+    note: value.storage?.saved
+      ? `Ollama 상담 응답을 새로 받고 ${value.storage.table || "DB"}에 저장했습니다.`
+      : "Ollama 상담 응답을 새로 받았지만 DB 저장 상태는 확인이 필요합니다."
+  }));
 
   setCachedPromise(ollamaInsightsCache, key, promise, AI_WORKSPACE_CACHE_MS);
   try {
@@ -764,10 +781,22 @@ export async function loadLatestOllamaAfterMarketReport() {
   const key = "latest:ollama:after-market-report";
   const cached = getCachedPromise(afterMarketReportCache, key);
   if (cached) {
-    return cached;
+    return cached.then((value) => withRuntimeCacheMeta(value, {
+      hit: true,
+      source: "frontend_memory",
+      label: "장후 리포트 2분 캐시 재사용",
+      note: "같은 브라우저 세션에서 방금 확인한 장후 리포트를 다시 보여줍니다."
+    }));
   }
 
-  const promise = requestJson("/api/ai/ollama/after-market-report/latest").then(normalizeAfterMarketReport);
+  const promise = requestJson("/api/ai/ollama/after-market-report/latest")
+    .then(normalizeAfterMarketReport)
+    .then((value) => withRuntimeCacheMeta(value, {
+      hit: Boolean(value.storage?.cached),
+      source: value.storage?.cached ? "database" : "fresh_ollama",
+      label: value.storage?.cached ? "DB 저장본 재사용" : value.storage?.saved ? "새 장후 리포트 생성 후 DB 저장" : "장후 리포트 새 조회",
+      note: value.storage?.note || "장후 리포트 저장 상태를 확인했습니다."
+    }));
   setCachedPromise(afterMarketReportCache, key, promise, AI_WORKSPACE_CACHE_MS);
   try {
     return await promise;

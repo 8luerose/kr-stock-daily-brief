@@ -63,6 +63,40 @@ function fundamentalStatusLabel(summary, riskNotes = []) {
   return '재무 반영';
 }
 
+function ollamaRuntimeLabel(status, hasInsights, runtime) {
+  if (runtime?.label) return runtime.label;
+  if (status === 'loading') return '새 Ollama 계산 중';
+  if (status === 'failed') return '규칙형 근거 유지';
+  if (hasInsights) return 'Ollama 응답 반영';
+  return 'Ollama 대기';
+}
+
+function ollamaRuntimeNote(status, hasInsights, runtime) {
+  if (runtime?.note) return runtime.note;
+  if (status === 'loading') return '차트와 기본 근거는 먼저 보여주고, 상담·뉴스 방향 답변은 로컬 LLM 응답이 오면 이어 붙입니다.';
+  if (status === 'failed') return '로컬 LLM 응답이 지연되어 화면은 규칙형 근거로 유지합니다.';
+  if (hasInsights) return '현재 종목의 상담·뉴스 방향·장후 요약을 Ollama 결과로 반영했습니다.';
+  return '종목을 선택하면 로컬 Ollama가 상담과 뉴스 방향을 계산합니다.';
+}
+
+function reportRuntimeLabel(status, hasReport, runtime, storageLabel) {
+  if (runtime?.label) return runtime.label;
+  if (storageLabel) return storageLabel;
+  if (status === 'loading') return '장후 리포트 확인 중';
+  if (status === 'unavailable') return '장후 리포트 지연';
+  if (hasReport) return '장후 리포트 준비 완료';
+  return '장후 리포트 대기';
+}
+
+function reportRuntimeNote(status, hasReport, runtime, storageNote) {
+  if (runtime?.note) return runtime.note;
+  if (storageNote) return storageNote;
+  if (status === 'loading') return '저장된 장후 브리프가 있으면 먼저 재사용하고, 없으면 새 리포트를 준비합니다.';
+  if (status === 'unavailable') return '최신 브리프가 없거나 AI 서비스 응답이 지연되었습니다.';
+  if (hasReport) return '시장 분위기와 다음 거래일 확인 포인트를 장후 리포트로 정리했습니다.';
+  return '장후 리포트는 최신 저장 브리프를 기준으로 연결됩니다.';
+}
+
 export default function FloatingAiCard({ ai, events, asOf }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -86,6 +120,15 @@ export default function FloatingAiCard({ ai, events, asOf }) {
   const qdrantLabel = qdrant?.enabled
     ? `Qdrant ${qdrantModeLabel} ${qdrant.retrievedCount || 0}개 · 저장 ${qdrant.storedCount || 0}개`
     : '';
+  const insightRuntime = insights?.runtimeCache || null;
+  const reportRuntime = ai.marketReport?.runtimeCache || null;
+  const ollamaStatus = ai.ollamaInsightsStatus
+    || (insights ? 'ready' : ai.aiLayerStatus === 'ollama_failed' ? 'failed' : ai.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+  const marketReportStatus = ai.marketReportStatus || (ai.marketReport ? 'ready' : 'waiting');
+  const insightRuntimeLabel = ollamaRuntimeLabel(ollamaStatus, Boolean(insights), insightRuntime);
+  const insightRuntimeNote = ollamaRuntimeNote(ollamaStatus, Boolean(insights), insightRuntime);
+  const reportRuntimeLabelText = reportRuntimeLabel(marketReportStatus, Boolean(ai.marketReport), reportRuntime, reportStorageLabel);
+  const reportRuntimeNoteText = reportRuntimeNote(marketReportStatus, Boolean(ai.marketReport), reportRuntime, reportStorageNote);
   const personalRisk = stockAdvice.personalRisk || ai.portfolioGuidance?.positionDiagnostics || null;
   const visibleHeadlineCount = newsSentiment?.headlineSignals?.length || 0;
   const adviceDecision = stockAdvice.decision || '관망';
@@ -104,8 +147,10 @@ export default function FloatingAiCard({ ai, events, asOf }) {
   const reportSummary = ai.marketReport?.llmComment || afterMarketReport.llmComment || '장후 브리프와 시장 분위기 코멘트를 확인합니다.';
   const workflowChips = [
     `1 상담 ${adviceDecision}`,
+    insightRuntimeLabel,
     `2 뉴스 ${compactProbabilityPair(nextTradingDay)}`,
     `3 장후 ${ai.marketReport?.mood || afterMarketReport.mood || '확인 중'}`,
+    reportRuntimeLabelText,
     compactStorageChip(insights?.storage || ai.storage),
     compactStorageChip(ai.marketReport?.storage),
     qdrant?.enabled ? `Qdrant 근거 ${qdrant.retrievedCount || 0}개` : ''
@@ -140,9 +185,9 @@ export default function FloatingAiCard({ ai, events, asOf }) {
         <div className={styles.summaryInfo}>
           <span className={styles.direction}>{ai.direction || '분석 중'}</span>
           <p className={styles.conclusion}>{ai.conclusion || '현재 종목의 주요 흐름을 파악하고 있습니다.'}</p>
-          {insights && (
+          {workflowChips.length > 0 && (
             <div className={styles.miniOllamaStrip} aria-label="Ollama 핵심 인사이트">
-              {workflowChips.slice(0, 5).map((item) => (
+              {workflowChips.slice(0, 6).map((item) => (
                 <span key={item}>{item}</span>
               ))}
             </div>
@@ -171,6 +216,16 @@ export default function FloatingAiCard({ ai, events, asOf }) {
             </div>
           )}
 
+          <div className={styles.storageNotice}>
+            <Database size={15} />
+            <span>{insightRuntimeLabel}. {insightRuntimeNote}</span>
+          </div>
+
+          <div className={styles.storageNotice}>
+            <Database size={15} />
+            <span>{reportRuntimeLabelText}. {reportRuntimeNoteText}</span>
+          </div>
+
           {qdrantLabel && (
             <div className={styles.storageNotice}>
               <Database size={15} />
@@ -178,34 +233,32 @@ export default function FloatingAiCard({ ai, events, asOf }) {
             </div>
           )}
 
-          {insights && (
-            <div className={styles.ollamaWorkflowGrid} aria-label="Ollama 로컬 LLM 기능 실행 상태">
-              <article className={styles.workflowCard}>
-                <Cpu size={16} />
-                <div>
-                  <span>1. 종목 상담</span>
-                  <strong>{adviceDecision}</strong>
-                  <p>{adviceSummary}</p>
-                </div>
-              </article>
-              <article className={styles.workflowCard}>
-                <TrendingUp size={16} />
-                <div>
-                  <span>2. 뉴스 방향</span>
-                  <strong>상승 {probabilityLabel(nextTradingDay.up)} · 하락 {probabilityLabel(nextTradingDay.down)}</strong>
-                  <p>{sentimentLabel} · 문맥 {contextLabel}{visibleHeadlineCount ? ` · 헤드라인 ${visibleHeadlineCount}개` : ''}</p>
-                </div>
-              </article>
-              <article className={styles.workflowCard}>
-                <Newspaper size={16} />
-                <div>
-                  <span>3. 장후 리포트</span>
-                  <strong>{reportMood}</strong>
-                  <p>{reportStorageLabel || reportSummary}</p>
-                </div>
-              </article>
-            </div>
-          )}
+          <div className={styles.ollamaWorkflowGrid} aria-label="Ollama 로컬 LLM 기능 실행 상태">
+            <article className={styles.workflowCard}>
+              <Cpu size={16} />
+              <div>
+                <span>1. 종목 상담</span>
+                <strong>{adviceDecision}</strong>
+                <p>{insights ? adviceSummary : insightRuntimeNote}</p>
+              </div>
+            </article>
+            <article className={styles.workflowCard}>
+              <TrendingUp size={16} />
+              <div>
+                <span>2. 뉴스 방향</span>
+                <strong>상승 {probabilityLabel(nextTradingDay.up)} · 하락 {probabilityLabel(nextTradingDay.down)}</strong>
+                <p>{insights ? `${sentimentLabel} · 문맥 ${contextLabel}${visibleHeadlineCount ? ` · 헤드라인 ${visibleHeadlineCount}개` : ''}` : '뉴스 헤드라인과 이벤트 문맥을 로컬 LLM 판단에 연결합니다.'}</p>
+              </div>
+            </article>
+            <article className={styles.workflowCard}>
+              <Newspaper size={16} />
+              <div>
+                <span>3. 장후 리포트</span>
+                <strong>{reportMood}</strong>
+                <p>{reportRuntimeLabelText || reportStorageLabel || reportSummary}</p>
+              </div>
+            </article>
+          </div>
 
           {insights && (
             <div className={styles.section}>
