@@ -51,3 +51,20 @@
   --transition-normal: 300ms cubic-bezier(0.34, 1.56, 0.64, 1); /* Toss Spring curve */
   --transition-slow: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+[data-theme="light"] {
+  --color-bg-base: #f2f4f7;          /* 토스 라이트 그레이 */
+  --color-bg-surface: #ffffff;       /* 화이트 */
+  --color-bg-elevated: #f9fafb;      /* 옅은 백색 */
+  
+  --color-text-primary: #191f28;     /* 토스 다크 그레이 */
+  --color-text-secondary: #4e5968;   /* 서브 텍스트 */
+  --color-text-tertiary: #8b95a1;    /* 설명 텍스트 */
+  
+  --color-border: #e5e8eb;           /* 옅은 회색 테두리 */
+  --color-border-subtle: #f2f4f7;
+  
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 16px 48px rgba(0, 0, 0, 0.08);
+}

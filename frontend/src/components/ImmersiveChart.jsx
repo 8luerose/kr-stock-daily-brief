@@ -260,6 +260,20 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   const [selectedBriefData, setSelectedBriefData] = useState(null);
   const [selectedBriefLoading, setSelectedBriefLoading] = useState(false);
 
+  // 테마 관리 (다크/라이트)
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.getAttribute('data-theme') || 'dark';
+    }
+    return 'dark';
+  });
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    document.documentElement.setAttribute('data-theme', nextTheme);
+  };
+
   const handleAskAiForTerm = async (termName) => {
     setSelectedTerm(termName);
     setExplanationModalOpen(true); // 2차 모달 즉시 팝업!
@@ -976,6 +990,17 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                 )}
               </div>
             )}
+          </div>
+
+          <div className={styles.actionItem}>
+            <button
+              type="button"
+              className={styles.themeToggleBtn}
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            >
+              {theme === 'dark' ? '🌙' : '☀️'}
+            </button>
           </div>
         </div>
       </div>

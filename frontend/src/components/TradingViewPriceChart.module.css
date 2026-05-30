@@ -29,12 +29,14 @@
 
 .chartLineLegend {
   display: flex;
+  flex-wrap: wrap; /* 모바일에서 자동 개행 유도 */
   gap: 16px;
   margin-top: 12px;
   font-size: 0.8rem;
   color: var(--color-text-secondary);
   font-weight: 700;
-  justify-content: center;
+  justify-content: flex-start; /* 중앙 정렬 대신 왼쪽 정렬하여 플로팅 버튼과의 겹침 해소 */
+  padding-left: var(--spacing-4);
 }
 
 .chartLineLegend span {
@@ -168,6 +170,10 @@
   z-index: 10;
   border-left: 1px solid var(--color-border);
   animation: springUp var(--transition-normal) forwards;
+  /* 텍스트 짤림 방지 및 모바일 가독성 극대화 */
+  word-break: keep-all;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .decisionSidebar::-webkit-scrollbar {
@@ -837,20 +843,33 @@
 @media (max-width: 1024px) {
   .stage {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: auto auto; /* 차트와 사이드바를 세로 2행으로 안전하게 묶음 */
+    overflow-y: auto !important; /* 모바일에서 전체 세로 스크롤을 무조건 허용 */
+    overflow-x: hidden;
+    height: 100%;
   }
 
   .chartPane {
     border-right: 0;
-    padding: 140px 16px 80px 16px;
+    padding: 140px 16px 20px 16px;
+    height: 500px; /* 차트 찌그러짐 방지용 고정 높이 지정 */
+    min-height: 500px;
   }
 
   .decisionSidebar {
-    display: none; /* Hide on mobile, show via lens or bottom modal */
+    display: flex !important; /* 모바일에서 숨기지 않고 드러냄 */
+    width: 100% !important;
+    height: auto !important;
+    padding: 24px var(--spacing-5) 120px var(--spacing-5) !important; /* 플로팅 버튼과의 중첩을 피해 넉넉한 하단 마진 확보 */
+    overflow-y: visible !important; /* 개별 스크롤 해제 후 부모 스크롤 위임 */
+    border-left: 0 !important;
+    border-top: 1px solid var(--color-border);
+    box-shadow: none !important;
+    background: var(--color-bg-surface);
   }
 
   .mobileChartLens {
-    display: grid;
+    display: none !important; /* 중복 렌즈 HUD는 미노출 처리 */
   }
 
   /* 모바일 가시성을 극대화하기 위해 중복되거나 차트를 가리는 HUD 요소를 스마트하게 숨김 */
