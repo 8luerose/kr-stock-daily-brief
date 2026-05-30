@@ -7,8 +7,83 @@ import FloatingLearningMode from '../components/FloatingLearningMode';
 import DeepDiveLearningSheet from '../components/DeepDiveLearningSheet';
 import HiddenAdminSheet from '../components/HiddenAdminSheet';
 import PortfolioSandbox from '../components/PortfolioSandbox';
-import { Briefcase } from 'lucide-react';
+import { Activity, Briefcase } from 'lucide-react';
 import styles from './App.module.css';
+
+function intervalLabel(interval) {
+  if (interval === 'weekly') return '1주';
+  if (interval === 'monthly') return '1개월';
+  return '1일';
+}
+
+function buildPipelineToast({ data, activeCode, interval, loading }) {
+  if (!data && loading) {
+    return {
+      title: '초기 차트 준비 중',
+      detail: 'TradingView 차트와 기본 브리프를 불러오고 있습니다.',
+      tone: 'loading',
+      steps: [
+        { label: '차트', state: 'loading' },
+        { label: 'Ollama', state: 'waiting' },
+        { label: '장후', state: 'waiting' }
+      ]
+    };
+  }
+  if (!data) return null;
+
+  if (data.stock?.code !== activeCode) {
+    return {
+      title: `${activeCode} 차트 불러오는 중`,
+      detail: `${intervalLabel(interval)} 차트, 매매 구간, 뉴스 근거를 먼저 준비합니다.`,
+      tone: 'loading',
+      steps: [
+        { label: '차트', state: 'loading' },
+        { label: 'Ollama', state: 'waiting' },
+        { label: '장후', state: 'waiting' }
+      ]
+    };
+  }
+
+  const aiStatus = data.ai?.aiLayerStatus || (data.ai?.ollamaInsights ? 'ready' : '');
+  const reportStatus = data.ai?.marketReportStatus || (data.ai?.marketReport ? 'ready' : '');
+  if (aiStatus === 'loading') {
+    return {
+      title: `${data.stock?.name || activeCode} Ollama 상담 중`,
+      detail: '차트·재무·뉴스·센티멘트를 묶어 매수/관망/매도 조건을 계산합니다.',
+      tone: 'loading',
+      steps: [
+        { label: '차트', state: 'ready' },
+        { label: 'Ollama', state: 'loading' },
+        { label: '장후', state: reportStatus === 'ready' ? 'ready' : 'loading' }
+      ]
+    };
+  }
+  if (aiStatus === 'ollama_failed') {
+    return {
+      title: 'Ollama 응답 지연',
+      detail: '화면은 규칙형 근거로 유지하고, 로컬 LLM 응답은 다시 붙일 수 있습니다.',
+      tone: 'delayed',
+      steps: [
+        { label: '차트', state: 'ready' },
+        { label: 'Ollama', state: 'delayed' },
+        { label: '장후', state: reportStatus === 'ready' ? 'ready' : 'waiting' }
+      ]
+    };
+  }
+  if (reportStatus === 'loading') {
+    return {
+      title: '장후 리포트 확인 중',
+      detail: '저장된 일간 브리프에 Ollama 시장 코멘트를 연결하고 있습니다.',
+      tone: 'loading',
+      steps: [
+        { label: '차트', state: 'ready' },
+        { label: 'Ollama', state: 'ready' },
+        { label: '장후', state: 'loading' }
+      ]
+    };
+  }
+  return null;
+}
 
 function App() {
   const {
@@ -27,6 +102,10 @@ function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState(false);
   const [stockOptions, setStockOptions] = useState([]);
+  const pipelineToast = useMemo(
+    () => buildPipelineToast({ data, activeCode, interval, loading }),
+    [activeCode, data, interval, loading]
+  );
 
   const chartContext = useMemo(() => {
     if (!data) return null;
@@ -129,6 +208,26 @@ function App() {
       {error && (
         <div className={styles.errorToast}>
           {error}
+        </div>
+      )}
+
+      {pipelineToast && (
+        <div className={styles.pipelineToast} data-testid="pipeline-toast" role="status" aria-live="polite">
+          <Activity size={16} aria-hidden="true" />
+          <div className={styles.pipelineToastBody}>
+            <strong>{pipelineToast.title}</strong>
+            <span>{pipelineToast.detail}</span>
+          </div>
+          <div className={styles.pipelineToastSteps} aria-label="데이터와 AI 준비 단계">
+            {pipelineToast.steps.map((step) => (
+              <span
+                key={step.label}
+                className={styles[`pipelineStep_${step.state}`] || ''}
+              >
+                {step.label}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
