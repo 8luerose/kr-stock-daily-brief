@@ -83,7 +83,7 @@
   position: absolute;
   top: 24px;
   left: clamp(16px, 5vw, 72px);
-  right: clamp(190px, 16vw, 260px);
+  right: clamp(16px, 5vw, 72px);
   display: flex;
   gap: var(--spacing-3);
   justify-content: space-between;
@@ -376,62 +376,6 @@
   overflow-wrap: anywhere;
 }
 
-.stockFlowStrip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: var(--spacing-3);
-}
-
-.stockFlowStrip article {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-  border: 1px solid rgba(34, 197, 94, 0.2);
-  border-radius: 8px;
-  background: rgba(6, 78, 59, 0.16);
-  padding: 7px;
-}
-
-.stockFlowLoading article {
-  border-color: rgba(96, 165, 250, 0.22);
-  background: rgba(37, 99, 235, 0.13);
-}
-
-.stockFlowDelayed article {
-  border-color: rgba(245, 158, 11, 0.24);
-  background: rgba(120, 53, 15, 0.14);
-}
-
-.stockFlowStrip b,
-.stockFlowStrip span {
-  min-width: 0;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-
-.stockFlowStrip b {
-  color: #bbf7d0;
-  font-size: 0.64rem;
-  font-weight: 950;
-  line-height: 1.15;
-}
-
-.stockFlowLoading b {
-  color: #bfdbfe;
-}
-
-.stockFlowDelayed b {
-  color: #fde68a;
-}
-
-.stockFlowStrip span {
-  color: rgba(226, 232, 240, 0.82);
-  font-size: 0.66rem;
-  font-weight: 850;
-  line-height: 1.2;
-}
-
 .stockCodeForm {
   display: grid;
   gap: 7px;
@@ -493,7 +437,7 @@
 }
 
 .stockAdviceSnapshot {
-  display: grid;
+  display: none;
   gap: 9px;
   margin-top: var(--spacing-3);
   border: 1px solid rgba(245, 158, 11, 0.24);
@@ -635,13 +579,94 @@
 }
 
 .stockNewsSnapshot {
-  display: grid;
+  display: none;
   gap: 8px;
   margin-top: var(--spacing-3);
   border: 1px solid rgba(96, 165, 250, 0.18);
   border-radius: 8px;
   background: linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(37, 99, 235, 0.1));
   padding: 10px;
+}
+
+.calendarPanelHeader,
+.calendarLatestBox {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.calendarPanelHeader span,
+.calendarPanelHeader strong,
+.calendarPanelHeader p,
+.calendarEmpty,
+.calendarDateGrid b,
+.calendarDateGrid span,
+.calendarLatestBox b,
+.calendarLatestBox span {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.calendarPanelHeader span {
+  color: #bfdbfe;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.calendarPanelHeader strong {
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.calendarPanelHeader p,
+.calendarEmpty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+.calendarDateGrid {
+  display: grid;
+  gap: 7px;
+  margin-top: var(--spacing-3);
+}
+
+.calendarDateGrid article,
+.calendarLatestBox {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(96, 165, 250, 0.16);
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.09);
+  padding: 9px;
+}
+
+.calendarDateGrid b,
+.calendarLatestBox b {
+  color: #f8fafc;
+  font-size: 0.82rem;
+  font-weight: 950;
+  line-height: 1.24;
+}
+
+.calendarDateGrid span,
+.calendarLatestBox span {
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.74rem;
+  font-weight: 760;
+  line-height: 1.34;
+}
+
+.calendarLatestBox {
+  margin-top: var(--spacing-3);
+  border-color: rgba(34, 197, 94, 0.18);
+  background: rgba(6, 78, 59, 0.12);
 }
 
 .stockNewsTopline {
@@ -774,7 +799,7 @@
 }
 
 .stockMarketSnapshot {
-  display: grid;
+  display: none;
   gap: 8px;
   margin-top: var(--spacing-3);
   border: 1px solid rgba(34, 197, 94, 0.2);
@@ -932,7 +957,7 @@
 }
 
 .stockConsensusSnapshot {
-  display: grid;
+  display: none;
   gap: 8px;
   margin-top: var(--spacing-3);
   border: 1px solid rgba(96, 165, 250, 0.2);
@@ -1085,7 +1110,7 @@
 }
 
 .aiPipelinePanel {
-  display: grid;
+  display: none;
   gap: 8px;
   margin-top: var(--spacing-3);
   border: 1px solid rgba(148, 163, 184, 0.14);
@@ -1377,7 +1402,7 @@
 
 @media (min-width: 769px) and (max-width: 1180px) {
   .topToolbar {
-    right: clamp(150px, 15vw, 190px);
+    right: clamp(16px, 4vw, 48px);
   }
 
   .actionGroup {
@@ -1399,7 +1424,7 @@
   .topToolbar {
     top: 12px;
     left: 12px;
-    right: 104px;
+    right: 12px;
     justify-content: flex-start;
     align-items: center;
     gap: 6px;
@@ -1477,10 +1502,6 @@
 
   .stockSaveNotice {
     font-size: 0.74rem;
-  }
-
-  .stockFlowStrip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stockAdviceSnapshot {

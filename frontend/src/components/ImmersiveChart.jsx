@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { RefreshCw } from 'lucide-react';
 import TradingViewPriceChart from './TradingViewPriceChart';
+import { loadSummaryArchive } from '../services/apiClient';
 import styles from './ImmersiveChart.module.css';
 
 function formatCurrency(value) {
@@ -83,10 +84,12 @@ function hasNumericValue(value) {
 
 export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, stockOptions = [], onChangeStock, learningMode, onTermClick, aiCardExpanded = false, onPanelOpenChange, onRefreshAi, onOpenPortfolio }) {
   const toolbarRef = useRef(null);
-  const [activePanel, setActivePanel] = useState('none'); // 'none', 'stocks', 'guide', 'ai'
+  const [activePanel, setActivePanel] = useState('none'); // 'none', 'stocks', 'calendar', 'guide', 'ai'
   const [guideTab, setGuideTab] = useState('ma'); // 'ma', 'beginner', 'event'
   const [stockCodeInput, setStockCodeInput] = useState(stock?.code || '');
   const [stockCodeError, setStockCodeError] = useState('');
+  const [summaryArchive, setSummaryArchive] = useState(null);
+  const [summaryArchiveLoading, setSummaryArchiveLoading] = useState(false);
 
   useEffect(() => {
     setStockCodeInput(stock?.code || '');
@@ -113,6 +116,23 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   useEffect(() => {
     onPanelOpenChange?.(activePanel !== 'none');
   }, [activePanel, onPanelOpenChange]);
+
+  useEffect(() => {
+    if (activePanel !== 'calendar' || summaryArchive || summaryArchiveLoading) return;
+    let mounted = true;
+    setSummaryArchiveLoading(true);
+    loadSummaryArchive()
+      .then((archive) => {
+        if (mounted) setSummaryArchive(archive);
+      })
+      .catch(() => {
+        if (mounted) setSummaryArchive({ latest: null, list: [], source: '불러오기 실패' });
+      })
+      .finally(() => {
+        if (mounted) setSummaryArchiveLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [activePanel, summaryArchive, summaryArchiveLoading]);
 
   const chartData = useMemo(() => {
     if (!chart?.rows) return [];
@@ -264,45 +284,6 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       tone: hasLoading ? 'loading' : hasDelayed ? 'delayed' : readyCount === aiExecutionSteps.length ? 'ready' : 'waiting'
     };
   }, [ai, aiExecutionSteps]);
-
-  const stockFlowSummary = useMemo(() => {
-    const insights = ai?.ollamaInsights;
-    const refreshStatus = ai?.ollamaInsightsRefreshStatus || '';
-    const ollamaStatus = resolveOllamaStatus(ai, insights);
-    const storedLabel = refreshStatus === 'refreshing'
-      ? '저장본 먼저 표시'
-      : refreshStatus === 'fresh'
-        ? '새 결과 반영'
-        : refreshStatus === 'kept_cached'
-          ? '저장본 유지'
-          : insights?.storage?.saved
-            ? '상담 DB 저장됨'
-            : '저장본 확인 전';
-    const computeLabel = refreshStatus === 'refreshing' || ollamaStatus === 'loading'
-      ? '새 계산 중'
-      : refreshStatus === 'fresh'
-        ? '최신 결과'
-        : isOllamaDelayed(ollamaStatus)
-          ? '지연 시 fallback'
-          : '자동 실행';
-    const reportLabel = ai?.marketReport?.storage?.cached
-      ? '장후 DB 재사용'
-      : ai?.marketReport?.storage?.saved
-        ? '장후 DB 저장'
-        : ai?.marketReportStatus === 'loading'
-          ? '장후 확인 중'
-          : '장후 연결';
-    return {
-      storedLabel,
-      computeLabel,
-      reportLabel,
-      tone: refreshStatus === 'refreshing' || ollamaStatus === 'loading'
-        ? 'loading'
-        : isOllamaDelayed(ollamaStatus)
-          ? 'delayed'
-          : 'ready'
-    };
-  }, [ai]);
 
   const stockPanelAdvice = useMemo(() => {
     const insights = ai?.ollamaInsights;
@@ -559,6 +540,8 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   const visibleEvents = (events || []).slice(0, 2);
   const intervalLabel = interval === 'daily' ? '1일' : interval === 'weekly' ? '1주' : '1개월';
   const normalizedStockOptions = stockOptions.length ? stockOptions : [stock].filter(Boolean);
+  const summaryDates = Array.isArray(summaryArchive?.list) ? summaryArchive.list.slice(0, 6) : [];
+  const latestBrief = summaryArchive?.latest || null;
   const handleStockCodeSubmit = (event) => {
     event.preventDefault();
     const nextCode = stockCodeInput.replace(/\D/g, '').slice(0, 6);
@@ -621,36 +604,11 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
             {activePanel === 'stocks' && (
               <div className={styles.dropdownPanel} data-testid="stock-selector-panel" role="listbox" aria-label="기업 목록">
                 <div className={styles.stockPanelHeader}>
-                  <span>기준 기업</span>
+                  <span>기업 검색</span>
                   <strong>{stock.name} ({stock.code})</strong>
                   <p className={styles.stockSaveNotice}>
-                    기업 선택은 화면만 바꾸고, 저장은 상담 로그·장후 리포트·샌드박스에서만 발생합니다.
+                    기업 이름이나 종목코드를 고르면 차트가 바뀝니다. 판단은 아래 AI 카드에서 바로 확인하세요.
                   </p>
-                  <div
-                    className={clsx(
-                      styles.stockFlowStrip,
-                      stockFlowSummary.tone === 'loading' && styles.stockFlowLoading,
-                      stockFlowSummary.tone === 'delayed' && styles.stockFlowDelayed
-                    )}
-                    aria-label="종목 선택 후 저장과 Ollama 실행 흐름"
-                  >
-                    <article>
-                      <b>1 선택</b>
-                      <span>차트만 변경</span>
-                    </article>
-                    <article>
-                      <b>2 저장본</b>
-                      <span>{stockFlowSummary.storedLabel}</span>
-                    </article>
-                    <article>
-                      <b>3 Ollama</b>
-                      <span>{stockFlowSummary.computeLabel}</span>
-                    </article>
-                    <article>
-                      <b>장후</b>
-                      <span>{stockFlowSummary.reportLabel}</span>
-                    </article>
-                  </div>
                   <form className={styles.stockCodeForm} onSubmit={handleStockCodeSubmit}>
                     <label htmlFor="stock-code-direct-input">종목코드 직접 입력</label>
                     <div>
@@ -799,7 +757,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                       </article>
                     </div>
                   )}
-                  <div className={styles.aiPipelinePanel} aria-label="종목 선택 후 Ollama 실행 흐름">
+                  {false && <div className={styles.aiPipelinePanel} aria-label="종목 선택 후 AI 실행 흐름">
                     <b>종목을 고르면 AI가 바로 확인하는 3가지</b>
                     <div className={styles.aiPipelineSummary} aria-label="Ollama 실행 상태 요약">
                       <span className={clsx(
@@ -820,7 +778,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                         className={styles.aiPipelineRefreshBtn}
                         onClick={onRefreshAi}
                         disabled={!onRefreshAi}
-                        aria-label="Ollama 상담과 장후 리포트 새로 계산"
+                        aria-label="AI 판단 다시 계산"
                       >
                         <RefreshCw size={13} aria-hidden="true" />
                         새로 계산
@@ -854,7 +812,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                         </div>
                       </div>
                     ))}
-                  </div>
+                  </div>}
                 </div>
                 <div className={styles.stockList}>
                   {normalizedStockOptions.map((option) => {
@@ -880,6 +838,49 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                     );
                   })}
                 </div>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.actionItem}>
+            <button
+              className={clsx(styles.actionBtn, activePanel === 'calendar' && styles.actionBtnActive)}
+              onClick={() => setActivePanel(activePanel === 'calendar' ? 'none' : 'calendar')}
+              data-testid="brief-calendar-button"
+              aria-label="브리프 달력"
+            >
+              <span>▣</span> 브리프 달력 <span className={styles.chevron}>▼</span>
+            </button>
+            {activePanel === 'calendar' && (
+              <div className={clsx(styles.dropdownPanel, styles.dropdownRight)} data-testid="brief-calendar-panel" aria-label="pykrx 브리프 달력">
+                <div className={styles.calendarPanelHeader}>
+                  <span>pykrx 기준 브리프</span>
+                  <strong>{latestBrief?.date || stock?.asOf || '최근 거래일'}</strong>
+                  <p>거래소 데이터를 기준으로 저장된 날짜를 보여줍니다. 날짜를 고르면 해당 브리프의 상승, 하락 대표 종목을 빠르게 확인할 수 있습니다.</p>
+                </div>
+                {summaryArchiveLoading && <p className={styles.calendarEmpty}>브리프 날짜를 불러오고 있습니다.</p>}
+                {!summaryArchiveLoading && summaryDates.length === 0 && (
+                  <p className={styles.calendarEmpty}>저장된 브리프 날짜가 아직 없습니다.</p>
+                )}
+                {!summaryArchiveLoading && summaryDates.length > 0 && (
+                  <div className={styles.calendarDateGrid}>
+                    {summaryDates.map((item) => (
+                      <article key={item.date || item.effectiveDate}>
+                        <b>{item.date || item.effectiveDate}</b>
+                        <span>상승 대표: {item.topGainer || item.kospiTopGainer || '확인 필요'}</span>
+                        <span>하락 대표: {item.topLoser || item.kospiTopLoser || '확인 필요'}</span>
+                      </article>
+                    ))}
+                  </div>
+                )}
+                {latestBrief && (
+                  <div className={styles.calendarLatestBox}>
+                    <b>최근 브리프 핵심</b>
+                    <span>상승 대표 {latestBrief.topGainer || latestBrief.kospiTopGainer || '확인 필요'}</span>
+                    <span>하락 대표 {latestBrief.topLoser || latestBrief.kospiTopLoser || '확인 필요'}</span>
+                    <span>많이 언급된 종목 {latestBrief.mostMentioned || '확인 필요'}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -4,11 +4,9 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { loadLearningTerms, loadStockOptions } from '../services/apiClient';
 import ImmersiveChart from '../components/ImmersiveChart';
 import FloatingAiCard from '../components/FloatingAiCard';
-import FloatingLearningMode from '../components/FloatingLearningMode';
 import DeepDiveLearningSheet from '../components/DeepDiveLearningSheet';
 import HiddenAdminSheet from '../components/HiddenAdminSheet';
-import PortfolioSandbox from '../components/PortfolioSandbox';
-import { Activity, Briefcase } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import styles from './App.module.css';
 
 function intervalLabel(interval) {
@@ -17,50 +15,16 @@ function intervalLabel(interval) {
   return '1일';
 }
 
-function qdrantToastState(ai = {}) {
-  const qdrant = ai.ollamaInsights?.qdrant || ai.marketReport?.qdrant || null;
-  if (!qdrant) {
-    return { label: '근거 확인 전', state: 'waiting', detail: '' };
-  }
-  if (!qdrant.enabled) {
-    return { label: '근거 저장 꺼짐', state: 'waiting', detail: 'Qdrant 비활성' };
-  }
-  if (!qdrant.skipped) {
-    const retrieved = qdrant.retrievedCount || 0;
-    const stored = qdrant.storedCount || 0;
-    return {
-      label: `근거 ${retrieved}개`,
-      state: 'ready',
-      detail: `Qdrant 검색 ${retrieved}개 · 저장 ${stored}개`
-    };
-  }
-  if (qdrant.asyncUpsertScheduled) {
-    return {
-      label: '근거 저장 중',
-      state: 'loading',
-      detail: 'Qdrant 백그라운드 저장 중'
-    };
-  }
-  if (qdrant.asyncUpsertDeduped) {
-    return {
-      label: '근거 저장 대기',
-      state: 'loading',
-      detail: '같은 종목 근거 저장 예약됨'
-    };
-  }
-  return { label: '빠른 응답', state: 'waiting', detail: 'Qdrant 검색 생략' };
-}
-
 function buildPipelineToast({ data, activeCode, interval, loading }) {
   const waitingAiSteps = [
-    { label: '상담', state: 'waiting' },
+    { label: '차트', state: 'waiting' },
     { label: '뉴스', state: 'waiting' },
-    { label: '장후', state: 'waiting' }
+    { label: 'AI 판단', state: 'waiting' }
   ];
   if (!data && loading) {
     return {
-      title: '초기 차트 준비 중',
-      detail: 'TradingView 차트와 기본 브리프를 불러오고 있습니다.',
+      title: '차트를 준비하고 있습니다',
+      detail: '종목 가격과 최근 뉴스를 먼저 불러옵니다.',
       tone: 'loading',
       steps: waitingAiSteps
     };
@@ -70,7 +34,7 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
   if (data.stock?.code !== activeCode) {
     return {
       title: `${activeCode} 차트 불러오는 중`,
-      detail: `${intervalLabel(interval)} 차트, 매매 구간, 뉴스 근거를 먼저 준비합니다.`,
+      detail: `${intervalLabel(interval)} 차트와 AI 판단에 필요한 기본 정보를 준비합니다.`,
       tone: 'loading',
       steps: waitingAiSteps
     };
@@ -84,90 +48,45 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
           : aiStatus === 'loading' ? 'loading' : 'waiting');
   const reportStatus = data.ai?.marketReportStatus || (data.ai?.marketReport ? 'ready' : '');
   const insights = data.ai?.ollamaInsights;
-  const report = data.ai?.marketReport || insights?.afterMarketReport;
-  const modeLabel = insights?.mode === 'ollama_llm' || data.ai?.llmUsed ? 'Ollama LLM' : '규칙형 미리보기';
-  const refreshStatus = data.ai?.ollamaInsightsRefreshStatus || '';
-  const storageLabel = refreshStatus === 'refreshing'
-    ? `${insights?.runtimeCache?.label || 'DB 저장본 표시'} · 새 계산 중`
-    : refreshStatus === 'fresh'
-      ? insights?.runtimeCache?.label || '새 계산 반영'
-      : refreshStatus === 'kept_cached'
-        ? 'DB 저장본 유지'
-        : insights?.runtimeCache?.label
-    || (insights?.storage?.saved ? '상담 DB 저장' : ollamaStatus === 'ready' ? '상담 저장 확인 필요' : '');
-  const reportLabel = data.ai?.marketReport?.runtimeCache?.label
-    || (data.ai?.marketReport?.storage?.cached ? '장후 DB 재사용'
-      : data.ai?.marketReport?.storage?.saved ? '장후 DB 저장'
-        : report ? '장후 결과 반영' : '');
-  const qdrantState = qdrantToastState(data.ai);
-  const qdrantDetail = qdrantState.detail ? ` · ${qdrantState.detail}` : '';
   if (ollamaStatus === 'loading') {
     return {
-      title: `${data.stock?.name || activeCode} Ollama 3대 기능 실행 중`,
-      detail: `상담 의견과 뉴스 방향을 계산하고, 장후 리포트 저장본을 함께 확인합니다.${qdrantDetail}`,
+      title: `${data.stock?.name || activeCode} AI 판단 준비 중`,
+      detail: '차트 흐름과 뉴스를 함께 보고 매수, 관망, 매도 기준을 정리합니다.',
       tone: 'loading',
       steps: [
-        { label: '상담', state: 'loading' },
+        { label: '차트', state: 'ready' },
         { label: '뉴스', state: 'loading' },
-        { label: '장후', state: reportStatus === 'ready' ? 'ready' : 'loading' },
-        qdrantState
+        { label: 'AI 판단', state: 'loading' }
       ]
     };
   }
   if (ollamaStatus === 'failed' || ollamaStatus === 'delayed') {
     return {
-      title: ollamaStatus === 'delayed' ? 'Ollama 계산 지연 중' : 'Ollama 응답 지연',
+      title: 'AI 판단이 늦어지고 있습니다',
       detail: ollamaStatus === 'delayed'
-        ? '차트와 규칙형 근거는 계속 사용할 수 있고, 로컬 LLM 결과가 도착하면 자동 반영합니다.'
-        : '화면은 규칙형 근거로 유지하고, 로컬 LLM 응답은 다시 붙일 수 있습니다.',
+        ? '차트는 먼저 볼 수 있습니다. AI 답변이 도착하면 자동으로 바뀝니다.'
+        : '지금은 차트 기준 판단을 먼저 보여주고 있습니다.',
       tone: 'delayed',
       steps: [
-        { label: '상담', state: 'delayed' },
-        { label: '뉴스', state: 'delayed' },
-        { label: '장후', state: reportStatus === 'ready' ? 'ready' : 'waiting' },
-        qdrantState
+        { label: '차트', state: 'ready' },
+        { label: '뉴스', state: 'waiting' },
+        { label: 'AI 판단', state: 'delayed' }
       ]
     };
   }
   if (reportStatus === 'loading') {
     return {
-      title: '장후 리포트 확인 중',
-      detail: `저장된 일간 브리프에 Ollama 시장 코멘트를 연결하고 있습니다.${qdrantDetail}`,
+      title: '오늘 시장 흐름을 확인하고 있습니다',
+      detail: '장마감 브리프를 읽고 이 종목 판단에 필요한 내용만 정리합니다.',
       tone: 'loading',
       steps: [
-        { label: 'AI 상담', state: 'ready' },
-        { label: '뉴스 감성', state: 'ready' },
-        { label: '장후 요약', state: 'loading' },
-        qdrantState
+        { label: '차트', state: 'ready' },
+        { label: '뉴스', state: 'ready' },
+        { label: 'AI 판단', state: 'loading' }
       ]
     };
   }
-  if (ollamaStatus === 'ready' && reportStatus === 'unavailable') {
-    return {
-      title: `${data.stock?.name || activeCode} 상담·뉴스 반영 완료`,
-      detail: `장후 리포트만 지연 중입니다. ${modeLabel}${storageLabel ? ` · ${storageLabel}` : ''}${qdrantDetail}`,
-      tone: 'delayed',
-      steps: [
-        { label: 'AI 상담', state: 'ready' },
-        { label: '뉴스 감성', state: 'ready' },
-        { label: '장후 요약', state: 'delayed' },
-        qdrantState
-      ]
-    };
-  }
-  if (ollamaStatus === 'ready') {
-    return {
-      title: `${data.stock?.name || activeCode} Ollama 3대 기능 반영 완료`,
-      detail: `${modeLabel}${storageLabel ? ` · ${storageLabel}` : ''}${reportLabel ? ` · ${reportLabel}` : ''}${qdrantDetail}`,
-      tone: 'ready',
-      steps: [
-        { label: 'AI 상담', state: 'ready' },
-        { label: '뉴스 감성', state: 'ready' },
-        { label: '장후 요약', state: report ? 'ready' : 'waiting' },
-        qdrantState
-      ]
-    };
-  }
+  if (ollamaStatus === 'ready') return null;
   return null;
 }
 
@@ -187,7 +106,6 @@ function App() {
   const [learningSheetOpen, setLearningSheetOpen] = useState(false);
   const [termData, setTermData] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [portfolioOpen, setPortfolioOpen] = useState(false);
   const [aiCardExpanded, setAiCardExpanded] = useState(false);
   const [chartPanelOpen, setChartPanelOpen] = useState(false);
   const [stockOptions, setStockOptions] = useState([]);
@@ -290,7 +208,6 @@ function App() {
             aiCardExpanded={aiCardExpanded}
             onPanelOpenChange={setChartPanelOpen}
             onRefreshAi={refreshAi}
-            onOpenPortfolio={() => setPortfolioOpen(true)}
           />
         )}
       </div>
@@ -336,22 +253,6 @@ function App() {
 
       {/* Floating UI Layer */}
       <div className={styles.uiLayer}>
-        {data && (
-          <div className={styles.rightActionGroup}>
-            <FloatingLearningMode
-              isActive={learningMode}
-              onToggle={handleToggleLearningMode}
-            />
-            <button
-              className={styles.floatingIconBtn}
-              onClick={() => setPortfolioOpen(true)}
-              aria-label="Open Portfolio"
-              title="포트폴리오 샌드박스"
-            >
-              <Briefcase size={20} />
-            </button>
-          </div>
-        )}
         {data && !loading && !chartPanelOpen && (
           <FloatingAiCard
             ai={data.ai}
@@ -368,15 +269,6 @@ function App() {
         onClose={() => setLearningSheetOpen(false)} 
         termData={termData}
         chartContext={chartContext}
-      />
-
-      <PortfolioSandbox 
-        isOpen={portfolioOpen} 
-        onClose={() => setPortfolioOpen(false)} 
-        activeCode={activeCode} 
-        stockName={data?.stock?.name}
-        activeStock={data?.stock}
-        onRefreshAi={refreshAi}
       />
 
       <HiddenAdminSheet isOpen={adminOpen} onClose={() => setAdminOpen(false)} asOf={data?.asOf} />

@@ -1,6 +1,10 @@
 .stage {
   position: absolute;
   inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 370px);
+  gap: 14px;
+  padding: 92px clamp(16px, 5vw, 72px) 150px clamp(16px, 5vw, 72px);
   overflow: hidden;
   background:
     linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
@@ -9,10 +13,256 @@
   background-size: 80px 80px, 80px 80px, auto;
 }
 
+.chartPane {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  background: rgba(3, 7, 18, 0.34);
+}
+
 .chart {
   position: absolute;
   inset: 0;
   z-index: 1;
+}
+
+.decisionSidebar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+  background: rgba(8, 13, 24, 0.74);
+  color: rgba(226, 232, 240, 0.86);
+  padding: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.34) transparent;
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sidebarHeader div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.sidebarHeader span,
+.sidebarHeader strong,
+.sidebarPriceCard span,
+.sidebarPriceCard strong,
+.sidebarPriceCard em,
+.sidebarDecisionCard span,
+.sidebarDecisionCard strong,
+.sidebarDecisionCard p,
+.sidebarActionBox b,
+.sidebarActionBox span,
+.sidebarMetricGrid span,
+.sidebarMetricGrid strong,
+.sidebarNewsCard span,
+.sidebarNewsCard strong,
+.sidebarNewsCard p,
+.sidebarNewsCard em,
+.sidebarZoneList > span,
+.sidebarZoneList b,
+.sidebarZoneList strong,
+.sidebarZoneList em {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.sidebarHeader span,
+.sidebarPriceCard span,
+.sidebarDecisionCard span,
+.sidebarMetricGrid span,
+.sidebarNewsCard span,
+.sidebarZoneList > span {
+  color: rgba(191, 219, 254, 0.72);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.sidebarHeader strong {
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.24;
+}
+
+.sidebarHeader button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border: 1px solid rgba(96, 165, 250, 0.26);
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.14);
+  color: #dbeafe;
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 0 10px;
+}
+
+.sidebarPriceCard,
+.sidebarDecisionCard,
+.sidebarNewsCard,
+.sidebarZoneList {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.52);
+  padding: 10px;
+}
+
+.sidebarPriceCard strong {
+  color: #f8fafc;
+  font-size: 1.38rem;
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.sidebarPriceCard em {
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1.32;
+}
+
+.sidebarDecisionCard {
+  border-color: rgba(245, 158, 11, 0.26);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(245, 158, 11, 0.12));
+}
+
+.sidebarDecisionBuy {
+  border-color: rgba(34, 197, 94, 0.32);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(34, 197, 94, 0.12));
+}
+
+.sidebarDecisionSell {
+  border-color: rgba(239, 68, 68, 0.34);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.72), rgba(239, 68, 68, 0.12));
+}
+
+.sidebarDecisionCard strong {
+  color: #f8fafc;
+  font-size: 1.16rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.sidebarDecisionCard p,
+.sidebarNewsCard p,
+.sidebarNewsCard em {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.76);
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 740;
+  line-height: 1.42;
+}
+
+.sidebarActionBox {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: 8px;
+  background: rgba(37, 99, 235, 0.12);
+  padding: 8px;
+}
+
+.sidebarActionBox b {
+  color: #bfdbfe;
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.sidebarActionBox span {
+  color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 780;
+  line-height: 1.36;
+}
+
+.sidebarMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.sidebarMetricGrid article,
+.sidebarZoneList article {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.44);
+  padding: 8px;
+}
+
+.sidebarMetricGrid strong,
+.sidebarZoneList strong {
+  color: #f8fafc;
+  font-size: 0.82rem;
+  font-weight: 950;
+  line-height: 1.24;
+}
+
+.sidebarNewsCard strong {
+  color: #f8fafc;
+  font-size: 0.96rem;
+  font-weight: 950;
+  line-height: 1.24;
+}
+
+.sidebarZoneList b {
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.24;
+}
+
+.sidebarZoneList em {
+  color: rgba(226, 232, 240, 0.54);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 760;
+  line-height: 1.24;
+}
+
+.brandBadge,
+.chartControlDock,
+.legend,
+.latestBar,
+.signalPanel,
+.forecastHud,
+.aiDecisionPanel,
+.mobileChartLens,
+.mobilePortfolioCta,
+.personalRiskOverlay,
+.newsDirectionPanel,
+.zoneRail {
+  display: none;
 }
 
 .chartError {
@@ -1471,7 +1721,7 @@
   box-shadow: 0 18px 56px rgba(0, 0, 0, 0.46);
   color: #f8fafc;
   padding: 12px;
-  pointer-events: auto;
+  pointer-events: none;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
 }
@@ -2028,5 +2278,92 @@
     top: 320px;
     bottom: auto;
     width: min(300px, 30vw);
+  }
+}
+
+@media (max-width: 768px) {
+  .stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 112px 12px 148px;
+  }
+
+  .chartPane {
+    min-height: 320px;
+  }
+
+  .decisionSidebar {
+    max-height: 220px;
+    padding: 10px;
+  }
+
+  .sidebarHeader {
+    align-items: center;
+  }
+
+  .sidebarHeader strong {
+    font-size: 0.9rem;
+  }
+
+  .sidebarHeader button {
+    min-height: 32px;
+    font-size: 0.7rem;
+  }
+
+  .sidebarPriceCard,
+  .sidebarDecisionCard,
+  .sidebarNewsCard,
+  .sidebarZoneList {
+    padding: 8px;
+  }
+
+  .sidebarPriceCard strong {
+    font-size: 1.08rem;
+  }
+
+  .sidebarDecisionCard p,
+  .sidebarActionBox span,
+  .sidebarNewsCard p,
+  .sidebarNewsCard em {
+    font-size: 0.72rem;
+    line-height: 1.32;
+  }
+
+  .sidebarMetricGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .sidebarMetricGrid article {
+    padding: 6px;
+  }
+
+  .sidebarMetricGrid span {
+    font-size: 0.58rem;
+  }
+
+  .sidebarMetricGrid strong {
+    font-size: 0.68rem;
+  }
+
+  .brandBadge,
+  .chartControlDock,
+  .legend,
+  .latestBar,
+  .signalPanel,
+  .forecastHud,
+  .aiDecisionPanel,
+  .mobileChartLens,
+  .mobilePortfolioCta,
+  .personalRiskOverlay,
+  .newsDirectionPanel,
+  .zoneRail {
+    display: none;
+  }
+
+  .tooltip {
+    width: min(304px, calc(100vw - 24px));
+    bottom: auto;
   }
 }

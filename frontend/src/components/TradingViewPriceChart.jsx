@@ -247,10 +247,10 @@ export default function TradingViewPriceChart({
   const [hover, setHover] = useState(null);
   const [chartError, setChartError] = useState('');
   const [visibleLayers, setVisibleLayers] = useState({
-    ai: true,
-    zones: true,
-    events: true,
-    personal: true
+    ai: false,
+    zones: false,
+    events: false,
+    personal: false
   });
   const [showDetailPanels, setShowDetailPanels] = useState(false);
 
@@ -433,10 +433,10 @@ export default function TradingViewPriceChart({
       ? '분석 중'
       : normalizeDecision(advice.decision || ai?.chartState?.state || '관망');
     const summary = isWaitingForOllama
-      ? 'Ollama가 차트, 뉴스, 매매 구간을 합쳐 판단하는 중입니다.'
+      ? 'AI가 차트와 뉴스를 함께 읽고 판단을 정리하는 중입니다.'
       : compactText(
         advice.summary || ai?.conclusion,
-        isOllamaWaitingLong ? 'Ollama 응답이 늦어 현재는 규칙형 차트 근거를 보여줍니다.' : '차트와 뉴스 근거를 모으는 중입니다.',
+        isOllamaWaitingLong ? 'AI 답변이 늦어 현재는 차트 기준 판단을 먼저 보여줍니다.' : '차트와 뉴스 근거를 확인하는 중입니다.',
         96
       );
     const up = Number(probabilities.up);
@@ -547,9 +547,9 @@ export default function TradingViewPriceChart({
     const action = firstCompact(
       sentiment.actionGuide || sentiment.tradingScenarios,
       isWaitingForOllama
-        ? 'Ollama가 뉴스와 이벤트를 읽는 중입니다.'
+        ? 'AI가 뉴스와 이벤트를 읽는 중입니다.'
         : delayed
-          ? 'Ollama 결과가 도착하면 자동 반영됩니다. 지금은 가격과 거래량을 먼저 봅니다.'
+          ? 'AI 답변이 도착하면 자동으로 바뀝니다. 지금은 가격과 거래량을 먼저 봅니다.'
           : sentiment.caution || '뉴스 원문과 거래량 반응을 함께 확인합니다.',
       92
     );
@@ -613,7 +613,7 @@ export default function TradingViewPriceChart({
       ? `종가가 ${formatCurrency(upTrigger)} 위에서 유지되는지 확인합니다.`
       : tone === 'negative'
         ? `${formatCurrency(defenseBase)} 이탈과 하락 거래량 증가를 같이 확인합니다.`
-        : `${formatCurrency(watchBase)} 부근에서 거래량이 붙는지 확인합니다.`;
+        : `${formatCurrency(watchBase)} 부근에서 거래량이 늘어나는지 확인합니다.`;
     const nextAction = consensus?.nextAction
       ? `${compactText(consensus.nextAction, '', 84)} ${priceAction}`
       : priceAction;
@@ -985,8 +985,90 @@ export default function TradingViewPriceChart({
 
   return (
     <div className={clsx(styles.stage, focusMode && styles.aiCardFocusMode, showDetailPanels && styles.detailPanelMode)}>
-      <div ref={containerRef} className={styles.chart} data-testid="tradingview-price-chart" />
-      {chartError && <div className={styles.chartError}>{chartError}</div>}
+      <div className={styles.chartPane}>
+        <div ref={containerRef} className={styles.chart} data-testid="tradingview-price-chart" />
+        {chartError && <div className={styles.chartError}>{chartError}</div>}
+      </div>
+      <aside className={styles.decisionSidebar} aria-label="종목 판단 요약">
+        <div className={styles.sidebarHeader}>
+          <div>
+            <span>현재 종목</span>
+            <strong>{stock?.name || '종목 선택'} · {stock?.code || '000000'}</strong>
+          </div>
+          <button type="button" onClick={handleFitChart}>
+            차트 맞춤
+          </button>
+        </div>
+
+        {latest && (
+          <section className={styles.sidebarPriceCard}>
+            <span>{latest.time} 기준</span>
+            <strong>{formatCurrency(latest.close)}</strong>
+            <em>거래량 {formatVolume(latest.volume)}</em>
+          </section>
+        )}
+
+        {aiDecision && (
+          <section className={clsx(
+            styles.sidebarDecisionCard,
+            aiDecision.tone === 'buy' && styles.sidebarDecisionBuy,
+            aiDecision.tone === 'sell' && styles.sidebarDecisionSell
+          )}>
+            <span>AI 판단</span>
+            <strong>{aiDecision.decision}</strong>
+            <p>{aiDecision.summary}</p>
+            <div className={styles.sidebarActionBox}>
+              <b>지금 확인할 것</b>
+              <span>{aiDecision.timingNextAction || aiDecision.primaryCondition || aiDecision.nextWatch}</span>
+            </div>
+          </section>
+        )}
+
+        {chartMetrics && (
+          <section className={styles.sidebarMetricGrid} aria-label="차트 핵심 지표">
+            <article>
+              <span>오늘 흐름</span>
+              <strong className={Number(chartMetrics.changeRate) >= 0 ? styles.up : styles.down}>
+                {formatPercent(chartMetrics.changeRate)}
+              </strong>
+            </article>
+            <article>
+              <span>20일 평균선</span>
+              <strong>{chartMetrics.aboveMa20 ? '위에 있음' : '아래에 있음'}</strong>
+            </article>
+            <article>
+              <span>저항선까지</span>
+              <strong>{formatPercent(chartMetrics.resistanceDistance)}</strong>
+            </article>
+            <article>
+              <span>거래량</span>
+              <strong>{Number.isFinite(chartMetrics.volumeRatio) ? `${Math.round(chartMetrics.volumeRatio)}%` : '확인 필요'}</strong>
+            </article>
+          </section>
+        )}
+
+        {newsDirection && (
+          <section className={styles.sidebarNewsCard}>
+            <span>뉴스가 주는 방향</span>
+            <strong>{newsDirection.label}</strong>
+            <p>상승 {newsDirection.up === null ? '확인 중' : `${newsDirection.up}%`} · 하락 {newsDirection.down === null ? '확인 중' : `${newsDirection.down}%`}</p>
+            <em>{newsDirection.action}</em>
+          </section>
+        )}
+
+        {visibleZoneSummaries.length > 0 && (
+          <section className={styles.sidebarZoneList} aria-label="가격 확인 구간">
+            <span>가격 확인 구간</span>
+            {visibleZoneSummaries.slice(0, 3).map((zone) => (
+              <article key={`${zone.type}-${zone.label}-${zone.price}`}>
+                <b>{zone.label || '확인 구간'}</b>
+                <strong>{zone.price || formatCurrency(zone.midPrice)}</strong>
+                <em>{zone.relation?.label || '가격 확인'}</em>
+              </article>
+            ))}
+          </section>
+        )}
+      </aside>
       <div className={styles.brandBadge}>
         <span>TradingView Lightweight Charts · Apache 2.0</span>
         <strong>{stock?.name || '실시간 종목'} · {stock?.code || '000000'} · {intervalLabel(interval)}</strong>

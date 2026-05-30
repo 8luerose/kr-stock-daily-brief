@@ -168,7 +168,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
   const tradeTiming = stockAdvice.tradeTiming || null;
   const visibleHeadlineCount = newsSentiment?.headlineSignals?.length || 0;
   const adviceDecision = stockAdvice.decision || '관망';
-  const adviceSummary = stockAdvice.summary || '차트, 재무, 뉴스, 센티멘트를 합쳐 매수·관망·매도 조건을 정리합니다.';
+  const adviceSummary = stockAdvice.summary || '차트, 재무, 뉴스 분위기를 함께 보고 매수·관망·매도 조건을 정리합니다.';
   const sentimentLabel = newsSentiment.label || '뉴스 감성 확인';
   const sentimentConfidence = newsSentiment.confidence || '확인 중';
   const sentimentSummary = newsSentiment.summary || '뉴스 헤드라인이 다음 거래일 가격 방향에 줄 수 있는 영향을 정리합니다.';
@@ -195,17 +195,11 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
       ? 'Qdrant 저장 중'
       : qdrant?.asyncUpsertDeduped ? 'Qdrant 저장 대기' : '';
   const workflowChips = [
-    `1 상담 ${adviceDecision}`,
-    `2 뉴스 ${compactProbabilityPair(nextTradingDay)}`,
-    `3 장후 ${ai.marketReport?.mood || afterMarketReport.mood || '확인 중'}`,
-    consensus?.agreement ? `종합 ${consensus.agreement}` : '',
-    personalChip,
-    qdrantChip,
-    reportRuntimeLabelText,
-    compactStorageChip(insights?.storage || ai.storage),
-    compactStorageChip(ai.marketReport?.storage)
+    `판단 ${adviceDecision}`,
+    `뉴스 ${compactProbabilityPair(nextTradingDay)}`,
+    tomorrowFocus ? `다음 확인 ${compactChipText(tomorrowFocus, 24)}` : ''
   ].filter(Boolean);
-  const headerWorkflowChips = workflowChips.slice(0, 5);
+  const headerWorkflowChips = workflowChips.slice(0, 3);
   const marketDashboard = ai.marketReport?.marketDashboard || null;
   const topGainer = marketDashboard?.topGainer || null;
   const topLoser = marketDashboard?.topLoser || null;
@@ -271,72 +265,19 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
           <div className={styles.runtimeNotice}>
             <Info size={15} />
             <span>
-              {ai.modeLabel || '근거 기반 답변'}{ai.llmModel ? ` · ${ai.llmModel}` : ''}. 조건 확인용이며 평균단가·보유기간·손실허용은 샌드박스에 저장된 값만 반영합니다.
+              AI는 차트 흐름과 뉴스를 함께 보고 매수, 관망, 매도 기준을 쉽게 정리합니다. 최종 결정은 사용자가 직접 확인해야 합니다.
             </span>
             {onRefreshAi && (
               <button
                 type="button"
                 className={styles.aiRefreshButton}
                 onClick={onRefreshAi}
-                aria-label="Ollama AI 새로 계산"
+                aria-label="AI 판단 다시 받기"
               >
                 <RefreshCw size={13} aria-hidden="true" />
-                새로 계산
+                AI 판단
               </button>
             )}
-          </div>
-
-          {ai.storage && (
-            <div className={styles.storageNotice}>
-              <Database size={15} />
-              <span>
-                {ai.storage.saved ? `AI 답변 저장 완료: ${ai.storage.table}` : 'AI 답변은 저장되지 않았습니다.'}
-              </span>
-            </div>
-          )}
-
-          <div className={styles.storageNotice}>
-            <Database size={15} />
-            <span>{insightRuntimeLabel}. {insightRuntimeNote}</span>
-          </div>
-
-          <div className={styles.storageNotice}>
-            <Database size={15} />
-            <span>{reportRuntimeLabelText}. {reportRuntimeNoteText}</span>
-          </div>
-
-          {qdrantLabel && (
-            <div className={styles.storageNotice}>
-              <Database size={15} />
-              <span>{qdrantNotice}</span>
-            </div>
-          )}
-
-          <div className={styles.ollamaWorkflowGrid} aria-label="Ollama 로컬 LLM 기능 실행 상태">
-            <article className={styles.workflowCard}>
-              <Cpu size={16} />
-              <div>
-                <span>1. 이 종목 지금 사도 되나요?</span>
-                <strong>{adviceDecision}</strong>
-                <p>{insights ? adviceSummary : insightRuntimeNote}</p>
-              </div>
-            </article>
-            <article className={styles.workflowCard}>
-              <TrendingUp size={16} />
-              <div>
-                <span>2. 뉴스 감성 기반 단기 방향</span>
-                <strong>상승 {probabilityLabel(nextTradingDay.up)} · 하락 {probabilityLabel(nextTradingDay.down)}</strong>
-                <p>{insights ? `${sentimentLabel} · 문맥 ${contextLabel}${visibleHeadlineCount ? ` · 헤드라인 ${visibleHeadlineCount}개` : ''}` : '뉴스 헤드라인과 이벤트 문맥을 로컬 LLM 판단에 연결합니다.'}</p>
-              </div>
-            </article>
-            <article className={styles.workflowCard}>
-              <Newspaper size={16} />
-              <div>
-                <span>3. 매일 장후 시장 요약 리포트</span>
-                <strong>{reportMood}</strong>
-                <p>{reportRuntimeLabelText || reportStorageLabel || reportSummary}</p>
-              </div>
-            </article>
           </div>
 
           {consensus && (
@@ -378,7 +319,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
             </div>
           )}
 
-          {threeFeaturePlan?.steps?.length > 0 && (
+          {false && threeFeaturePlan?.steps?.length > 0 && (
             <div className={styles.threeFeaturePlan} aria-label="Ollama 3단계 실행 순서">
               <div className={styles.threeFeatureHeader}>
                 <span>{threeFeaturePlan.title || 'Ollama 3단계 실행 순서'}</span>
@@ -412,8 +353,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
           {insights && (
             <div className={styles.section}>
               <div className={styles.ollamaTitleRow}>
-                <h4 className={styles.sectionTitle}>로컬 Ollama 인사이트</h4>
-                <span>{insights.modeLabel}{insights.model ? ` · ${insights.model}` : ''}</span>
+                <h4 className={styles.sectionTitle}>AI가 정리한 판단</h4>
               </div>
               {insights.answer && (
                 <p className={styles.ollamaAnswer}>{insights.answer}</p>
@@ -463,7 +403,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
                   <div>
                     <strong>{adviceDecision}</strong>
                     <p>{adviceSummary}</p>
-                    {decisionFactors.length > 0 && (
+                    {false && decisionFactors.length > 0 && (
                       <div className={styles.decisionFactorPanel} aria-label="AI 종합 판단 근거">
                         {decisionFactors.map((factor) => (
                           <span
@@ -480,7 +420,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
                         ))}
                       </div>
                     )}
-                    {personalRisk && (
+                    {false && personalRisk && (
                       <div className={styles.personalRiskPanel} aria-label="개인 조건 손익 기준">
                         <div className={styles.personalRiskHeader}>
                           <b>{personalRisk.statusLabel || '개인 조건 확인'}</b>
@@ -544,7 +484,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
                       {sentimentLabel} · 근거 {sentimentConfidence}
                     </span>
                     <p>{sentimentSummary}</p>
-                    <div className={styles.sentimentScorePanel} aria-label="뉴스 감성 점수 산식">
+                    <div className={styles.sentimentScorePanel} aria-label="뉴스 방향 요약">
                       <div>
                         <span>보정 점수</span>
                         <strong className={sentimentScore > 0 ? styles.posIcon : sentimentScore < 0 ? styles.negIcon : styles.waitIcon}>
@@ -563,7 +503,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
                     {newsSentiment.confidenceReason && (
                       <p className={styles.sentimentCaution}>{newsSentiment.confidenceReason}</p>
                     )}
-                    {(contextLabel || contextReason) && (
+                    {false && (contextLabel || contextReason) && (
                       <div className={styles.contextJudgement} aria-label="Ollama 뉴스 문맥 판단">
                         <b>Ollama 문맥 판단 · {contextLabel}</b>
                         <p>{contextReason}</p>
@@ -583,7 +523,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
                         ))}
                       </ul>
                     )}
-                    {newsSentiment.headlineAnalyses?.length > 0 && (
+                    {false && newsSentiment.headlineAnalyses?.length > 0 && (
                       <div className={styles.headlineAnalysisList} aria-label="뉴스 헤드라인별 해석">
                         {newsSentiment.headlineAnalyses.slice(0, 3).map((item, index) => (
                           <article key={`${item.title}-${index}`}>
@@ -721,14 +661,14 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
               )}
               {insights.limitations?.length > 0 && (
                 <p className={styles.ollamaLimit}>
-                  {insights.configured ? '로컬 LLM 기준: ' : 'Ollama 모델 미설정: '}
+                  참고:
                   {insights.limitations[0]}
                 </p>
               )}
             </div>
           )}
 
-          {(ai.marketReport || ai.marketReportStatus === 'loading' || ai.marketReportStatus === 'unavailable') && (
+          {false && (ai.marketReport || ai.marketReportStatus === 'loading' || ai.marketReportStatus === 'unavailable') && (
             <div className={styles.section}>
               <div className={styles.ollamaTitleRow}>
                 <h4 className={styles.sectionTitle}>시장 전체 장후 리포트</h4>
@@ -884,7 +824,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
             </div>
           </div>
 
-          {ai.portfolioGuidance && (
+          {false && ai.portfolioGuidance && (
             <div className={styles.section}>
               <h4 className={styles.sectionTitle}>내 샌드박스 기준</h4>
               <p className={styles.limitNote}>{ai.portfolioGuidance.summary}</p>
@@ -912,7 +852,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
             </div>
           )}
 
-          {ai.fundamentalGuidance && (
+          {false && ai.fundamentalGuidance && (
             <div className={styles.section}>
               <h4 className={styles.sectionTitle}>재무 스냅샷</h4>
               <p className={styles.limitNote}>{ai.fundamentalGuidance.summary}</p>
@@ -937,7 +877,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
             </div>
           )}
 
-          {(ai.limitation || ai.sourceTitles?.length > 0) && (
+          {false && (ai.limitation || ai.sourceTitles?.length > 0) && (
             <div className={styles.section}>
               <h4 className={styles.sectionTitle}>근거와 한계</h4>
               {ai.limitation && <p className={styles.limitNote}>{ai.limitation}</p>}

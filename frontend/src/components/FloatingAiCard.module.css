@@ -1936,3 +1936,18 @@
     white-space: nowrap;
   }
 }
+
+.storageNotice,
+.ollamaWorkflowGrid,
+.threeFeaturePlan,
+.sentimentScorePanel,
+.contextJudgement,
+.headlineAnalysisList,
+.decisionFactorPanel,
+.personalRiskPanel,
+.marketDashboard,
+.leaderSummaryList,
+.reportTitleMeta,
+.reportStorageNote {
+  display: none;
+}
