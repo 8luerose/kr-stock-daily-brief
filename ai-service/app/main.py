@@ -358,9 +358,9 @@ def _qdrant_timeout() -> float:
 
 def _qdrant_embedding_timeout() -> float:
     try:
-        return max(1.0, min(30.0, float(os.getenv("QDRANT_EMBEDDING_TIMEOUT_SECONDS", "20"))))
+        return max(1.0, min(30.0, float(os.getenv("QDRANT_EMBEDDING_TIMEOUT_SECONDS", "2"))))
     except ValueError:
-        return 20.0
+        return 2.0
 
 
 def _qdrant_meta_base() -> dict[str, Any]:
@@ -1278,12 +1278,25 @@ def _ollama_model() -> str:
     return ""
 
 
+def _float_env(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _ollama_timeout(json_mode: bool = False) -> float:
+    if json_mode:
+        return _float_env("OLLAMA_JSON_TIMEOUT_SECONDS", 6.0)
+    return _float_env("OLLAMA_TIMEOUT_SECONDS", _float_env("LLM_TIMEOUT_SECONDS", 20.0))
+
+
 def _call_ollama_llm(messages: list[dict[str, str]], *, json_mode: bool = False) -> tuple[str | None, dict[str, Any]]:
     model = _ollama_model()
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
-    timeout = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", os.getenv("LLM_TIMEOUT_SECONDS", "20")))
+    timeout = _ollama_timeout(json_mode)
     num_predict = int(
-        os.getenv("OLLAMA_JSON_NUM_PREDICT", "180")
+        os.getenv("OLLAMA_JSON_NUM_PREDICT", "120")
         if json_mode
         else os.getenv("OLLAMA_NUM_PREDICT", os.getenv("LLM_MAX_TOKENS", "650"))
     )
@@ -1358,7 +1371,8 @@ def _ollama_config_meta() -> dict[str, Any]:
         "model": model,
         "baseUrl": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/"),
         "fallbackReason": "",
-        "timeoutSeconds": float(os.getenv("OLLAMA_TIMEOUT_SECONDS", os.getenv("LLM_TIMEOUT_SECONDS", "20"))),
+        "timeoutSeconds": _ollama_timeout(False),
+        "jsonTimeoutSeconds": _ollama_timeout(True),
     }
 
 
@@ -1398,7 +1412,7 @@ def _llm_status(check_runtime: bool = True) -> dict[str, Any]:
     openai_model = os.getenv("LLM_MODEL", "").strip()
     openai_base_url = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     openai_key_set = bool(_openai_compatible_api_key(openai_base_url))
-    llm_timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "20"))
+    llm_timeout = _float_env("LLM_TIMEOUT_SECONDS", 20.0)
     anthropic_key_set = bool(_first_env("ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY"))
     anthropic_model = _first_env(
         "ANTHROPIC_MODEL",
@@ -1409,7 +1423,8 @@ def _llm_status(check_runtime: bool = True) -> dict[str, Any]:
     anthropic_base_url = os.getenv("ANTHROPIC_BASE_URL", "https://api.anthropic.com").rstrip("/")
     ollama_model = _ollama_model()
     ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
-    ollama_timeout = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", os.getenv("LLM_TIMEOUT_SECONDS", "20")))
+    ollama_timeout = _ollama_timeout(False)
+    ollama_json_timeout = _ollama_timeout(True)
     ollama_runtime = _ollama_runtime_status(ollama_base_url, ollama_model) if check_runtime else {}
     preferred = os.getenv("LLM_PROVIDER", "").strip().lower()
 
@@ -1473,12 +1488,14 @@ def _llm_status(check_runtime: bool = True) -> dict[str, Any]:
                 "configured": ollama_configured,
                 "baseUrl": ollama_base_url,
                 "timeoutSeconds": ollama_timeout,
+                "jsonTimeoutSeconds": ollama_json_timeout,
                 "runtime": ollama_runtime,
             },
         },
         "runtime": ollama_runtime if provider == "ollama" else {},
         "fallbackMode": "rag_fallback_rule_based",
         "timeoutSeconds": ollama_timeout if provider == "ollama" else llm_timeout,
+        "jsonTimeoutSeconds": ollama_json_timeout if provider == "ollama" else None,
         "maxTokens": int(os.getenv("LLM_MAX_TOKENS", "650")),
         "qdrant": {
             "enabled": _qdrant_enabled(),
@@ -2787,26 +2804,26 @@ def _three_feature_action_plan(response: dict[str, Any]) -> dict[str, Any]:
     final_action = _clean(consensus.get("nextAction"), "세 기능이 같은 방향을 말하는지 먼저 확인합니다.")
 
     return {
-        "title": "Ollama 3단계 실행 순서",
+        "title": "Ollama 3대 기능 실행 순서",
         "headline": "상담 결론을 먼저 보고, 뉴스 확률과 장후 분위기로 확인 순서를 좁힙니다.",
         "summary": _clean(consensus.get("summary"), "세 기능을 따로 보지 말고 같은 방향인지 비교합니다."),
         "steps": [
             {
-                "label": "1. 상담",
+                "label": "1. 이 종목 지금 사도 되나요?",
                 "result": decision if not personal_status else f"{decision} · {personal_status}",
                 "tone": _tone_from_decision(decision),
                 "action": _compact(advice_action, 110),
                 "why": _compact(advice.get("summary"), 110),
             },
             {
-                "label": "2. 뉴스",
+                "label": "2. 뉴스 감성 기반 단기 방향",
                 "result": f"상승 {up_text} · 하락 {down_text}",
                 "tone": _tone_from_probability(up, down),
                 "action": _compact(news_action, 110),
                 "why": _compact(sentiment.get("summary"), 110),
             },
             {
-                "label": "3. 장후",
+                "label": "3. 매일 장후 시장 요약 리포트",
                 "result": _clean(report.get("mood"), "장후 확인"),
                 "tone": _tone_from_market_report(report),
                 "action": _compact(report_action, 110),

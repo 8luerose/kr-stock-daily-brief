@@ -97,9 +97,9 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
       detail: '저장된 일간 브리프에 Ollama 시장 코멘트를 연결하고 있습니다.',
       tone: 'loading',
       steps: [
-        { label: '상담', state: 'ready' },
-        { label: '뉴스', state: 'ready' },
-        { label: '장후', state: 'loading' }
+        { label: 'AI 상담', state: 'ready' },
+        { label: '뉴스 감성', state: 'ready' },
+        { label: '장후 요약', state: 'loading' }
       ]
     };
   }
@@ -109,9 +109,9 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
       detail: `장후 리포트만 지연 중입니다. ${modeLabel}${storageLabel ? ` · ${storageLabel}` : ''}`,
       tone: 'delayed',
       steps: [
-        { label: '상담', state: 'ready' },
-        { label: '뉴스', state: 'ready' },
-        { label: '장후', state: 'delayed' }
+        { label: 'AI 상담', state: 'ready' },
+        { label: '뉴스 감성', state: 'ready' },
+        { label: '장후 요약', state: 'delayed' }
       ]
     };
   }
@@ -121,9 +121,9 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
       detail: `${modeLabel}${storageLabel ? ` · ${storageLabel}` : ''}${reportLabel ? ` · ${reportLabel}` : ''}`,
       tone: 'ready',
       steps: [
-        { label: '상담', state: 'ready' },
-        { label: '뉴스', state: 'ready' },
-        { label: '장후', state: report ? 'ready' : 'waiting' }
+        { label: 'AI 상담', state: 'ready' },
+        { label: '뉴스 감성', state: 'ready' },
+        { label: '장후 요약', state: report ? 'ready' : 'waiting' }
       ]
     };
   }

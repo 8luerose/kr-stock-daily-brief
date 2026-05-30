@@ -621,12 +621,25 @@ export default function TradingViewPriceChart({
       }))
       : [];
     const planSteps = Array.isArray(threeFeaturePlan?.steps)
-      ? threeFeaturePlan.steps.slice(0, 4).map((step) => ({
-        label: compactText(step?.label, '확인', 12),
-        state: compactText(step?.result, '확인 필요', 28),
-        action: compactText(step?.action, '', 72),
-        tone: ['positive', 'negative', 'mixed', 'neutral'].includes(step?.tone) ? step.tone : 'neutral'
-      })).filter((step) => step.label)
+      ? threeFeaturePlan.steps.slice(0, 4).map((step) => {
+        const title = step?.featureTitle || step?.label || '';
+        const label = title.includes('뉴스')
+          ? '뉴스 감성'
+          : title.includes('장후')
+            ? '장후 요약'
+            : title.includes('사도') || title.includes('상담')
+              ? 'AI 상담'
+              : title.includes('최종')
+                ? '최종 확인'
+                : compactText(step?.label, '확인', 12);
+        return {
+          label,
+          featureTitle: compactText(title, '', 32),
+          state: compactText(step?.result, '확인 필요', 28),
+          action: compactText(step?.action, '', 72),
+          tone: ['positive', 'negative', 'mixed', 'neutral'].includes(step?.tone) ? step.tone : 'neutral'
+        };
+      }).filter((step) => step.label)
       : [];
     const runtime = ai?.ollamaInsights?.runtimeCache || null;
     const refreshStatus = ai?.ollamaInsightsRefreshStatus || '';
@@ -1183,11 +1196,11 @@ export default function TradingViewPriceChart({
       {aiDecision && (
         <div className={styles.mobileChartLens} aria-label="모바일 AI 차트 렌즈">
           <span>
-            <b>AI</b>
+            <b>AI 상담</b>
             <strong>{aiDecision.decision}</strong>
           </span>
           <span>
-            <b>뉴스</b>
+            <b>뉴스 감성</b>
             <strong>상승 {aiDecision.up === null ? '확인' : `${aiDecision.up}%`} · 하락 {aiDecision.down === null ? '확인' : `${aiDecision.down}%`}</strong>
           </span>
           <span>
@@ -1197,7 +1210,13 @@ export default function TradingViewPriceChart({
           {forecastGuide?.planSteps?.length > 0 && (
             <span>
               <b>3단계</b>
-              <strong>{forecastGuide.planSteps.map((step) => step.label.replace(/^[0-9. ]+/, '')).slice(0, 3).join(' → ')}</strong>
+              <strong>{forecastGuide.planSteps.map((step) => {
+                const title = step.featureTitle || step.label;
+                if (title.includes('뉴스')) return '뉴스 감성';
+                if (title.includes('장후')) return '장후 요약';
+                if (title.includes('사도') || title.includes('상담')) return 'AI 상담';
+                return title.replace(/^[0-9. ]+/, '');
+              }).slice(0, 3).join(' → ')}</strong>
             </span>
           )}
           {hasPersonalContext && (

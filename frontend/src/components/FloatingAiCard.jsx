@@ -170,11 +170,11 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
   const reportSummary = ai.marketReport?.llmComment || afterMarketReport.llmComment || '장후 브리프와 시장 분위기 코멘트를 확인합니다.';
   const personalChip = personalRiskChip(personalRisk);
   const workflowChips = [
-    `1 상담 ${adviceDecision}`,
+    `1 지금 사도 되나요? ${adviceDecision}`,
     personalChip,
     insightRuntimeLabel,
-    `2 뉴스 ${compactProbabilityPair(nextTradingDay)}`,
-    `3 장후 ${ai.marketReport?.mood || afterMarketReport.mood || '확인 중'}`,
+    `2 뉴스 감성 ${compactProbabilityPair(nextTradingDay)}`,
+    `3 장후 요약 ${ai.marketReport?.mood || afterMarketReport.mood || '확인 중'}`,
     consensus?.agreement ? `종합 ${consensus.agreement}` : '',
     reportRuntimeLabelText,
     compactStorageChip(insights?.storage || ai.storage),
@@ -284,7 +284,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
             <article className={styles.workflowCard}>
               <Cpu size={16} />
               <div>
-                <span>1. 종목 상담</span>
+                <span>1. 이 종목 지금 사도 되나요?</span>
                 <strong>{adviceDecision}</strong>
                 <p>{insights ? adviceSummary : insightRuntimeNote}</p>
               </div>
@@ -292,7 +292,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
             <article className={styles.workflowCard}>
               <TrendingUp size={16} />
               <div>
-                <span>2. 뉴스 방향</span>
+                <span>2. 뉴스 감성 기반 단기 방향</span>
                 <strong>상승 {probabilityLabel(nextTradingDay.up)} · 하락 {probabilityLabel(nextTradingDay.down)}</strong>
                 <p>{insights ? `${sentimentLabel} · 문맥 ${contextLabel}${visibleHeadlineCount ? ` · 헤드라인 ${visibleHeadlineCount}개` : ''}` : '뉴스 헤드라인과 이벤트 문맥을 로컬 LLM 판단에 연결합니다.'}</p>
               </div>
@@ -300,7 +300,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
             <article className={styles.workflowCard}>
               <Newspaper size={16} />
               <div>
-                <span>3. 장후 리포트</span>
+                <span>3. 매일 장후 시장 요약 리포트</span>
                 <strong>{reportMood}</strong>
                 <p>{reportRuntimeLabelText || reportStorageLabel || reportSummary}</p>
               </div>
@@ -366,7 +366,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
                     )}
                   >
                     <div>
-                      <span>{step.label}</span>
+                      <span>{step.featureTitle || step.label}</span>
                       <strong>{step.result}</strong>
                     </div>
                     <p>{step.action}</p>

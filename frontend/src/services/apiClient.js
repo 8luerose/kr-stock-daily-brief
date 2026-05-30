@@ -515,20 +515,33 @@ function normalizeCrossFeatureConsensus(value = {}) {
   };
 }
 
+function featureTitleForStepLabel(label = "") {
+  const text = String(label || "");
+  if (text.includes("상담") || text.includes("사도")) return "이 종목 지금 사도 되나요?";
+  if (text.includes("뉴스")) return "뉴스 감성 기반 단기 방향";
+  if (text.includes("장후") || text.includes("리포트")) return "매일 장후 시장 요약 리포트";
+  if (text.includes("최종")) return "최종 확인";
+  return text.replace(/^[0-9. ]+/, "") || "확인";
+}
+
 function normalizeThreeFeaturePlan(value = {}) {
   const plan = value && typeof value === "object" ? value : {};
   const steps = Array.isArray(plan.steps) ? plan.steps : [];
   return {
-    title: humanizeText(plan.title || "Ollama 3단계 실행 순서"),
+    title: humanizeText(plan.title || "Ollama 3대 기능 실행 순서"),
     headline: humanizeText(plan.headline || "상담, 뉴스, 장후 리포트를 순서대로 확인합니다."),
     summary: humanizeText(plan.summary || "세 기능이 같은 방향인지 비교합니다."),
-    steps: steps.slice(0, 4).map((item) => ({
-      label: humanizeText(item?.label || "확인"),
-      result: humanizeText(item?.result || "확인 필요"),
-      tone: ["positive", "negative", "neutral", "mixed"].includes(item?.tone) ? item.tone : "neutral",
-      action: humanizeText(item?.action || "다음 종가와 거래량을 확인합니다."),
-      why: humanizeText(item?.why || "")
-    })).filter((item) => item.label)
+    steps: steps.slice(0, 4).map((item) => {
+      const label = humanizeText(item?.label || "확인");
+      return {
+        label,
+        featureTitle: featureTitleForStepLabel(label),
+        result: humanizeText(item?.result || "확인 필요"),
+        tone: ["positive", "negative", "neutral", "mixed"].includes(item?.tone) ? item.tone : "neutral",
+        action: humanizeText(item?.action || "다음 종가와 거래량을 확인합니다."),
+        why: humanizeText(item?.why || "")
+      };
+    }).filter((item) => item.label)
   };
 }
 
