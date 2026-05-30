@@ -301,6 +301,42 @@
   margin-top: 2px;
 }
 
+.aiDecisionReasonGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.aiDecisionReasonGrid div {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.38);
+  padding: 7px;
+}
+
+.aiDecisionReasonGrid b,
+.aiDecisionReasonGrid span {
+  display: block;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.aiDecisionReasonGrid b {
+  color: #bfdbfe;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.25;
+  margin-bottom: 3px;
+}
+
+.aiDecisionReasonGrid span {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.72rem;
+  font-weight: 720;
+  line-height: 1.34;
+}
+
 .zoneRail {
   position: absolute;
   right: clamp(16px, 5vw, 72px);
@@ -537,6 +573,19 @@
 
   .aiDecisionStats strong {
     font-size: 0.72rem;
+  }
+
+  .aiDecisionReasonGrid {
+    gap: 5px;
+  }
+
+  .aiDecisionReasonGrid div {
+    padding: 6px;
+  }
+
+  .aiDecisionReasonGrid span {
+    font-size: 0.66rem;
+    line-height: 1.3;
   }
 
   .aiDecisionPanel small {

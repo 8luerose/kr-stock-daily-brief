@@ -142,11 +142,48 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                   </div>
                 </article>
               </div>
+              {(ai.ollamaInsights.stockAdvice.buyConditions?.length > 0
+                || ai.ollamaInsights.stockAdvice.watchConditions?.length > 0
+                || ai.ollamaInsights.stockAdvice.sellConditions?.length > 0) && (
+                <div className={styles.ollamaConditionGrid} aria-label="Ollama 매매 조건 체크">
+                  <article>
+                    <CheckCircle2 size={15} className={styles.posIcon} />
+                    <div>
+                      <b>매수 검토 조건</b>
+                      <span>{ai.ollamaInsights.stockAdvice.buyConditions?.[0] || '20일선과 거래량 확인 필요'}</span>
+                    </div>
+                  </article>
+                  <article>
+                    <Clock3 size={15} className={styles.waitIcon} />
+                    <div>
+                      <b>관망 조건</b>
+                      <span>{ai.ollamaInsights.stockAdvice.watchConditions?.[0] || '다음 종가와 거래량 확인 필요'}</span>
+                    </div>
+                  </article>
+                  <article>
+                    <XCircle size={15} className={styles.negIcon} />
+                    <div>
+                      <b>매도 검토 조건</b>
+                      <span>{ai.ollamaInsights.stockAdvice.sellConditions?.[0] || '지지선 이탈 여부 확인 필요'}</span>
+                    </div>
+                  </article>
+                </div>
+              )}
               {ai.ollamaInsights.afterMarketReport.nextWatch?.length > 0 && (
                 <div className={styles.nextWatchBox}>
                   <strong>다음 거래일 확인할 것</strong>
                   <ul>
                     {ai.ollamaInsights.afterMarketReport.nextWatch.slice(0, 3).map((item, index) => (
+                      <li key={`${item}-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {ai.ollamaInsights.beginnerNotes?.length > 0 && (
+                <div className={styles.beginnerNoteBox}>
+                  <strong>초보자 기준으로 기억할 것</strong>
+                  <ul>
+                    {ai.ollamaInsights.beginnerNotes.slice(0, 3).map((item, index) => (
                       <li key={`${item}-${index}`}>{item}</li>
                     ))}
                   </ul>

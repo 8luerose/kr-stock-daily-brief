@@ -335,6 +335,47 @@
   margin-top: 7px !important;
 }
 
+.ollamaConditionGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-2);
+}
+
+.ollamaConditionGrid article {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: var(--spacing-2);
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  padding: var(--spacing-3);
+}
+
+.ollamaConditionGrid svg {
+  margin-top: 1px;
+}
+
+.ollamaConditionGrid b,
+.ollamaConditionGrid span {
+  display: block;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.ollamaConditionGrid b {
+  color: var(--color-text-primary);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  margin-bottom: 3px;
+}
+
+.ollamaConditionGrid span {
+  color: var(--color-text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.38;
+}
+
 .marketReportBox {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -424,6 +465,7 @@
 }
 
 .nextWatchBox li,
+.beginnerNoteBox li,
 .ollamaLimit {
   color: var(--color-text-secondary);
   font-size: 0.78rem;
@@ -434,6 +476,28 @@
 
 .ollamaLimit {
   margin: 0;
+}
+
+.beginnerNoteBox {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.09);
+  padding: var(--spacing-3);
+}
+
+.beginnerNoteBox strong {
+  color: #bfdbfe;
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
+.beginnerNoteBox ul {
+  display: grid;
+  gap: 5px;
+  list-style: none;
+  padding: 0;
 }
 
 .conditionGrid {

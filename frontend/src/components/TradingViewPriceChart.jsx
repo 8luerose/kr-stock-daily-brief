@@ -73,6 +73,12 @@ function normalizeDecision(value) {
   return text;
 }
 
+function firstCompact(items, fallback, limit = 76) {
+  if (!Array.isArray(items)) return compactText(fallback, fallback, limit);
+  const found = items.find((item) => String(item || '').trim());
+  return compactText(found || fallback, fallback, limit);
+}
+
 function parsePriceRange(priceStr) {
   if (!priceStr) return null;
   const numbers = String(priceStr).replace(/,/g, '').match(/\d+/g);
@@ -249,6 +255,14 @@ export default function TradingViewPriceChart({
     const up = Number(probabilities.up);
     const down = Number(probabilities.down);
     const flat = Number(probabilities.flat);
+    const primaryCondition = decision.includes('매수')
+      ? firstCompact(advice.buyConditions, '20일선 위 유지와 거래량 증가가 함께 필요합니다.')
+      : decision.includes('매도')
+        ? firstCompact(advice.sellConditions, '지지선 이탈과 하락 거래량 증가를 먼저 확인합니다.')
+        : firstCompact(advice.watchConditions, '다음 종가와 거래량을 확인할 때까지 관망합니다.');
+    const positiveReason = firstCompact(sentiment.upReasons, '좋게 볼 근거는 가격 반응과 거래량으로 재확인해야 합니다.');
+    const cautionReason = firstCompact(sentiment.downRisks, sentiment.caution || '반대 신호와 뉴스 원문을 확인해야 합니다.');
+    const nextWatch = firstCompact(report.nextWatch, primaryCondition);
     const model = insights?.model || ai?.llmModel || '';
     const modeLabel = insights?.modeLabel || ai?.modeLabel || '근거 기반 AI';
     const title = insights
@@ -274,6 +288,10 @@ export default function TradingViewPriceChart({
       down: Number.isFinite(down) ? down : null,
       flat: Number.isFinite(flat) ? flat : null,
       mood: compactText(report.mood, '장후 분위기 확인 중', 24),
+      primaryCondition,
+      positiveReason,
+      cautionReason,
+      nextWatch,
       title,
       modeLabel: compactText(statusLabel, '근거 기반 AI', 48),
       live: insights?.mode === 'ollama_llm' || ai?.llmUsed
@@ -556,6 +574,20 @@ export default function TradingViewPriceChart({
             <span>상승 <strong>{aiDecision.up === null ? '확인 중' : `${aiDecision.up}%`}</strong></span>
             <span>하락 <strong>{aiDecision.down === null ? '확인 중' : `${aiDecision.down}%`}</strong></span>
             <span>{aiDecision.mood}</span>
+          </div>
+          <div className={styles.aiDecisionReasonGrid}>
+            <div>
+              <b>판단 근거</b>
+              <span>{aiDecision.positiveReason}</span>
+            </div>
+            <div>
+              <b>주의 근거</b>
+              <span>{aiDecision.cautionReason}</span>
+            </div>
+            <div>
+              <b>다음 확인</b>
+              <span>{aiDecision.nextWatch || aiDecision.primaryCondition}</span>
+            </div>
           </div>
           <small>{aiDecision.modeLabel}</small>
         </aside>
