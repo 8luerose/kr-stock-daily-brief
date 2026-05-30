@@ -115,7 +115,10 @@ function App() {
       {/* Loading Overlay */}
       {loading && !data && (
         <div className={styles.loadingOverlay}>
-          <div className={styles.spinner} />
+          <div className={styles.spinnerBox}>
+            <div className={styles.spinner} />
+            <span className={styles.loadingText}>데이터를 불러오고 있습니다</span>
+          </div>
         </div>
       )}
 

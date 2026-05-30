@@ -1133,11 +1133,11 @@ export default function TradingViewPriceChart({
         </div>
         {chartError && <div className={styles.chartError}>{chartError}</div>}
       </div>
-      <aside className={styles.decisionSidebar} aria-label="종목 판단 요약">
+      <aside className={styles.decisionSidebar} aria-label="AI 투자 비서 요약">
         <div className={styles.sidebarHeader}>
           <div>
             <span>현재 종목</span>
-            <strong>{stock?.name || '종목 선택'} · {stock?.code || '000000'}</strong>
+            <strong>{stock?.name || '종목 선택'} ({stock?.code || '000000'})</strong>
           </div>
           <button type="button" onClick={handleFitChart}>
             차트 맞춤
@@ -1146,9 +1146,11 @@ export default function TradingViewPriceChart({
 
         {latest && (
           <section className={styles.sidebarPriceCard}>
-            <span>{latest.time} 기준</span>
+            <span>{latest.time} 기준 현재가</span>
             <strong>{formatCurrency(latest.close)}</strong>
-            <em>전일 대비 {formatPercent(chartMetrics?.changeRate)}</em>
+            <em className={clsx(Number(chartMetrics?.changeRate) >= 0 ? styles.pos : styles.neg)}>
+              전일 대비 {formatPercent(chartMetrics?.changeRate)}
+            </em>
           </section>
         )}
 
@@ -1158,47 +1160,38 @@ export default function TradingViewPriceChart({
             aiDecision.tone === 'buy' && styles.sidebarDecisionBuy,
             aiDecision.tone === 'sell' && styles.sidebarDecisionSell
           )}>
-            <span>AI 도움 요약</span>
-            <strong>{plainDecisionLabel(aiDecision.decision)}</strong>
+            <span>이 종목 지금 사도 되나요? (AI 비서 의견)</span>
+            <strong>
+              {aiDecision.tone === 'buy' ? '🔴 매수 검토 권장' : aiDecision.tone === 'sell' ? '🔵 매도 검토 권장' : '🟢 관망 권장'}
+            </strong>
             <p>{plainDecisionSummary(aiDecision, chartMetrics)}</p>
             <div className={styles.sidebarActionBox}>
-              <b>지금 확인할 것</b>
+              <b>내일 장 시작 시 체크 포인트</b>
               <span>{plainNextCheck(aiDecision, chartMetrics)}</span>
             </div>
           </section>
         )}
 
-        {chartMetrics && (
-          <section className={styles.sidebarMetricGrid} aria-label="전일 대비 변화">
-            <article className={styles.sidebarMetricPrimary}>
-              <span>전일 대비</span>
-              <strong className={Number(chartMetrics.changeRate) >= 0 ? styles.up : styles.down}>
-                {formatPercent(chartMetrics.changeRate)}
-              </strong>
-            </article>
-          </section>
-        )}
-
-        <div className={styles.sidebarActionButtons} aria-label="주요 기능">
+        <div className={styles.sidebarActionButtons} aria-label="AI 투자 도우미">
           <button
             type="button"
             className={clsx(styles.primaryAiAction, activeAssistPanel === 'ai' && styles.assistActionActive)}
             onClick={handleAiHelpClick}
-            aria-label="AI 도움 받기"
+            aria-label="AI 상세 판단 보기"
             aria-pressed={activeAssistPanel === 'ai'}
           >
             <Brain size={15} aria-hidden="true" />
-            <span>AI 도움 받기</span>
+            <span>AI 상세 판단</span>
           </button>
           <button
             type="button"
             className={clsx(styles.briefAction, activeAssistPanel === 'brief' && styles.assistActionActive)}
             onClick={handleBriefClick}
-            aria-label="브리프 불러오기"
+            aria-label="시장 브리프"
             aria-pressed={activeAssistPanel === 'brief'}
           >
             <Newspaper size={15} aria-hidden="true" />
-            <span>브리프 불러오기</span>
+            <span>시장 브리프</span>
           </button>
         </div>
 
@@ -1210,14 +1203,14 @@ export default function TradingViewPriceChart({
               aiDecision.tone === 'buy' && styles.aiHelpPanelBuy,
               aiDecision.tone === 'sell' && styles.aiHelpPanelSell
             )}
-            aria-label="AI 도움 받기 결과"
+            aria-label="AI 상세 전략 계획"
           >
             <div className={styles.assistPanelHeader}>
-              <span>{stock?.name || '현재 종목'} AI 도움</span>
+              <span>{stock?.name || '현재 종목'} 맞춤 전략</span>
               <strong>{plainDecisionLabel(aiDecision.decision)}</strong>
             </div>
-            <p>{stock?.name || '이 종목'} 기준으로만 차트, 뉴스, 가격 조건을 정리했습니다.</p>
-            <div className={styles.assistTimingGrid} aria-label="언제 사고 언제 팔지">
+            <p>로컬 AI가 차트, 뉴스, 재무를 종합하여 산출한 시나리오별 검토 가격 기준입니다.</p>
+            <div className={styles.assistTimingGrid} aria-label="시나리오별 진입 시점">
               <article>
                 <b>살 때</b>
                 <span>{aiDecision.tradeTiming.entryTiming || aiDecision.primaryCondition}</span>
@@ -1231,28 +1224,28 @@ export default function TradingViewPriceChart({
                 <span>{aiDecision.tradeTiming.waitCondition || aiDecision.nextWatch}</span>
               </article>
               <article>
-                <b>판단 바꿀 때</b>
-                <span>{aiDecision.tradeTiming.invalidationTrigger || '가격·뉴스·거래가 예상과 반대로 움직이면 다시 봅니다.'}</span>
+                <b>신호 바꿀 때</b>
+                <span>{aiDecision.tradeTiming.invalidationTrigger || '신호와 거래량 흐름이 예상과 반대로 엇갈리면 대기합니다.'}</span>
               </article>
             </div>
-            <div className={styles.aiFeatureGrid} aria-label="AI 세 가지 기능">
+            <div className={styles.aiFeatureGrid} aria-label="전략 요약">
               <article>
-                <span>1. 종목 판단</span>
+                <span>1단계 종목 판단</span>
                 <strong>{aiDecision.decision}</strong>
                 <p>{aiDecision.primaryCondition}</p>
               </article>
               <article>
-                <span>2. 뉴스 방향</span>
-                <strong>{newsDirection ? newsDirection.label : '뉴스 확인 중'}</strong>
+                <span>2단계 뉴스 감성</span>
+                <strong>{newsDirection ? newsDirection.label : '뉴스 분석 대기'}</strong>
                 <p>
                   {newsDirection
-                    ? `상승 ${newsDirection.up ?? '확인'}% · 하락 ${newsDirection.down ?? '확인'}%. ${newsDirection.action}`
-                    : `${stock?.name || '이 종목'} 관련 뉴스와 이벤트를 확인합니다.`}
+                    ? `단기 상승 확률 ${newsDirection.up ?? '확인'}% · 하락 ${newsDirection.down ?? '확인'}%. ${newsDirection.action}`
+                    : '최신 문맥 지표를 읽고 있습니다.'}
                 </p>
               </article>
               <article>
-                <span>3. 가격 기준</span>
-                <strong>전일 대비 {formatPercent(chartMetrics?.changeRate)}</strong>
+                <span>3단계 가격 대응</span>
+                <strong>전일비 {formatPercent(chartMetrics?.changeRate)}</strong>
                 <p>{plainNextCheck(aiDecision, chartMetrics)}</p>
               </article>
             </div>
@@ -1261,16 +1254,16 @@ export default function TradingViewPriceChart({
 
         {newsDirection && (
           <section className={styles.sidebarNewsCard}>
-            <span>뉴스가 주는 방향</span>
+            <span>시장 뉴스 단기 감성 지표</span>
             <strong>{newsDirection.label}</strong>
-            <p>상승 {newsDirection.up === null ? '확인 중' : `${newsDirection.up}%`} · 하락 {newsDirection.down === null ? '확인 중' : `${newsDirection.down}%`}</p>
+            <p>단기 상승 {newsDirection.up === null ? '확인 중' : `${newsDirection.up}%`} · 하락 {newsDirection.down === null ? '확인 중' : `${newsDirection.down}%`}</p>
             <em>{newsDirection.action}</em>
           </section>
         )}
 
         {simpleVisibleZoneSummaries.length > 0 && (
-          <section className={styles.sidebarZoneList} aria-label="매수와 위험 기준">
-            <span>매수와 위험 기준</span>
+          <section className={styles.sidebarZoneList} aria-label="주요 대응 가이드 가격">
+            <span>대응 기준 가격선</span>
             {simpleVisibleZoneSummaries.map((zone) => (
               <article key={`${zone.type}-${zone.label}-${zone.price}`}>
                 <b>{simpleZoneLabel(zone)}</b>
