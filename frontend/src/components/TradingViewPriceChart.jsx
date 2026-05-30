@@ -217,6 +217,18 @@ function fundamentalStatusLabel(summary, riskNotes = []) {
   return '재무 반영';
 }
 
+function resolveOllamaStatus(ai, insights = ai?.ollamaInsights) {
+  return ai?.ollamaInsightsStatus
+    || (insights ? 'ready'
+      : ai?.aiLayerStatus === 'ollama_failed' ? 'failed'
+        : ai?.aiLayerStatus === 'ollama_delayed' ? 'delayed'
+          : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+}
+
+function isOllamaDelayed(status) {
+  return status === 'failed' || status === 'delayed';
+}
+
 export default function TradingViewPriceChart({
   stock,
   interval = 'daily',
@@ -395,10 +407,9 @@ export default function TradingViewPriceChart({
 
   const aiDecision = useMemo(() => {
     const insights = ai?.ollamaInsights;
-    const ollamaStatus = ai?.ollamaInsightsStatus
-      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const ollamaStatus = resolveOllamaStatus(ai, insights);
     const isWaitingForOllama = ollamaStatus === 'loading' && !insights;
-    const isOllamaDelayed = ollamaStatus === 'failed' && !insights;
+    const isOllamaWaitingLong = isOllamaDelayed(ollamaStatus) && !insights;
     const advice = insights?.stockAdvice || {};
     const sentiment = insights?.newsSentiment || {};
     const report = insights?.afterMarketReport || {};
@@ -411,7 +422,7 @@ export default function TradingViewPriceChart({
       ? 'Ollama가 차트, 뉴스, 매매 구간을 합쳐 판단하는 중입니다.'
       : compactText(
         advice.summary || ai?.conclusion,
-        isOllamaDelayed ? 'Ollama 응답이 늦어 현재는 규칙형 차트 근거를 보여줍니다.' : '차트와 뉴스 근거를 모으는 중입니다.',
+        isOllamaWaitingLong ? 'Ollama 응답이 늦어 현재는 규칙형 차트 근거를 보여줍니다.' : '차트와 뉴스 근거를 모으는 중입니다.',
         96
       );
     const up = Number(probabilities.up);
@@ -451,15 +462,15 @@ export default function TradingViewPriceChart({
       ? (insights.mode === 'ollama_llm' ? 'Ollama AI 판단' : 'Ollama 미리보기')
       : isWaitingForOllama
         ? 'Ollama AI 준비 중'
-        : isOllamaDelayed
-          ? 'Ollama 응답 지연'
+        : isOllamaWaitingLong
+          ? 'Ollama 계산 지연'
           : ai?.llmProvider === 'ollama'
             ? 'Ollama AI 판단'
             : 'AI 판단 준비 중';
     const statusLabel = isWaitingForOllama
       ? '로컬 LLM이 차트와 뉴스를 읽는 중'
-      : isOllamaDelayed
-        ? 'Ollama 지연 · 규칙형 근거 유지'
+      : isOllamaWaitingLong
+        ? 'Ollama 지연 · 완료 시 자동 반영'
         : `${modeLabel}${model ? ` · ${model}` : ''}`;
 
     return {
@@ -495,10 +506,10 @@ export default function TradingViewPriceChart({
 
   const newsDirection = useMemo(() => {
     const insights = ai?.ollamaInsights;
-    const ollamaStatus = ai?.ollamaInsightsStatus
-      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const ollamaStatus = resolveOllamaStatus(ai, insights);
     const isWaitingForOllama = ollamaStatus === 'loading' && !insights;
-    if (!insights && !isWaitingForOllama) return null;
+    const delayed = isOllamaDelayed(ollamaStatus) && !insights;
+    if (!insights && !isWaitingForOllama && !delayed) return null;
 
     const sentiment = insights?.newsSentiment || {};
     const probabilities = sentiment?.nextTradingDay || {};
@@ -506,9 +517,11 @@ export default function TradingViewPriceChart({
     const down = probabilityValue(probabilities.down);
     const flat = probabilityValue(probabilities.flat);
     const score = Number(sentiment.score ?? sentiment.scoreBreakdown?.adjustedScore);
-    const tone = isWaitingForOllama ? 'neutral' : probabilityTone(up, down);
+    const tone = (isWaitingForOllama || delayed) ? 'neutral' : probabilityTone(up, down);
     const label = isWaitingForOllama
       ? '계산 중'
+      : delayed
+        ? '지연 중'
       : tone === 'up'
         ? '상승 우위'
         : tone === 'down'
@@ -519,7 +532,11 @@ export default function TradingViewPriceChart({
       || '뉴스 헤드라인 근거를 확인 중입니다.';
     const action = firstCompact(
       sentiment.actionGuide || sentiment.tradingScenarios,
-      isWaitingForOllama ? 'Ollama가 뉴스와 이벤트를 읽는 중입니다.' : sentiment.caution || '뉴스 원문과 거래량 반응을 함께 확인합니다.',
+      isWaitingForOllama
+        ? 'Ollama가 뉴스와 이벤트를 읽는 중입니다.'
+        : delayed
+          ? 'Ollama 결과가 도착하면 자동 반영됩니다. 지금은 가격과 거래량을 먼저 봅니다.'
+          : sentiment.caution || '뉴스 원문과 거래량 반응을 함께 확인합니다.',
       92
     );
     return {
@@ -533,7 +550,8 @@ export default function TradingViewPriceChart({
       contextLabel: compactText(sentiment.llmContextLabel, '문맥 판단 대기', 26),
       headline: compactText(headline, '뉴스 헤드라인 확인 필요', 88),
       action,
-      loading: isWaitingForOllama
+      loading: isWaitingForOllama,
+      delayed
     };
   }, [ai]);
 

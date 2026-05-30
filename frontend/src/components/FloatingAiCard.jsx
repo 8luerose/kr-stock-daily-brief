@@ -66,6 +66,7 @@ function fundamentalStatusLabel(summary, riskNotes = []) {
 function ollamaRuntimeLabel(status, hasInsights, runtime) {
   if (runtime?.label) return runtime.label;
   if (status === 'loading') return '새 Ollama 계산 중';
+  if (status === 'delayed') return 'Ollama 지연 · 자동 반영';
   if (status === 'failed') return '규칙형 근거 유지';
   if (hasInsights) return 'Ollama 응답 반영';
   return 'Ollama 대기';
@@ -74,6 +75,7 @@ function ollamaRuntimeLabel(status, hasInsights, runtime) {
 function ollamaRuntimeNote(status, hasInsights, runtime) {
   if (runtime?.note) return runtime.note;
   if (status === 'loading') return '차트와 기본 근거는 먼저 보여주고, 상담·뉴스 방향 답변은 로컬 LLM 응답이 오면 이어 붙입니다.';
+  if (status === 'delayed') return '로컬 LLM 계산이 오래 걸리고 있습니다. 화면은 계속 쓸 수 있고, 결과가 도착하면 자동으로 바뀝니다.';
   if (status === 'failed') return '로컬 LLM 응답이 지연되어 화면은 규칙형 근거로 유지합니다.';
   if (hasInsights) return '현재 종목의 상담·뉴스 방향·장후 요약을 Ollama 결과로 반영했습니다.';
   return '종목을 선택하면 로컬 Ollama가 상담과 뉴스 방향을 계산합니다.';
@@ -124,7 +126,10 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
   const insightRuntime = insights?.runtimeCache || null;
   const reportRuntime = ai.marketReport?.runtimeCache || null;
   const ollamaStatus = ai.ollamaInsightsStatus
-    || (insights ? 'ready' : ai.aiLayerStatus === 'ollama_failed' ? 'failed' : ai.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    || (insights ? 'ready'
+      : ai.aiLayerStatus === 'ollama_failed' ? 'failed'
+        : ai.aiLayerStatus === 'ollama_delayed' ? 'delayed'
+          : ai.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
   const marketReportStatus = ai.marketReportStatus || (ai.marketReport ? 'ready' : 'waiting');
   const insightRuntimeLabel = ollamaRuntimeLabel(ollamaStatus, Boolean(insights), insightRuntime);
   const insightRuntimeNote = ollamaRuntimeNote(ollamaStatus, Boolean(insights), insightRuntime);

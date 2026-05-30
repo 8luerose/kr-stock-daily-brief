@@ -65,6 +65,22 @@ function marketMoodTone(value = '') {
   return 'neutral';
 }
 
+function resolveOllamaStatus(ai, insights = ai?.ollamaInsights) {
+  return ai?.ollamaInsightsStatus
+    || (insights ? 'ready'
+      : ai?.aiLayerStatus === 'ollama_failed' ? 'failed'
+        : ai?.aiLayerStatus === 'ollama_delayed' ? 'delayed'
+          : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+}
+
+function isOllamaDelayed(status) {
+  return status === 'failed' || status === 'delayed';
+}
+
+function hasNumericValue(value) {
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+}
+
 export default function ImmersiveChart({ stock, chart, zones, events, ai, indicatorSnapshot, decisionSummary, interval, onChangeInterval, stockOptions = [], onChangeStock, learningMode, onTermClick, aiCardExpanded = false, onPanelOpenChange, onRefreshAi }) {
   const toolbarRef = useRef(null);
   const [activePanel, setActivePanel] = useState('none'); // 'none', 'stocks', 'guide', 'ai'
@@ -131,11 +147,10 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
 
   const aiExecutionSteps = useMemo(() => {
     const insights = ai?.ollamaInsights;
-    const ollamaStatus = ai?.ollamaInsightsStatus
-      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const ollamaStatus = resolveOllamaStatus(ai, insights);
     const marketReportStatus = ai?.marketReportStatus || (ai?.marketReport ? 'ready' : '');
     const isLoading = ollamaStatus === 'loading';
-    const isDelayed = ollamaStatus === 'failed';
+    const isDelayed = isOllamaDelayed(ollamaStatus);
     const hasAdvice = Boolean(insights?.stockAdvice?.decision || insights?.stockAdvice?.summary);
     const hasNews = Boolean(insights?.newsSentiment?.summary || insights?.newsSentiment?.nextTradingDay);
     const report = ai?.marketReport || insights?.afterMarketReport || null;
@@ -155,7 +170,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         ? '최신 저장 브리프 확인 중'
         : marketReportStatus === 'unavailable' ? '장후 리포트 지연' : '장후 리포트 대기';
     const reportState = report ? 'ready' : marketReportStatus === 'loading' ? 'loading' : marketReportStatus === 'unavailable' ? 'delayed' : 'waiting';
-    const llmLabel = isOllamaLlm ? 'Ollama LLM 응답' : isLoading ? 'Ollama 계산 중' : isDelayed ? '규칙형 보강' : 'Ollama 대기';
+    const llmLabel = isOllamaLlm ? 'Ollama LLM 응답' : isLoading ? 'Ollama 계산 중' : isDelayed ? 'Ollama 지연 · 도착 시 자동 반영' : 'Ollama 대기';
     const storageLabel = insights?.runtimeCache?.label
       || (insights?.storage?.saved ? '상담 DB 저장' : hasAdvice ? '상담 저장 확인 필요' : '저장 전');
     const qdrantLabel = insights?.qdrant?.enabled ? `Qdrant ${insights.qdrant.retrievedCount || 0}개` : 'Qdrant 대기';
@@ -199,8 +214,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     const storage = insights?.storage || ai?.storage;
     const runtimeCache = insights?.runtimeCache;
     const reportRuntimeCache = ai?.marketReport?.runtimeCache;
-    const ollamaStatus = ai?.ollamaInsightsStatus
-      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const ollamaStatus = resolveOllamaStatus(ai, insights);
     const marketReportStatus = ai?.marketReportStatus || (ai?.marketReport ? 'ready' : 'waiting');
     const status = hasLoading
       ? 'AI 실행 중'
@@ -216,7 +230,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       mode: ollamaStatus === 'loading' ? 'Ollama LLM 준비' : insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : '근거 계산',
       storageLabel: runtimeCache?.label
         || (ollamaStatus === 'loading' ? '새 Ollama 계산 중'
-          : ollamaStatus === 'failed' ? '규칙형 근거 유지'
+          : isOllamaDelayed(ollamaStatus) ? '도착 시 자동 반영'
             : storage?.saved ? `상담 DB #${storage.id || '저장'}` : '기업 선택 저장 안 함'),
       reportStorageLabel: reportRuntimeCache?.label
         || (ai?.marketReport?.storage?.cached ? '장후 DB 재사용'
@@ -231,10 +245,9 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
 
   const stockPanelAdvice = useMemo(() => {
     const insights = ai?.ollamaInsights;
-    const ollamaStatus = ai?.ollamaInsightsStatus
-      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const ollamaStatus = resolveOllamaStatus(ai, insights);
     const loading = ollamaStatus === 'loading' && !insights;
-    const delayed = ollamaStatus === 'failed' && !insights;
+    const delayed = isOllamaDelayed(ollamaStatus) && !insights;
     const advice = insights?.stockAdvice || {};
     const sentiment = insights?.newsSentiment || {};
     const coach = insights?.beginnerCoach || {};
@@ -273,9 +286,9 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         96
       );
     const news = sentiment.nextTradingDay || {};
-    const newsLabel = Number.isFinite(Number(news.up)) && Number.isFinite(Number(news.down))
+    const newsLabel = hasNumericValue(news.up) && hasNumericValue(news.down)
       ? `상승 ${Math.round(Number(news.up))}% · 하락 ${Math.round(Number(news.down))}%`
-      : loading ? '뉴스 계산 중' : '뉴스 확인 필요';
+      : loading ? '뉴스 계산 중' : delayed ? 'Ollama 지연 중' : '뉴스 확인 필요';
 
     return {
       decision,
@@ -286,15 +299,14 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       priceLabel: formatCurrency(latest?.close),
       ma20Label: formatCurrency(ma20),
       newsLabel,
-      sourceLabel: insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : loading ? 'Ollama 계산 중' : delayed ? '규칙형 유지' : '근거 계산'
+      sourceLabel: insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : loading ? 'Ollama 계산 중' : delayed ? '지연 · 자동 반영' : '근거 계산'
     };
   }, [ai, chartData, decisionSummary, indicatorSnapshot]);
 
   const stockPanelNews = useMemo(() => {
     const insights = ai?.ollamaInsights;
     const sentiment = insights?.newsSentiment || {};
-    const ollamaStatus = ai?.ollamaInsightsStatus
-      || (insights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const ollamaStatus = resolveOllamaStatus(ai, insights);
     const loading = ollamaStatus === 'loading' && !insights;
     const headline = sentiment.headlineAnalyses?.[0] || null;
     const fallbackHeadline = sentiment.headlineSignals?.[0] || events?.[0]?.title;
@@ -374,8 +386,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
 
   const stockPanelConsensus = useMemo(() => {
     const consensus = ai?.ollamaInsights?.crossFeatureConsensus || null;
-    const status = ai?.ollamaInsightsStatus
-      || (ai?.ollamaInsights ? 'ready' : ai?.aiLayerStatus === 'ollama_failed' ? 'failed' : ai?.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
+    const status = resolveOllamaStatus(ai);
     if (consensus) {
       return {
         ...consensus,
@@ -397,6 +408,22 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         signals: [
           { label: '상담', state: '계산 중', tone: 'neutral' },
           { label: '뉴스', state: '계산 중', tone: 'neutral' },
+          { label: '장후', state: ai?.marketReport ? '장후 반영' : '확인 중', tone: 'neutral' }
+        ]
+      };
+    }
+    if (isOllamaDelayed(status)) {
+      return {
+        title: '상담·뉴스·장후 종합 확인',
+        agreement: '지연 중',
+        tone: 'mixed',
+        headline: 'Ollama 응답이 늦어 기본 근거를 먼저 보여줍니다.',
+        summary: '차트와 장후 저장본은 계속 사용할 수 있고, 로컬 LLM 결과가 도착하면 자동으로 바뀝니다.',
+        nextAction: '기다리는 동안 현재가, 20일선, 거래량, 뉴스 원문을 먼저 확인합니다.',
+        caution: '지연 상태를 매수·매도 신호로 해석하지 않습니다.',
+        signals: [
+          { label: '상담', state: '지연 중', tone: 'neutral' },
+          { label: '뉴스', state: '지연 중', tone: 'neutral' },
           { label: '장후', state: ai?.marketReport ? '장후 반영' : '확인 중', tone: 'neutral' }
         ]
       };

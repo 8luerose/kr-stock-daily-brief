@@ -31,6 +31,7 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
 
   useEffect(() => {
     let mounted = true;
+    let ollamaDelayTimer = null;
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     const fetchWorkspace = async () => {
@@ -54,6 +55,26 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
           setData(workspaceWithPendingAi);
           setLoading(false);
           prefetchStockWorkspaces(activeCode, interval);
+          ollamaDelayTimer = window.setTimeout(() => {
+            if (!mounted || requestId !== requestIdRef.current) return;
+            setData((current) => {
+              if (!current || current.stock?.code !== workspaceData.stock?.code || current.chart?.interval !== workspaceData.chart?.interval) {
+                return current;
+              }
+              if (current.ai?.ollamaInsights || current.ai?.ollamaInsightsStatus !== 'loading') {
+                return current;
+              }
+              return {
+                ...current,
+                ai: {
+                  ...current.ai,
+                  ollamaInsightsStatus: 'delayed',
+                  aiLayerStatus: current.ai?.aiLayerStatus === 'loading' ? 'ollama_delayed' : current.ai?.aiLayerStatus,
+                  modeLabel: 'Ollama 계산 지연, 완료 시 자동 반영'
+                }
+              };
+            });
+          }, 12000);
           let marketReportStarted = false;
           const attachAfterMarketReport = async () => {
             if (marketReportStarted) return;
@@ -115,6 +136,10 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
             try {
               const ollamaInsights = await loadStockOllamaInsights(workspaceData, interval);
               if (!mounted || requestId !== requestIdRef.current) return;
+              if (ollamaDelayTimer) {
+                window.clearTimeout(ollamaDelayTimer);
+                ollamaDelayTimer = null;
+              }
               mergeAiForCurrentWorkspace((current) => {
                 return {
                   ...current,
@@ -156,7 +181,10 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
       }
     };
     fetchWorkspace();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+      if (ollamaDelayTimer) window.clearTimeout(ollamaDelayTimer);
+    };
   }, [activeCode, interval, portfolioRefreshKey]);
 
   const changeInterval = useCallback((newInterval) => {

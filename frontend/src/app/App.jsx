@@ -44,7 +44,10 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
 
   const aiStatus = data.ai?.aiLayerStatus || (data.ai?.ollamaInsights ? 'ready' : '');
   const ollamaStatus = data.ai?.ollamaInsightsStatus
-    || (data.ai?.ollamaInsights ? 'ready' : aiStatus === 'ollama_failed' ? 'failed' : aiStatus === 'loading' ? 'loading' : 'waiting');
+    || (data.ai?.ollamaInsights ? 'ready'
+      : aiStatus === 'ollama_failed' ? 'failed'
+        : aiStatus === 'ollama_delayed' ? 'delayed'
+          : aiStatus === 'loading' ? 'loading' : 'waiting');
   const reportStatus = data.ai?.marketReportStatus || (data.ai?.marketReport ? 'ready' : '');
   const insights = data.ai?.ollamaInsights;
   const report = data.ai?.marketReport || insights?.afterMarketReport;
@@ -67,10 +70,12 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
       ]
     };
   }
-  if (ollamaStatus === 'failed') {
+  if (ollamaStatus === 'failed' || ollamaStatus === 'delayed') {
     return {
-      title: 'Ollama 응답 지연',
-      detail: '화면은 규칙형 근거로 유지하고, 로컬 LLM 응답은 다시 붙일 수 있습니다.',
+      title: ollamaStatus === 'delayed' ? 'Ollama 계산 지연 중' : 'Ollama 응답 지연',
+      detail: ollamaStatus === 'delayed'
+        ? '차트와 규칙형 근거는 계속 사용할 수 있고, 로컬 LLM 결과가 도착하면 자동 반영합니다.'
+        : '화면은 규칙형 근거로 유지하고, 로컬 LLM 응답은 다시 붙일 수 있습니다.',
       tone: 'delayed',
       steps: [
         { label: '상담', state: 'delayed' },
