@@ -148,6 +148,28 @@ function probabilityValue(value) {
   return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : null;
 }
 
+function hoverPriceState(row) {
+  const close = Number(row?.close);
+  const ma20 = Number(row?.ma20);
+  if (!Number.isFinite(close) || !Number.isFinite(ma20) || ma20 <= 0) {
+    return '20일선 확인 필요';
+  }
+  const distance = ((close - ma20) / ma20) * 100;
+  if (Math.abs(distance) <= 1) return `20일선 근처 ${formatPercent(distance)}`;
+  return close > ma20 ? `20일선 위 ${formatPercent(distance)}` : `20일선 아래 ${formatPercent(distance)}`;
+}
+
+function hoverVolumeState(row, volumeAvg) {
+  const volume = Number(row?.volume);
+  if (!Number.isFinite(volume) || !Number.isFinite(volumeAvg) || volumeAvg <= 0) {
+    return '거래량 평균 확인 필요';
+  }
+  const ratio = (volume / volumeAvg) * 100;
+  if (ratio >= 140) return `거래량 강함 ${Math.round(ratio)}%`;
+  if (ratio <= 70) return `거래량 약함 ${Math.round(ratio)}%`;
+  return `거래량 보통 ${Math.round(ratio)}%`;
+}
+
 function fundamentalStatusLabel(summary, riskNotes = []) {
   const text = [summary, ...(Array.isArray(riskNotes) ? riskNotes : [])].filter(Boolean).join(' ');
   if (!text) return '재무 확인';
@@ -421,6 +443,27 @@ export default function TradingViewPriceChart({
       loading: isWaitingForOllama
     };
   }, [ai]);
+
+  const hoverInsight = useMemo(() => {
+    if (!hover || !aiDecision) return null;
+    const close = Number(hover.close);
+    const open = Number(hover.open);
+    const candleDirection = Number.isFinite(close) && Number.isFinite(open)
+      ? close >= open ? '양봉' : '음봉'
+      : '캔들';
+    const newsLine = newsDirection
+      ? `${newsDirection.label} · 상승 ${newsDirection.up ?? '확인'}% · 하락 ${newsDirection.down ?? '확인'}%`
+      : '뉴스 방향 계산 중';
+    return {
+      candleDirection,
+      priceState: hoverPriceState(hover),
+      volumeState: hoverVolumeState(hover, chartMetrics?.volumeAvg),
+      decision: aiDecision.decision,
+      condition: compactText(aiDecision.primaryCondition || aiDecision.nextWatch, 'AI 조건 확인 필요', 92),
+      newsLine,
+      headline: compactText(newsDirection?.headline || hover.event?.title, '뉴스·이벤트 근거 확인 필요', 92)
+    };
+  }, [aiDecision, chartMetrics, hover, newsDirection]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -890,6 +933,22 @@ export default function TradingViewPriceChart({
             <div className={styles.eventNote}>
               <b>{hover.event.title}</b>
               <p>{hover.event.reason || hover.event.explanation || hover.event.desc || '이벤트 근거 확인 필요'}</p>
+            </div>
+          )}
+          {hoverInsight && (
+            <div className={styles.tooltipAi}>
+              <div className={styles.tooltipAiHeader}>
+                <Brain size={14} aria-hidden="true" />
+                <b>AI 연결</b>
+                <span>{hoverInsight.decision}</span>
+              </div>
+              <div className={styles.tooltipAiGrid}>
+                <span>{hoverInsight.candleDirection}</span>
+                <span>{hoverInsight.priceState}</span>
+                <span>{hoverInsight.volumeState}</span>
+              </div>
+              <p>{hoverInsight.condition}</p>
+              <em>{hoverInsight.newsLine} · {hoverInsight.headline}</em>
             </div>
           )}
         </div>
