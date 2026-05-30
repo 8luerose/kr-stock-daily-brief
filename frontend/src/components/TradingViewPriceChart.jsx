@@ -48,20 +48,37 @@ function formatBriefRate(value) {
   return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`;
 }
 
+function isMissingBriefText(value) {
+  const text = String(value || '').trim();
+  if (!text || text === '-') return true;
+  return /^(TOP_GAINER|TOP_LOSER|MOST_MENTIONED|KOSPI_PICK|KOSDAQ_PICK)_\d{4}-\d{2}-\d{2}$/i.test(text);
+}
+
+function validBriefItems(items = []) {
+  return Array.isArray(items)
+    ? items.filter((item) => {
+        if (!item) return false;
+        if (typeof item === 'string') return !isMissingBriefText(item);
+        return !isMissingBriefText(item.name || item.stockName || item.code);
+      })
+    : [];
+}
+
 function briefEntryLabel(item) {
   if (!item) return '';
-  if (typeof item === 'string') return item;
-  const name = item.name || item.stockName || item.code || '종목';
+  if (typeof item === 'string') return isMissingBriefText(item) ? '' : item;
+  const name = item.name || item.stockName || item.code || '';
+  if (isMissingBriefText(name)) return '';
   const rate = formatBriefRate(item.rate ?? item.changeRate);
   const count = Number.isFinite(Number(item.count)) ? `${Number(item.count).toLocaleString()}건` : '';
   return [name, rate || count].filter(Boolean).join(' ');
 }
 
 function briefPickLabel(name, rate, fallbackItem) {
-  if (name && name !== '-') {
+  if (!isMissingBriefText(name)) {
     return [name, formatBriefRate(rate)].filter(Boolean).join(' ');
   }
-  return briefEntryLabel(fallbackItem) || '데이터 없음';
+  return briefEntryLabel(fallbackItem) || '종목';
 }
 
 function briefLine(label, item, empty = '데이터 없음') {
@@ -69,12 +86,16 @@ function briefLine(label, item, empty = '데이터 없음') {
 }
 
 function briefTopLines(title, items = []) {
-  const entries = Array.isArray(items) ? items.slice(0, 3) : [];
+  const entries = validBriefItems(items).slice(0, 3);
   if (!entries.length) return [`${title}: 데이터 없음`];
   return [
     `${title}:`,
     ...entries.map((item) => briefEntryLabel(item) || '데이터 없음')
   ];
+}
+
+function briefFieldItem(name, rate) {
+  return isMissingBriefText(name) ? null : { name, rate };
 }
 
 function averageVolume(rows, count = 20) {
@@ -802,34 +823,34 @@ export default function TradingViewPriceChart({
   const briefInsight = useMemo(() => {
     const latestBrief = briefArchive?.latest || null;
     const list = Array.isArray(briefArchive?.list) ? briefArchive.list.slice(0, 4) : [];
-    const kospiGainers = Array.isArray(latestBrief?.kospiTopGainers) ? latestBrief.kospiTopGainers : [];
-    const kospiLosers = Array.isArray(latestBrief?.kospiTopLosers) ? latestBrief.kospiTopLosers : [];
-    const kosdaqGainers = Array.isArray(latestBrief?.kosdaqTopGainers) ? latestBrief.kosdaqTopGainers : [];
-    const kosdaqLosers = Array.isArray(latestBrief?.kosdaqTopLosers) ? latestBrief.kosdaqTopLosers : [];
-    const topGainers = Array.isArray(latestBrief?.topGainers)
+    const kospiGainers = validBriefItems(latestBrief?.kospiTopGainers);
+    const kospiLosers = validBriefItems(latestBrief?.kospiTopLosers);
+    const kosdaqGainers = validBriefItems(latestBrief?.kosdaqTopGainers);
+    const kosdaqLosers = validBriefItems(latestBrief?.kosdaqTopLosers);
+    const topGainers = validBriefItems(Array.isArray(latestBrief?.topGainers)
       ? latestBrief.topGainers.slice(0, 3)
-      : [latestBrief?.topGainer && { name: latestBrief.topGainer, rate: latestBrief.topGainerRate }].filter(Boolean);
-    const topLosers = Array.isArray(latestBrief?.topLosers)
+      : [latestBrief?.topGainer && { name: latestBrief.topGainer, rate: latestBrief.topGainerRate }].filter(Boolean));
+    const topLosers = validBriefItems(Array.isArray(latestBrief?.topLosers)
       ? latestBrief.topLosers.slice(0, 3)
-      : [latestBrief?.topLoser && { name: latestBrief.topLoser }].filter(Boolean);
-    const mentioned = Array.isArray(latestBrief?.mostMentionedTop)
+      : [latestBrief?.topLoser && { name: latestBrief.topLoser }].filter(Boolean));
+    const mentioned = validBriefItems(Array.isArray(latestBrief?.mostMentionedTop)
       ? latestBrief.mostMentionedTop.slice(0, 3)
-      : [latestBrief?.mostMentioned && { name: latestBrief.mostMentioned }].filter(Boolean);
+      : [latestBrief?.mostMentioned && { name: latestBrief.mostMentioned }].filter(Boolean));
     const basisDate = latestBrief?.date
       || latestBrief?.effectiveDate
       || '';
     const marketDate = latestBrief?.date || basisDate || '날짜 확인 필요';
-    const kospiTopGainer = kospiGainers[0] || topGainers[0] || { name: latestBrief?.kospiTopGainer, rate: latestBrief?.kospiTopGainerRate };
-    const kospiTopLoser = kospiLosers[0] || topLosers[0] || { name: latestBrief?.kospiTopLoser, rate: latestBrief?.kospiTopLoserRate };
-    const kosdaqTopGainer = kosdaqGainers[0] || topGainers[0] || { name: latestBrief?.kosdaqTopGainer, rate: latestBrief?.kosdaqTopGainerRate };
-    const kosdaqTopLoser = kosdaqLosers[0] || topLosers[0] || { name: latestBrief?.kosdaqTopLoser, rate: latestBrief?.kosdaqTopLoserRate };
+    const kospiTopGainer = kospiGainers[0] || briefFieldItem(latestBrief?.kospiTopGainer, latestBrief?.kospiTopGainerRate) || topGainers[0];
+    const kospiTopLoser = kospiLosers[0] || briefFieldItem(latestBrief?.kospiTopLoser, latestBrief?.kospiTopLoserRate) || topLosers[0];
+    const kosdaqTopGainer = kosdaqGainers[0] || briefFieldItem(latestBrief?.kosdaqTopGainer, latestBrief?.kosdaqTopGainerRate);
+    const kosdaqTopLoser = kosdaqLosers[0] || briefFieldItem(latestBrief?.kosdaqTopLoser, latestBrief?.kosdaqTopLoserRate);
     const briefLines = [
       `📊 ${marketDate} 한국 주식 일간 브리프 (전일 대비)`,
       '',
-      briefLine('🟢 KOSPI 상승 1위', kospiTopGainer),
-      briefLine('🔴 KOSPI 하락 1위', kospiTopLoser),
-      briefLine('🟢 KOSDAQ 상승 1위', kosdaqTopGainer),
-      briefLine('🔴 KOSDAQ 하락 1위', kosdaqTopLoser),
+      briefLine('🟢 KOSPI 상승 1위', kospiTopGainer, '종목'),
+      briefLine('🔴 KOSPI 하락 1위', kospiTopLoser, '종목'),
+      briefLine('🟢 KOSDAQ 상승 1위', kosdaqTopGainer, '종목'),
+      briefLine('🔴 KOSDAQ 하락 1위', kosdaqTopLoser, '종목'),
       '',
       `💬 최다 언급: ${briefEntryLabel(mentioned[0]) || '데이터 없음'}`,
       `🏆 KOSPI 픽: ${briefPickLabel(latestBrief?.kospiPick, latestBrief?.kospiTopGainerRate, kospiTopGainer)}`,
@@ -839,9 +860,9 @@ export default function TradingViewPriceChart({
       '',
       ...briefTopLines('📉 KOSPI 전일대비 하락 TOP3', kospiLosers.length ? kospiLosers : topLosers),
       '',
-      ...briefTopLines('📈 KOSDAQ 전일대비 상승 TOP3', kosdaqGainers.length ? kosdaqGainers : topGainers),
+      ...briefTopLines('📈 KOSDAQ 전일대비 상승 TOP3', kosdaqGainers),
       '',
-      ...briefTopLines('📉 KOSDAQ 전일대비 하락 TOP3', kosdaqLosers.length ? kosdaqLosers : topLosers)
+      ...briefTopLines('📉 KOSDAQ 전일대비 하락 TOP3', kosdaqLosers)
     ];
     return {
       basisDate,
@@ -1133,6 +1154,13 @@ export default function TradingViewPriceChart({
     <div className={clsx(styles.stage, focusMode && styles.aiCardFocusMode, showDetailPanels && styles.detailPanelMode)}>
       <div className={styles.chartPane}>
         <div ref={containerRef} className={styles.chart} data-testid="tradingview-price-chart" />
+        <div className={styles.chartWatermark} aria-hidden="true">
+          <span>{stock?.code || '000000'}</span>
+          <strong>{stock?.name || '종목'}</strong>
+          <b className={Number(chartMetrics?.changeRate) >= 0 ? styles.up : styles.down}>
+            {formatPercent(chartMetrics?.changeRate)}
+          </b>
+        </div>
         <div className={styles.chartLineLegend} aria-label="차트 선 설명">
           <span><i className={styles.ma20Dot} />파란 점선 20일선 (1달 평균)</span>
           <span><i className={styles.ma60Dot} />노란 점선 60일선 (3달 평균)</span>

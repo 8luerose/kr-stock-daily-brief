@@ -950,7 +950,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                     <button type="button" onClick={handleNextMonth} className={styles.monthNavBtn}>&gt;</button>
                   </div>
                   <p className={styles.calendarNoticeDesc}>
-                    날짜를 누르면 백엔드가 pykrx 기준 시장 브리프를 조회합니다. 파란 동그라미는 이미 빠르게 불러올 수 있는 날짜입니다.
+                    모든 날짜를 눌러 pykrx 기준 시장 브리프를 조회할 수 있습니다. 휴장일이나 데이터가 비어 있는 날은 빈 브리프로 표시됩니다.
                   </p>
                 </div>
                 {summaryArchiveLoading && <p className={styles.calendarEmpty}>브리프 데이터를 로드하고 있습니다.</p>}
@@ -970,9 +970,11 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                           onClick={() => handleCalendarDateClick(item.dateStr)}
                           className={clsx(
                             styles.calendarDayBtn,
+                            styles.calendarDayAvailable,
                             hasBrief && styles.calendarDayHasBrief,
                             item.dateStr === (latestBrief?.date) && styles.calendarDayToday
                           )}
+                          title={`${item.dateStr} 시장 브리프 조회`}
                           aria-label={`${item.dateStr} 브리프 보기`}
                         >
                           <span>{item.day}</span>
@@ -1035,15 +1037,6 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
               .finally(() => setSummaryArchiveLoading(false));
           }}
         />
-      </div>
-
-      {/* Hero Stock Info */}
-      <div className={styles.heroInfo}>
-        <div className={styles.heroCode}>{stock.code}</div>
-        <h1 className={styles.heroName}>{stock.name}</h1>
-        <div className={clsx(styles.heroRate, parseFloat(stock.changeRate) > 0 ? styles.pos : styles.neg)}>
-          {stock.changeRate}
-        </div>
       </div>
 
       {/* 하단 정중앙 세련된 AI로 학습하기 버튼 */}

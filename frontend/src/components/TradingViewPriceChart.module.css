@@ -27,6 +27,38 @@
   z-index: 5;
 }
 
+.chartWatermark {
+  position: absolute;
+  left: 32px;
+  bottom: 92px;
+  z-index: 2;
+  pointer-events: none;
+  display: grid;
+  gap: 4px;
+  max-width: min(620px, calc(100% - 64px));
+  opacity: 0.16;
+}
+
+.chartWatermark span {
+  color: var(--color-text-tertiary);
+  font-size: 1.1rem;
+  font-weight: 850;
+}
+
+.chartWatermark strong {
+  color: var(--color-text-primary);
+  font-size: clamp(3rem, 7vw, 5.8rem);
+  font-weight: 950;
+  line-height: 0.95;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.chartWatermark b {
+  font-size: 1.7rem;
+  font-weight: 900;
+}
+
 .chartLineLegend {
   display: flex;
   flex-wrap: wrap; /* 모바일에서 자동 개행 유도 */
@@ -856,6 +888,26 @@
     min-height: 500px;
   }
 
+  .chartWatermark {
+    left: 22px;
+    bottom: 66px;
+    max-width: calc(100% - 44px);
+    opacity: 0.14;
+  }
+
+  .chartWatermark span {
+    font-size: 0.9rem;
+  }
+
+  .chartWatermark strong {
+    font-size: clamp(2.3rem, 13vw, 3.7rem);
+    white-space: normal;
+  }
+
+  .chartWatermark b {
+    font-size: 1.25rem;
+  }
+
   .decisionSidebar {
     display: flex !important; /* 모바일에서 숨기지 않고 드러냄 */
     width: 100% !important;
@@ -1073,4 +1125,62 @@
   padding: 10px 14px;
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--color-accent);
+}
+
+:global([data-theme="light"]) .stage {
+  background: var(--color-bg-base);
+}
+
+:global([data-theme="light"]) .chartPane {
+  background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  border-color: rgba(25, 31, 40, 0.08);
+}
+
+:global([data-theme="light"]) .decisionSidebar {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-color: rgba(25, 31, 40, 0.08);
+  box-shadow: -12px 0 30px rgba(15, 23, 42, 0.08);
+}
+
+:global([data-theme="light"]) .sidebarHeaderCard,
+:global([data-theme="light"]) .dailyMoveCard,
+:global([data-theme="light"]) .sidebarDecisionCard,
+:global([data-theme="light"]) .sidebarNewsCard,
+:global([data-theme="light"]) .sidebarZoneList article,
+:global([data-theme="light"]) .inlineAssistPanel,
+:global([data-theme="light"]) .assistTimingGrid article,
+:global([data-theme="light"]) .aiModalDesc {
+  background: rgba(25, 31, 40, 0.035);
+  border-color: rgba(25, 31, 40, 0.07);
+}
+
+:global([data-theme="light"]) .briefAction,
+:global([data-theme="light"]) .briefModalHeader button {
+  background: #ffffff;
+  border-color: rgba(25, 31, 40, 0.08);
+  color: var(--color-text-primary);
+}
+
+:global([data-theme="light"]) .briefAction:hover {
+  background: rgba(25, 31, 40, 0.045);
+}
+
+:global([data-theme="light"]) .tooltip,
+:global([data-theme="light"]) .aiModal {
+  background: rgba(255, 255, 255, 0.97);
+  border-color: rgba(25, 31, 40, 0.08);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
+}
+
+:global([data-theme="light"]) .briefModalLayer {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+:global([data-theme="light"]) .briefModalNote,
+:global([data-theme="light"]) .briefTextBlock {
+  background: rgba(25, 31, 40, 0.035);
+}
+
+:global([data-theme="light"]) .chartWatermark {
+  opacity: 0.1;
 }

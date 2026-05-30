@@ -151,10 +151,27 @@ function formatBriefRate(value) {
   return `${number > 0 ? "+" : ""}${number.toFixed(2)}%`;
 }
 
+function isMissingBriefText(value) {
+  const text = String(value || "").trim();
+  if (!text || text === "-") return true;
+  return /^(TOP_GAINER|TOP_LOSER|MOST_MENTIONED|KOSPI_PICK|KOSDAQ_PICK)_\d{4}-\d{2}-\d{2}$/i.test(text);
+}
+
+function validBriefItems(items = []) {
+  return Array.isArray(items)
+    ? items.filter((item) => {
+        if (!item) return false;
+        if (typeof item === "string") return !isMissingBriefText(item);
+        return !isMissingBriefText(item.name || item.stockName || item.code);
+      })
+    : [];
+}
+
 function briefEntryLabel(item) {
   if (!item) return "";
-  if (typeof item === "string") return item;
-  const name = item.name || item.stockName || item.code || "종목";
+  if (typeof item === "string") return isMissingBriefText(item) ? "" : item;
+  const name = item.name || item.stockName || item.code || "";
+  if (isMissingBriefText(name)) return "";
   const rate = formatBriefRate(item.rate ?? item.changeRate);
   const count = Number.isFinite(Number(item.count)) ? `${Number(item.count).toLocaleString()}건` : "";
   return [name, rate || count].filter(Boolean).join(" ");
@@ -165,14 +182,14 @@ function briefLine(label, item, empty = "데이터 없음") {
 }
 
 function briefPickLabel(name, rate, fallbackItem) {
-  if (name && name !== "-") {
+  if (!isMissingBriefText(name)) {
     return [name, formatBriefRate(rate)].filter(Boolean).join(" ");
   }
-  return briefEntryLabel(fallbackItem) || "데이터 없음";
+  return briefEntryLabel(fallbackItem) || "종목";
 }
 
 function briefTopLines(title, items = []) {
-  const entries = Array.isArray(items) ? items.slice(0, 3) : [];
+  const entries = validBriefItems(items).slice(0, 3);
   if (!entries.length) return [`${title}: 데이터 없음`];
   return [
     `${title}:`,
@@ -180,34 +197,52 @@ function briefTopLines(title, items = []) {
   ];
 }
 
+function emptyBriefSummary(date, reason = "데이터 없음") {
+  return {
+    date,
+    source: reason,
+    topGainers: [],
+    topLosers: [],
+    mostMentionedTop: [],
+    kospiTopGainers: [],
+    kospiTopLosers: [],
+    kosdaqTopGainers: [],
+    kosdaqTopLosers: []
+  };
+}
+
+function briefFieldItem(name, rate) {
+  return isMissingBriefText(name) ? null : { name, rate };
+}
+
 function withBriefLines(summary = {}) {
-  const kospiGainers = Array.isArray(summary.kospiTopGainers) ? summary.kospiTopGainers : [];
-  const kospiLosers = Array.isArray(summary.kospiTopLosers) ? summary.kospiTopLosers : [];
-  const kosdaqGainers = Array.isArray(summary.kosdaqTopGainers) ? summary.kosdaqTopGainers : [];
-  const kosdaqLosers = Array.isArray(summary.kosdaqTopLosers) ? summary.kosdaqTopLosers : [];
-  const topGainers = Array.isArray(summary.topGainers)
+  const kospiGainers = validBriefItems(summary.kospiTopGainers);
+  const kospiLosers = validBriefItems(summary.kospiTopLosers);
+  const kosdaqGainers = validBriefItems(summary.kosdaqTopGainers);
+  const kosdaqLosers = validBriefItems(summary.kosdaqTopLosers);
+  const topGainers = validBriefItems(Array.isArray(summary.topGainers)
     ? summary.topGainers.slice(0, 3)
-    : [summary.topGainer && { name: summary.topGainer, rate: summary.topGainerRate }].filter(Boolean);
-  const topLosers = Array.isArray(summary.topLosers)
+    : [summary.topGainer && { name: summary.topGainer, rate: summary.topGainerRate }].filter(Boolean));
+  const topLosers = validBriefItems(Array.isArray(summary.topLosers)
     ? summary.topLosers.slice(0, 3)
-    : [summary.topLoser && { name: summary.topLoser, rate: summary.topLoserRate }].filter(Boolean);
-  const mentioned = Array.isArray(summary.mostMentionedTop)
+    : [summary.topLoser && { name: summary.topLoser, rate: summary.topLoserRate }].filter(Boolean));
+  const mentioned = validBriefItems(Array.isArray(summary.mostMentionedTop)
     ? summary.mostMentionedTop
-    : [summary.mostMentioned && { name: summary.mostMentioned }].filter(Boolean);
-  const kospiTopGainer = kospiGainers[0] || topGainers[0] || { name: summary.kospiTopGainer, rate: summary.kospiTopGainerRate };
-  const kospiTopLoser = kospiLosers[0] || topLosers[0] || { name: summary.kospiTopLoser, rate: summary.kospiTopLoserRate };
-  const kosdaqTopGainer = kosdaqGainers[0] || topGainers[0] || { name: summary.kosdaqTopGainer, rate: summary.kosdaqTopGainerRate };
-  const kosdaqTopLoser = kosdaqLosers[0] || topLosers[0] || { name: summary.kosdaqTopLoser, rate: summary.kosdaqTopLoserRate };
+    : [summary.mostMentioned && { name: summary.mostMentioned }].filter(Boolean));
+  const kospiTopGainer = kospiGainers[0] || briefFieldItem(summary.kospiTopGainer, summary.kospiTopGainerRate) || topGainers[0];
+  const kospiTopLoser = kospiLosers[0] || briefFieldItem(summary.kospiTopLoser, summary.kospiTopLoserRate) || topLosers[0];
+  const kosdaqTopGainer = kosdaqGainers[0] || briefFieldItem(summary.kosdaqTopGainer, summary.kosdaqTopGainerRate);
+  const kosdaqTopLoser = kosdaqLosers[0] || briefFieldItem(summary.kosdaqTopLoser, summary.kosdaqTopLoserRate);
   const marketDate = summary.date || summary.effectiveDate || "날짜 확인 필요";
   return {
     ...summary,
     lines: [
       `📊 ${marketDate} 한국 주식 일간 브리프 (전일 대비)`,
       "",
-      briefLine("🟢 KOSPI 상승 1위", kospiTopGainer),
-      briefLine("🔴 KOSPI 하락 1위", kospiTopLoser),
-      briefLine("🟢 KOSDAQ 상승 1위", kosdaqTopGainer),
-      briefLine("🔴 KOSDAQ 하락 1위", kosdaqTopLoser),
+      briefLine("🟢 KOSPI 상승 1위", kospiTopGainer, "종목"),
+      briefLine("🔴 KOSPI 하락 1위", kospiTopLoser, "종목"),
+      briefLine("🟢 KOSDAQ 상승 1위", kosdaqTopGainer, "종목"),
+      briefLine("🔴 KOSDAQ 하락 1위", kosdaqTopLoser, "종목"),
       "",
       `💬 최다 언급: ${briefEntryLabel(mentioned[0]) || "데이터 없음"}`,
       `🏆 KOSPI 픽: ${briefPickLabel(summary.kospiPick, summary.kospiTopGainerRate, kospiTopGainer)}`,
@@ -222,6 +257,37 @@ function withBriefLines(summary = {}) {
       ...briefTopLines("📉 KOSDAQ 전일대비 하락 TOP3", kosdaqLosers.length ? kosdaqLosers : topLosers)
     ]
   };
+}
+
+function summaryNeedsRefresh(summary = {}) {
+  if (!summary || summary.marketClosed) return false;
+  const leaderItems = [
+    ...(Array.isArray(summary.topGainers) ? summary.topGainers : []),
+    ...(Array.isArray(summary.topLosers) ? summary.topLosers : []),
+    ...(Array.isArray(summary.kospiTopGainers) ? summary.kospiTopGainers : []),
+    ...(Array.isArray(summary.kospiTopLosers) ? summary.kospiTopLosers : []),
+    ...(Array.isArray(summary.kosdaqTopGainers) ? summary.kosdaqTopGainers : []),
+    ...(Array.isArray(summary.kosdaqTopLosers) ? summary.kosdaqTopLosers : [])
+  ];
+  const hasLeader =
+    validBriefItems(leaderItems).length > 0 ||
+    !isMissingBriefText(summary.topGainer) ||
+    !isMissingBriefText(summary.topLoser) ||
+    !isMissingBriefText(summary.kospiTopGainer) ||
+    !isMissingBriefText(summary.kospiTopLoser) ||
+    !isMissingBriefText(summary.kosdaqTopGainer) ||
+    !isMissingBriefText(summary.kosdaqTopLoser);
+  const sourceText = [
+    summary.source,
+    summary.notes,
+    summary.rawNotes,
+    summary.rankingWarning,
+    summary.topGainer,
+    summary.topLoser,
+    summary.kospiPick,
+    summary.kosdaqPick
+  ].filter(Boolean).join(" ");
+  return !hasLeader || /pykrx_error|empty_rates|TOP_GAINER_|TOP_LOSER_|KOSPI_PICK_|KOSDAQ_PICK_/i.test(sourceText);
 }
 
 function normalizeStockOption(item = {}) {
@@ -1347,11 +1413,23 @@ export async function loadSummaryByDate(date) {
     throw new Error("올바르지 않은 날짜 형식입니다.");
   }
   try {
-    return withBriefLines(await requestJson(`/api/summaries/${safeDate}`));
+    const summary = await requestJson(`/api/summaries/${safeDate}`);
+    if (summaryNeedsRefresh(summary)) {
+      try {
+        return withBriefLines(await requestJson(`/api/summaries/${safeDate}/generate`, { method: "POST" }));
+      } catch {
+        return withBriefLines(summary);
+      }
+    }
+    return withBriefLines(summary);
   } catch (error) {
     if (error.status === 404) {
-      return withBriefLines(await requestJson(`/api/summaries/${safeDate}/generate`, { method: "POST" }));
+      try {
+        return withBriefLines(await requestJson(`/api/summaries/${safeDate}/generate`, { method: "POST" }));
+      } catch {
+        return withBriefLines(emptyBriefSummary(safeDate, "pykrx 데이터 없음"));
+      }
     }
-    throw error;
+    return withBriefLines(emptyBriefSummary(safeDate, "브리프 조회 실패"));
   }
 }

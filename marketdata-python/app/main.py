@@ -8,6 +8,7 @@ import time
 def _is_normal_ticker(code: str) -> bool:
     """Return True if code is a standard 6-digit Korean stock code."""
     return bool(re.match(r'^[0-9]{6}$', str(code)))
+import os
 import urllib.request
 from urllib.parse import quote, urlencode
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed
@@ -15,17 +16,19 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from io import StringIO
 
-import os
+KRX_AUTH_ENABLED = os.getenv("KRX_AUTH_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+if not KRX_AUTH_ENABLED:
+    os.environ.pop("KRX_ID", None)
+    os.environ.pop("KRX_PW", None)
 
 from fastapi import FastAPI, HTTPException, Query
 from pykrx import stock
 import pandas as pd
 
 # --- KRX access hardening ---
-# pykrx >= 1.2.5 supports KRX login session via KRX_ID/KRX_PW env vars.
-# When set, pykrx handles login automatically. When not set, fall back to
-# the monkey-patch below (persistent session + browser headers) so that
-# unauthenticated requests still work as well as possible.
+# pykrx >= 1.2.5 supports KRX login via KRX_ID/KRX_PW, but that path can add
+# slow repeated login attempts when credentials expire. Default to anonymous
+# browser-like requests unless KRX_AUTH_ENABLED=true is explicitly set.
 
 NAVER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -87,32 +90,27 @@ BASELINE_SECTOR_TAXONOMY = (
     },
 )
 
-if not os.getenv("KRX_ID"):
-    # No KRX credentials → use monkey-patch fallback
+try:
+    import requests
+    from pykrx.website.comm import webio as _webio
+
+    _KRX_HDRS = {
+        "User-Agent": NAVER_UA,
+        "Referer": "https://data.krx.co.kr/",
+        "Origin": "https://data.krx.co.kr",
+    }
+
+    _krx_session = requests.Session()
+    _krx_session.headers.update(_KRX_HDRS)
     try:
-        import requests
-        from pykrx.website.comm import webio as _webio
+        _krx_session.get(
+            "https://data.krx.co.kr/contents/MDC/MDI/outerLoader/index.cmd?menuId=MDC0201020101",
+            timeout=10,
+        )
+    except Exception:
+        pass
 
-        _KRX_HDRS = {
-            "User-Agent": NAVER_UA,
-            "Referer": "https://data.krx.co.kr/",
-            "Origin": "https://data.krx.co.kr",
-        }
-
-        _krx_session = requests.Session()
-        _krx_session.headers.update(_KRX_HDRS)
-        # Warm up cookies
-        try:
-            _krx_session.get(
-                "https://data.krx.co.kr/contents/MDC/MDI/outerLoader/index.cmd?menuId=MDC0201020101",
-                timeout=10,
-            )
-        except Exception:
-            pass
-
-        # Make webio use our session (has .get/.post).
-        _webio.requests = _krx_session  # type: ignore
-
+    if not getattr(_webio, "_KR_BRIEF_HEADERS_PATCHED", False):
         _orig_get_init = _webio.Get.__init__
         _orig_post_init = _webio.Post.__init__
 
@@ -126,8 +124,9 @@ if not os.getenv("KRX_ID"):
 
         _webio.Get.__init__ = _get_init  # type: ignore
         _webio.Post.__init__ = _post_init  # type: ignore
-    except Exception:
-        pass
+        _webio._KR_BRIEF_HEADERS_PATCHED = True  # type: ignore[attr-defined]
+except Exception:
+    pass
 
 app = FastAPI(title="kr-stock-daily-brief marketdata", version="0.6.3")
 
@@ -179,6 +178,13 @@ def _effective_business_day_or_previous(ymd: str) -> tuple[str, str]:
         effective = nearest_prev
         return effective, f"adjusted_to_previous_business_day: requested={ymd}, effective={effective}"
     except Exception as e:
+        requested_date = datetime.strptime(ymd, "%Y%m%d").date()
+        if requested_date.weekday() < 5:
+            effective = ymd
+            return effective, (
+                f"calendar_unavailable_assumed_business_day: requested={ymd}, effective={effective}, "
+                f"reason=pykrx_calendar_error({type(e).__name__})"
+            )
         effective = _previous_business_day(ymd)
         return effective, (
             f"adjusted_fallback: requested={ymd}, effective={effective}, reason=pykrx_calendar_error({type(e).__name__})"
@@ -1907,8 +1913,9 @@ def leaders(
 
     except Exception as e:
         today_ymd = datetime.now().strftime("%Y%m%d")
-        if requested_ymd == today_ymd:
-            # Fallback (today only): use Naver sise_rise/sise_fall pages.
+        current_effective_ymd, current_adjust_note = _effective_business_day_or_previous(today_ymd)
+        if requested_ymd == today_ymd or effective_ymd == current_effective_ymd:
+            # Fallback for the latest effective trading day: use Naver sise_rise/sise_fall pages.
             prev = _previous_business_day(effective_ymd)
             kospi_g, kospi_l = _naver_today_movers(0)
             kosdaq_g, kosdaq_l = _naver_today_movers(1)
@@ -1920,6 +1927,15 @@ def leaders(
             kosdaq_top_gainers = kosdaq_g[:3]
             kosdaq_top_losers = kosdaq_l[:3]
             df_change = None
+            adjust_note = "\n".join(
+                note
+                for note in (
+                    adjust_note,
+                    current_adjust_note if current_adjust_note not in adjust_note else "",
+                    f"pykrx 빈 응답으로 최신 영업일 Naver 등락률 보조 조회를 사용했습니다. 원인: {e}",
+                )
+                if note
+            )
         else:
             raise HTTPException(status_code=502, detail=f"pykrx_error: {e}") from e
 
@@ -1937,10 +1953,13 @@ def leaders(
     kosdaq_top_loser_rate = kosdaq_top_losers[0]["rate"] if kosdaq_top_losers else 0.0
 
     # Mentions universe (naver board posts — unchanged)
-    try:
-        universe = _top_traded_value_universe(effective_ymd, n=max(1, min(mentionsUniverse, 2000)))
-    except Exception:
+    if df_change is None:
         universe = []
+    else:
+        try:
+            universe = _top_traded_value_universe(effective_ymd, n=max(1, min(mentionsUniverse, 2000)))
+        except Exception:
+            universe = []
 
     most_mentioned_list = _most_mentioned_by_board_posts(
         universe,
@@ -1951,10 +1970,26 @@ def leaders(
     )
     most_ticker = most_mentioned_list[0]["code"] if most_mentioned_list else ""
 
-    kospi_top_gainer_name = _name(kospi_top_gainer_ticker) if kospi_top_gainer_ticker else "-"
-    kospi_top_loser_name = _name(kospi_top_loser_ticker) if kospi_top_loser_ticker else "-"
-    kosdaq_top_gainer_name = _name(kosdaq_top_gainer_ticker) if kosdaq_top_gainer_ticker else "-"
-    kosdaq_top_loser_name = _name(kosdaq_top_loser_ticker) if kosdaq_top_loser_ticker else "-"
+    kospi_top_gainer_name = (
+        _name(kospi_top_gainer_ticker)
+        if kospi_top_gainer_ticker
+        else (kospi_top_gainers[0].get("name") if kospi_top_gainers else "-")
+    )
+    kospi_top_loser_name = (
+        _name(kospi_top_loser_ticker)
+        if kospi_top_loser_ticker
+        else (kospi_top_losers[0].get("name") if kospi_top_losers else "-")
+    )
+    kosdaq_top_gainer_name = (
+        _name(kosdaq_top_gainer_ticker)
+        if kosdaq_top_gainer_ticker
+        else (kosdaq_top_gainers[0].get("name") if kosdaq_top_gainers else "-")
+    )
+    kosdaq_top_loser_name = (
+        _name(kosdaq_top_loser_ticker)
+        if kosdaq_top_loser_ticker
+        else (kosdaq_top_losers[0].get("name") if kosdaq_top_losers else "-")
+    )
     top_gainer_name = top_gainers[0]["name"] if top_gainers else "-"
     top_loser_name = top_losers[0]["name"] if top_losers else "-"
 

@@ -154,25 +154,15 @@ public class DailySummaryService {
 
     DailyMarketBrief brief = loadBriefWithVerification(date, 2);
 
-    // If provider returns '-' (best-effort), fall back to deterministic placeholders.
-    String topGainer =
-        brief.topGainer() == null || brief.topGainer().isBlank() || "-".equals(brief.topGainer())
-            ? "TOP_GAINER_" + date
-            : brief.topGainer();
-    String topLoser =
-        brief.topLoser() == null || brief.topLoser().isBlank() || "-".equals(brief.topLoser())
-            ? "TOP_LOSER_" + date
-            : brief.topLoser();
+    // Keep missing market data visibly empty for users. Do not persist internal placeholders.
+    String topGainer = summaryValueOrDash(brief.topGainer());
+    String topLoser = summaryValueOrDash(brief.topLoser());
     String filteredTopGainer =
-        brief.filteredTopGainer() == null
-                || brief.filteredTopGainer().isBlank()
-                || "-".equals(brief.filteredTopGainer())
+        isMissingSummaryValue(brief.filteredTopGainer())
             ? topGainer
             : brief.filteredTopGainer();
     String filteredTopLoser =
-        brief.filteredTopLoser() == null
-                || brief.filteredTopLoser().isBlank()
-                || "-".equals(brief.filteredTopLoser())
+        isMissingSummaryValue(brief.filteredTopLoser())
             ? topLoser
             : brief.filteredTopLoser();
 
@@ -180,16 +170,9 @@ public class DailySummaryService {
     s.setTopLoser(topLoser);
     s.setFilteredTopGainer(filteredTopGainer);
     s.setFilteredTopLoser(filteredTopLoser);
-    s.setMostMentioned(
-        brief.mostMentioned() == null || brief.mostMentioned().isBlank()
-            ? "MOST_MENTIONED_" + date
-            : brief.mostMentioned());
-    s.setKospiPick(
-        brief.kospiPick() == null || brief.kospiPick().isBlank() ? "KOSPI_PICK_" + date : brief.kospiPick());
-    s.setKosdaqPick(
-        brief.kosdaqPick() == null || brief.kosdaqPick().isBlank()
-            ? "KOSDAQ_PICK_" + date
-            : brief.kosdaqPick());
+    s.setMostMentioned(summaryValueOrDash(brief.mostMentioned()));
+    s.setKospiPick(summaryValueOrDash(brief.kospiPick()));
+    s.setKosdaqPick(summaryValueOrDash(brief.kosdaqPick()));
 
     s.setRawNotes(
         "Source: "
@@ -631,6 +614,17 @@ public class DailySummaryService {
 
   private static boolean isBlank(String s) {
     return s == null || s.isBlank();
+  }
+
+  private static boolean isMissingSummaryValue(String s) {
+    return s == null
+        || s.isBlank()
+        || "-".equals(s.trim())
+        || s.matches("(?i)^(TOP_GAINER|TOP_LOSER|MOST_MENTIONED|KOSPI_PICK|KOSDAQ_PICK)_\\d{4}-\\d{2}-\\d{2}$");
+  }
+
+  private static String summaryValueOrDash(String s) {
+    return isMissingSummaryValue(s) ? "-" : s;
   }
 
   private static String blankToDash(String s) {

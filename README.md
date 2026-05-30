@@ -47,6 +47,64 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 
 ---
 
+## 다른 컴퓨터에서 처음 실행
+
+전제:
+- Git, Docker Desktop 또는 Docker Compose, `make`가 설치되어 있어야 한다.
+- 호스트 PC의 Ollama를 쓰려면 Ollama 앱/서버가 켜져 있고 `.env`의 `OLLAMA_MODEL`과 같은 모델이 내려받아져 있어야 한다.
+- `.env`는 민감 정보가 들어갈 수 있어 git에 올리지 않는다. 새 PC에서는 직접 만들어야 한다.
+
+1. 저장소를 받은 뒤 프로젝트 루트로 이동한다.
+```bash
+git clone <repository-url>
+cd kr-stock-daily-brief
+```
+
+2. 루트 경로에 `.env`를 만든다.
+```bash
+cp .env.example .env
+```
+
+3. 호스트 PC에 설치된 Ollama를 사용할 때 `.env`에서 최소 아래 값을 확인한다.
+```dotenv
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=llama3.1:latest
+MARKETDATA_PROVIDER=pykrx
+```
+
+4. 호스트 PC의 Ollama에 같은 모델을 준비한다.
+```bash
+ollama pull llama3.1:latest
+ollama list
+```
+
+5. 프로젝트 루트(`/.../kr-stock-daily-brief`)에서 Docker Compose를 올린다.
+```bash
+make up
+make health
+make ollama-status
+```
+
+6. 브라우저에서 연다.
+- UI: http://localhost:5173
+- Backend health: http://localhost:8080/actuator/health
+
+Docker 안에 Ollama까지 함께 띄우고 싶다면 `.env`에서 `OLLAMA_BASE_URL=http://ollama:11434`로 바꾼 뒤 아래를 실행한다.
+```bash
+make ollama-up
+make ollama-pull OLLAMA_MODEL=llama3.1:latest
+make up
+make health
+```
+
+git에 올라가지 않는 실행 파일/데이터:
+- 루트 `.env`
+- Docker 볼륨의 MySQL, Qdrant, Ollama 모델 데이터
+- 선택 입력값: `KRX_ID`, `KRX_PW`, `ADMIN_KEY`, 외부 LLM API 키
+
+---
+
 ## 시스템 동작(핵심 플로우)
 
 ### 1) marketdata: 리더 계산 API
@@ -225,7 +283,8 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `OLLAMA_BASE_URL` | No | Local Ollama URL. Docker Desktop default: `http://host.docker.internal:11434` |
 | `OLLAMA_MODEL` | No | Local Ollama model for `/api/ai/ollama/insights` and `LLM_PROVIDER=ollama`. Docker default: `llama3.1:latest` |
 | `OLLAMA_TIMEOUT_SECONDS` | No | Ollama wait time before rule-based fallback for full text answers. Docker default: `18` |
-| `OLLAMA_JSON_TIMEOUT_SECONDS` | No | Faster wait time for `/api/ai/ollama/insights` JSON cards before rule-based fallback. Docker default: `10` |
+| `OLLAMA_LEARNING_TIMEOUT_SECONDS` | No | Short wait time for beginner learning answers before the focused built-in explanation is returned. Default: `4` |
+| `OLLAMA_JSON_TIMEOUT_SECONDS` | No | Faster wait time for `/api/ai/ollama/insights` JSON cards before rule-based fallback. Docker default: `6` |
 | `OLLAMA_STATUS_TIMEOUT_SECONDS` | No | Short reachability check timeout for `/api/ai/status`. Default: `1.2` |
 | `OLLAMA_NUM_PREDICT` | No | Ollama max generated tokens. Docker default: `420` |
 | `OLLAMA_JSON_NUM_PREDICT` | No | Shorter Ollama JSON insight token budget. Docker default: `80` |
@@ -234,6 +293,8 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
 | `ADMIN_KEY` | Recommended | Admin key for protected operations |
 | `APP_ADMIN_TRUSTED_CIDRS` | No | Comma-separated CIDRs for trusted admin bypass |
+| `KRX_AUTH_ENABLED` | No | Use KRX login credentials only when set to `true`. Default: `false` to avoid slow repeated login failures |
+| `KRX_ID` / `KRX_PW` | No | Optional KRX Data Portal credentials. Keep empty unless `KRX_AUTH_ENABLED=true` is required |
 
 ### LLM 모델 변경
 
@@ -246,7 +307,7 @@ LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
 OLLAMA_MODEL=llama3.1:latest
 OLLAMA_TIMEOUT_SECONDS=18
-OLLAMA_JSON_TIMEOUT_SECONDS=10
+OLLAMA_JSON_TIMEOUT_SECONDS=6
 OLLAMA_JSON_NUM_PREDICT=80
 AI_CLIENT_READ_TIMEOUT_SECONDS=60
 docker compose up -d --build ai-service backend frontend

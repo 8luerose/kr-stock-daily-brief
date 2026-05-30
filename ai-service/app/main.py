@@ -1418,7 +1418,7 @@ def _float_env(name: str, default: float) -> float:
 
 def _ollama_timeout(json_mode: bool = False) -> float:
     if json_mode:
-        return _float_env("OLLAMA_JSON_TIMEOUT_SECONDS", 10.0)
+        return _float_env("OLLAMA_JSON_TIMEOUT_SECONDS", 6.0)
     return _float_env("OLLAMA_TIMEOUT_SECONDS", _float_env("LLM_TIMEOUT_SECONDS", 20.0))
 
 
@@ -1427,10 +1427,11 @@ def _call_ollama_llm(
     *,
     json_mode: bool = False,
     num_predict_override: int | None = None,
+    timeout_override: float | None = None,
 ) -> tuple[str | None, dict[str, Any]]:
     model = _ollama_model()
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
-    timeout = _ollama_timeout(json_mode)
+    timeout = timeout_override if timeout_override is not None else _ollama_timeout(json_mode)
     num_predict = (
         num_predict_override
         if num_predict_override is not None
@@ -1540,7 +1541,7 @@ def _ollama_runtime_status(base_url: str, model: str) -> dict[str, Any]:
         ]
         status["reachable"] = True
         status["installedModels"] = models[:12]
-        status["modelAvailable"] = model in models or any(item.split(":")[0] == model.split(":")[0] for item in models)
+        status["modelAvailable"] = model in models
         if not status["modelAvailable"]:
             status["reason"] = f"Ollama는 응답했지만 {model} 모델이 설치 목록에 없습니다."
         return status
@@ -3551,6 +3552,7 @@ def _learning_term_response(req: ChatRequest) -> dict[str, Any] | None:
         _build_ollama_learning_term_prompt(term),
         json_mode=False,
         num_predict_override=180,
+        timeout_override=_float_env("OLLAMA_LEARNING_TIMEOUT_SECONDS", 4.0),
     )
     cleaned_answer = _clean_learning_term_answer(llm_answer)
     used_llm = bool(cleaned_answer)

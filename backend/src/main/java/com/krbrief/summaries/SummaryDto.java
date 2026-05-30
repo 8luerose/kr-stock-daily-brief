@@ -89,15 +89,23 @@ public record SummaryDto(
       }
     }
 
+    String topGainer = publicSummaryValue(s.getTopGainer());
+    String topLoser = publicSummaryValue(s.getTopLoser());
+    String filteredTopGainer = publicSummaryValue(firstNonBlank(s.getFilteredTopGainer(), topGainer));
+    String filteredTopLoser = publicSummaryValue(firstNonBlank(s.getFilteredTopLoser(), topLoser));
+    String mostMentioned = publicSummaryValue(s.getMostMentioned());
+    String kospiPick = publicSummaryValue(s.getKospiPick());
+    String kosdaqPick = publicSummaryValue(s.getKosdaqPick());
+
     SummaryVerificationLinks verification =
         SummaryVerificationLinks.from(
             s.getDate(),
             s.getDate() == null ? "" : "/api/summaries/" + s.getDate() + "/verification/krx",
-            s.getTopGainer(),
-            s.getTopLoser(),
-            s.getMostMentioned(),
-            s.getKospiPick(),
-            s.getKosdaqPick(),
+            topGainer,
+            topLoser,
+            mostMentioned,
+            kospiPick,
+            kosdaqPick,
             rawNotes);
     List<AnomalyDto> anomalies = SummaryAnomalyCodec.decode(s.getAnomaliesText());
 
@@ -114,24 +122,24 @@ public record SummaryDto(
         isMarketClosed,
         marketClosedReason,
         marketClosedEvidenceLinks,
-        s.getTopGainer(),
-        s.getTopLoser(),
-        s.getTopGainer(),
-        s.getTopLoser(),
-        firstNonBlank(s.getFilteredTopGainer(), s.getTopGainer()),
-        firstNonBlank(s.getFilteredTopLoser(), s.getTopLoser()),
+        topGainer,
+        topLoser,
+        topGainer,
+        topLoser,
+        filteredTopGainer,
+        filteredTopLoser,
         s.getRankingWarning(),
         anomalies,
-        s.getMostMentioned(),
-        s.getKospiPick(),
-        s.getKosdaqPick(),
+        mostMentioned,
+        kospiPick,
+        kosdaqPick,
         rawNotes,
         s.getCreatedAt(),
         s.getUpdatedAt(),
         s.getArchivedAt(),
         verification,
         SummaryLeaderExplanations.build(
-            s.getDate(), s.getTopGainer(), s.getTopLoser(), anomalies, rawNotes, verification),
+            s.getDate(), topGainer, topLoser, anomalies, rawNotes, verification),
         buildAfterMarketAiReport(s, isMarketClosed, topGainers, topLosers, mostMentionedTop, kospiTopGainers, kosdaqTopGainers),
         s.renderContent(),
         s.getUpdatedAt(),
@@ -274,6 +282,18 @@ public record SummaryDto(
       return primary;
     }
     return fallback == null ? "" : fallback;
+  }
+
+  private static boolean isInternalPlaceholder(String value) {
+    if (value == null) return true;
+    String text = value.trim();
+    return text.isBlank()
+        || text.equals("-")
+        || text.matches("(?i)^(TOP_GAINER|TOP_LOSER|MOST_MENTIONED|KOSPI_PICK|KOSDAQ_PICK)_\\d{4}-\\d{2}-\\d{2}$");
+  }
+
+  private static String publicSummaryValue(String value) {
+    return isInternalPlaceholder(value) ? "-" : value;
   }
 
   public record AnomalyDto(
