@@ -683,18 +683,27 @@
   top: 142px;
   z-index: 4;
   display: grid;
-  gap: 8px;
-  width: min(470px, 32vw);
-  min-width: 380px;
+  gap: 7px;
+  width: min(440px, 31vw);
+  min-width: 360px;
   transform: translateX(-50%);
   border: 1px solid rgba(96, 165, 250, 0.18);
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(8, 13, 24, 0.66), rgba(37, 99, 235, 0.12));
   color: rgba(226, 232, 240, 0.84);
-  padding: 10px;
+  padding: 9px;
   pointer-events: none;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+
+.forecastHudDetail {
+  max-height: min(484px, calc(100dvh - 188px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.34) transparent;
 }
 
 .forecastHudPositive {
@@ -776,6 +785,23 @@
   color: #f8fafc;
   font-size: 0.82rem;
   font-weight: 900;
+}
+
+.forecastHud > p,
+.forecastHud > em,
+.forecastHud > small {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.forecastHud > p {
+  -webkit-line-clamp: 2;
+}
+
+.forecastHud > em,
+.forecastHud > small {
+  -webkit-line-clamp: 2;
 }
 
 .forecastLevelGrid {

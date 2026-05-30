@@ -1028,6 +1028,7 @@ export default function TradingViewPriceChart({
         <aside
           className={clsx(
             styles.forecastHud,
+            showDetailPanels && styles.forecastHudDetail,
             forecastGuide.tone === 'positive' && styles.forecastHudPositive,
             forecastGuide.tone === 'negative' && styles.forecastHudNegative,
             forecastGuide.tone === 'mixed' && styles.forecastHudMixed
@@ -1060,7 +1061,7 @@ export default function TradingViewPriceChart({
               ))}
             </div>
           )}
-          {forecastGuide.planSteps.length > 0 && (
+          {showDetailPanels && forecastGuide.planSteps.length > 0 && (
             <div className={styles.forecastPlanBox} aria-label="Ollama 3단계 차트 실행 순서">
               <div className={styles.forecastPlanHeader}>
                 <span>{forecastGuide.planTitle}</span>

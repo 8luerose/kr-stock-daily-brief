@@ -2860,9 +2860,20 @@ def _build_ollama_insights_prompt(
     documents: list[dict[str, str]],
     seed: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
-    prompt_documents = _ollama_prompt_documents(documents)[:3]
+    preferred_doc_ids = {
+        "indicator-snapshot",
+        "trade-zones",
+        "current-decision-summary",
+        "news-headline-1",
+        "news-headline-2",
+        "daily-summary",
+    }
+    prompt_documents = [
+        doc for doc in _ollama_prompt_documents(documents)
+        if doc.get("id") in preferred_doc_ids
+    ][:5]
     context = "\n".join(
-        f"[{doc['id']}] {doc['type']} | {doc['title']} | {_compact(doc.get('text'), 90)}"
+        f"[{doc['id']}] {doc['title']} | {_compact(doc.get('text'), 72)}"
         for doc in prompt_documents
     )
     seed = seed if isinstance(seed, dict) else {}
@@ -2875,7 +2886,6 @@ def _build_ollama_insights_prompt(
     seed_summary = "\n".join([
         f"초안 결정: {_clean(seed_advice.get('decision'), '관망')}",
         f"초안 이유: {_compact(seed_advice.get('summary'), 80)}",
-        f"개인 조건: {_clean(seed_personal.get('statusLabel'), '미적용')}",
         f"뉴스 점수/확률: {_clean(seed_sentiment.get('score'), '0')}점, 상승 {_clean(seed_probabilities.get('up'), '확인')}%, 하락 {_clean(seed_probabilities.get('down'), '확인')}%, 횡보 {_clean(seed_probabilities.get('flat'), '확인')}%",
         f"장후 분위기: {_clean(seed_report.get('mood'), '확인 필요')}",
     ])
@@ -2883,7 +2893,7 @@ def _build_ollama_insights_prompt(
         "너는 한국 주식 초보자를 위한 로컬 Ollama 투자 학습 보조자다. "
         "제공된 근거만 쓰고 투자 지시와 수익 보장은 금지한다. "
         "점수와 확률은 초안을 유지한다. "
-        "한국어 JSON 객체 하나만 반환한다. 값은 짧고 자연스럽게 쓴다."
+        "한국어 JSON 객체 하나만 반환한다. 각 값은 35자 안팎으로 쓴다."
     )
     user = f"""
 대상: {subject}{f"({code})" if code else ""}
@@ -2895,21 +2905,15 @@ def _build_ollama_insights_prompt(
 근거:
 {context or "제공된 근거가 없습니다."}
 
-다음 JSON 스키마만 반환해라. 빈 배열은 최대 1개 문장만 넣어라.
+다음 JSON 스키마만 반환해라.
 {{
   "answer": "",
   "stockAdvice": {{
-    "summary": "",
-    "buyConditions": [],
-    "watchConditions": [],
-    "sellConditions": []
+    "summary": ""
   }},
   "newsSentiment": {{
     "llmContextLabel": "상승에 우호적|하락 위험|혼재|근거 약함",
-    "llmContextReason": "",
-    "upReasons": [],
-    "downRisks": [],
-    "actionGuide": []
+    "llmContextReason": ""
   }},
   "afterMarketReport": {{
     "llmComment": ""
@@ -2922,7 +2926,7 @@ def _build_ollama_insights_prompt(
     "avoidAction": ""
   }}
 }}
-각 문장은 45자 이내로 써라.
+각 문장은 35자 안팎으로 써라.
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 

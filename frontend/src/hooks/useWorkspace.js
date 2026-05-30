@@ -210,10 +210,12 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
               }
             }
           };
-          attachAfterMarketReport();
           attachStoredOllamaInsight();
-          loadFallbackAiLayer();
-          loadOllamaLayer();
+          loadOllamaLayer().finally(() => {
+            if (!mounted || requestId !== requestIdRef.current) return;
+            attachAfterMarketReport();
+            loadFallbackAiLayer();
+          });
         }
       } catch (err) {
         if (mounted && requestId === requestIdRef.current) {
