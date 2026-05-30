@@ -577,6 +577,15 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
           focusMode={aiCardExpanded}
           onOpenPortfolio={onOpenPortfolio}
           onRefreshAi={onRefreshAi}
+          briefArchive={summaryArchive}
+          briefLoading={summaryArchiveLoading}
+          onReloadBrief={() => {
+            setSummaryArchiveLoading(true);
+            loadSummaryArchive()
+              .then((archive) => setSummaryArchive(archive))
+              .catch(() => setSummaryArchive({ latest: null, list: [], source: '불러오기 실패' }))
+              .finally(() => setSummaryArchiveLoading(false));
+          }}
         />
       </div>
 
@@ -613,12 +622,12 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
               setStockCodeError('');
             }}
           />
-          <button type="submit">AI 판단</button>
+          <button type="submit">검색</button>
           {stockCodeError && <em id="quick-stock-search-error">{stockCodeError}</em>}
         </form>
 
         <div className={styles.briefDateStrip} aria-label="pykrx 브리프 달력">
-          <span>브리프 달력</span>
+          <span>브리프</span>
           {summaryArchiveLoading && <b>불러오는 중</b>}
           {!summaryArchiveLoading && summaryDates.length === 0 && <b>기록 없음</b>}
           {!summaryArchiveLoading && summaryDates.slice(0, 3).map((item) => (

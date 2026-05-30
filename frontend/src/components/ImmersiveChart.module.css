@@ -1812,25 +1812,49 @@
   }
 }
 
-/* PC-first simplification: one search action only in the toolbar. */
+/* Restored responsive toolbar: period, search, and brief status stay visible. */
 .topToolbar {
-  justify-content: center !important;
-  gap: 0 !important;
+  justify-content: space-between !important;
+  gap: var(--spacing-3) !important;
 }
 
 .intervalGroup,
-.briefDateStrip,
+.briefDateStrip {
+  display: flex !important;
+}
+
 .actionGroup {
   display: none !important;
 }
 
 .quickSearchForm {
-  flex: 0 1 520px !important;
-  width: min(520px, calc(100vw - 48px)) !important;
+  flex: 1 1 360px !important;
+  width: auto !important;
   min-width: 0 !important;
-  max-width: none !important;
-  border-radius: 8px !important;
+  max-width: 520px !important;
+  border-radius: 999px !important;
   background: rgba(6, 10, 18, 0.86) !important;
+}
+
+@media (max-width: 1100px) {
+  .topToolbar {
+    align-items: flex-start !important;
+    flex-wrap: wrap;
+  }
+
+  .quickSearchForm {
+    order: 1;
+    flex: 1 1 min(520px, 100%) !important;
+  }
+
+  .intervalGroup {
+    order: 2;
+  }
+
+  .briefDateStrip {
+    order: 3;
+    flex: 1 1 260px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1838,9 +1862,30 @@
     top: 12px !important;
     left: 12px !important;
     right: 12px !important;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px !important;
   }
 
   .quickSearchForm {
     width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-left: 12px;
+  }
+
+  .quickSearchForm label {
+    display: none;
+  }
+
+  .intervalGroup,
+  .briefDateStrip {
+    justify-self: stretch;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .briefDateStrip {
+    min-width: 0;
+    overflow-x: auto;
   }
 }

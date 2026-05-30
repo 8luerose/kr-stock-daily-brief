@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { Brain, CandlestickChart, Layers, Newspaper, RotateCcw, Target } from 'lucide-react';
+import { Brain, CandlestickChart, Newspaper } from 'lucide-react';
 import styles from './TradingViewPriceChart.module.css';
 
 function loadTradingViewLibrary() {
@@ -33,6 +33,21 @@ function formatPercent(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '확인 필요';
   return `${number > 0 ? '+' : ''}${number.toFixed(1)}%`;
+}
+
+function formatBriefRate(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '';
+  return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`;
+}
+
+function briefEntryLabel(item) {
+  if (!item) return '';
+  if (typeof item === 'string') return item;
+  const name = item.name || item.stockName || item.code || '종목';
+  const rate = formatBriefRate(item.rate ?? item.changeRate);
+  const count = Number.isFinite(Number(item.count)) ? `${Number(item.count).toLocaleString()}건` : '';
+  return [name, rate || count].filter(Boolean).join(' ');
 }
 
 function averageVolume(rows, count = 20) {
@@ -81,7 +96,7 @@ function plainDecisionSummary(aiDecision, chartMetrics) {
     return `가격이 더 오르지 못하고 밀리면 팔지 검토하세요. ${support} 아래로 내려가면 위험을 먼저 줄여야 합니다.`;
   }
   if (decision.includes('분석')) {
-    return 'AI가 차트와 뉴스를 확인하고 있습니다. 지금은 가격과 사고판 양만 먼저 보세요.';
+    return 'AI가 차트와 뉴스를 확인하고 있습니다. 지금은 전일 대비 가격 변화만 먼저 보세요.';
   }
   return `지금은 기다리면서 ${avg20} 위에 머무는지 확인하는 쪽입니다.`;
 }
@@ -91,7 +106,7 @@ function plainNextCheck(aiDecision, chartMetrics) {
   const topPrice = formatCurrency(chartMetrics?.resistance);
   const avg20 = formatCurrency(chartMetrics?.ma20);
   const support = formatCurrency(chartMetrics?.support);
-  if (decision.includes('매수')) return `${topPrice} 위로 올라간 뒤에도 사고판 양이 줄지 않는지 확인`;
+  if (decision.includes('매수')) return `${topPrice} 위로 올라간 뒤에도 거래가 약해지지 않는지 확인`;
   if (decision.includes('매도')) return `${support} 아래로 내려가거나 가격 회복이 약한지 확인`;
   if (decision.includes('분석')) return 'AI 결과가 나오기 전까지 새로 사지 말고 기다리기';
   return `${avg20} 위에서 장을 마치는지 확인`;
@@ -284,12 +299,16 @@ export default function TradingViewPriceChart({
   onTermClick,
   focusMode = false,
   onOpenPortfolio,
-  onRefreshAi
+  onRefreshAi,
+  briefArchive,
+  briefLoading = false,
+  onReloadBrief
 }) {
   const containerRef = useRef(null);
   const chartApiRef = useRef(null);
   const [hover, setHover] = useState(null);
   const [chartError, setChartError] = useState('');
+  const [activeAssistPanel, setActiveAssistPanel] = useState('none');
   const [visibleLayers, setVisibleLayers] = useState({
     ai: false,
     zones: false,
@@ -300,10 +319,23 @@ export default function TradingViewPriceChart({
 
   useEffect(() => {
     setHover(null);
+    setActiveAssistPanel('none');
   }, [stock?.code, interval]);
 
   const handleFitChart = () => {
     chartApiRef.current?.timeScale?.().fitContent?.();
+  };
+
+  const handleAiHelpClick = () => {
+    const nextPanel = activeAssistPanel === 'ai' ? 'none' : 'ai';
+    setActiveAssistPanel(nextPanel);
+    if (nextPanel === 'ai') onRefreshAi?.();
+  };
+
+  const handleBriefClick = () => {
+    const nextPanel = activeAssistPanel === 'brief' ? 'none' : 'brief';
+    setActiveAssistPanel(nextPanel);
+    if (nextPanel === 'brief') onReloadBrief?.();
   };
 
   const toggleLayer = (key) => {
@@ -739,6 +771,50 @@ export default function TradingViewPriceChart({
     };
   }, [ai, aiDecision, chartMetrics]);
 
+  const briefInsight = useMemo(() => {
+    const latestBrief = briefArchive?.latest || null;
+    const report = ai?.marketReport || ai?.ollamaInsights?.afterMarketReport || null;
+    const list = Array.isArray(briefArchive?.list) ? briefArchive.list.slice(0, 4) : [];
+    const topGainers = Array.isArray(latestBrief?.topGainers)
+      ? latestBrief.topGainers.slice(0, 3)
+      : [latestBrief?.topGainer && { name: latestBrief.topGainer, rate: latestBrief.topGainerRate }].filter(Boolean);
+    const topLosers = Array.isArray(latestBrief?.topLosers)
+      ? latestBrief.topLosers.slice(0, 3)
+      : [latestBrief?.topLoser && { name: latestBrief.topLoser }].filter(Boolean);
+    const mentioned = Array.isArray(latestBrief?.mostMentionedTop)
+      ? latestBrief.mostMentionedTop.slice(0, 3)
+      : [latestBrief?.mostMentioned && { name: latestBrief.mostMentioned }].filter(Boolean);
+    const basisDate = latestBrief?.date
+      || latestBrief?.effectiveDate
+      || report?.basisDate
+      || report?.marketDashboard?.basisDate
+      || '';
+    const summary = compactText(
+      report?.marketReadThrough
+      || report?.sessionBrief
+      || report?.llmComment
+      || latestBrief?.content
+      || latestBrief?.rawNotes,
+      briefLoading ? '저장된 장후 브리프를 불러오는 중입니다.' : '저장된 pykrx 브리프를 기준으로 시장 분위기를 확인합니다.',
+      136
+    );
+    const action = firstCompact(
+      report?.tomorrowChecklist || report?.actionPlan || report?.nextWatch,
+      '오늘 강했던 종목과 약했던 종목을 현재 종목 판단과 비교합니다.',
+      96
+    );
+    return {
+      basisDate,
+      summary,
+      action,
+      source: briefArchive?.source || '브리프 데이터',
+      topGainers,
+      topLosers,
+      mentioned,
+      list
+    };
+  }, [ai, briefArchive, briefLoading]);
+
   const decisionCompass = useMemo(() => {
     if (!forecastGuide) return [];
     const activeZone = zoneSummaries.find((zone) => zone.relation?.tone === 'inside')
@@ -946,23 +1022,28 @@ export default function TradingViewPriceChart({
 
       const priceLines = [];
 
-      chart.subscribeCrosshairMove((param) => {
-      if (!param?.time || !param.point) {
-        setHover(null);
-        return;
+      const showHoverForParam = (param) => {
+        if (!param?.time || !param.point) {
+          setHover(null);
+          return;
+        }
+        const row = dataByTime.get(String(param.time));
+        if (!row) {
+          setHover(null);
+          return;
+        }
+        setHover({
+          ...row,
+          x: param.point.x,
+          y: param.point.y,
+          event: latestEventForDate(events, row.time)
+        });
+      };
+
+      chart.subscribeCrosshairMove(showHoverForParam);
+      if (typeof chart.subscribeClick === 'function') {
+        chart.subscribeClick(showHoverForParam);
       }
-      const row = dataByTime.get(String(param.time));
-      if (!row) {
-        setHover(null);
-        return;
-      }
-      setHover({
-        ...row,
-        x: param.point.x,
-        y: param.point.y,
-        event: latestEventForDate(events, row.time)
-      });
-    });
 
       chart.timeScale().fitContent();
 
@@ -970,6 +1051,12 @@ export default function TradingViewPriceChart({
         chartApiRef.current = null;
         if (resizeTimer) window.clearTimeout(resizeTimer);
         resizeObserver.disconnect();
+        if (typeof chart.unsubscribeCrosshairMove === 'function') {
+          chart.unsubscribeCrosshairMove(showHoverForParam);
+        }
+        if (typeof chart.unsubscribeClick === 'function') {
+          chart.unsubscribeClick(showHoverForParam);
+        }
         markerApi.setMarkers([]);
         priceLines.forEach((line) => candleSeries.removePriceLine(line));
         chart.remove();
@@ -1027,7 +1114,7 @@ export default function TradingViewPriceChart({
           <section className={styles.sidebarPriceCard}>
             <span>{latest.time} 기준</span>
             <strong>{formatCurrency(latest.close)}</strong>
-            <em>사고판 양 {formatVolume(latest.volume)}</em>
+            <em>전일 대비 {formatPercent(chartMetrics?.changeRate)}</em>
           </section>
         )}
 
@@ -1037,46 +1124,23 @@ export default function TradingViewPriceChart({
             aiDecision.tone === 'buy' && styles.sidebarDecisionBuy,
             aiDecision.tone === 'sell' && styles.sidebarDecisionSell
           )}>
-            <span>AI 판단</span>
+            <span>AI 도움 요약</span>
             <strong>{plainDecisionLabel(aiDecision.decision)}</strong>
             <p>{plainDecisionSummary(aiDecision, chartMetrics)}</p>
             <div className={styles.sidebarActionBox}>
               <b>지금 확인할 것</b>
               <span>{plainNextCheck(aiDecision, chartMetrics)}</span>
             </div>
-            {onRefreshAi && (
-              <button
-                type="button"
-                className={styles.sidebarAiButton}
-                onClick={onRefreshAi}
-                aria-label="AI 판단 다시 받기"
-              >
-                <Brain size={15} aria-hidden="true" />
-                AI 판단 다시 받기
-              </button>
-            )}
           </section>
         )}
 
         {chartMetrics && (
-          <section className={styles.sidebarMetricGrid} aria-label="차트 핵심 지표">
-            <article>
-              <span>오늘 가격</span>
+          <section className={styles.sidebarMetricGrid} aria-label="전일 대비 변화">
+            <article className={styles.sidebarMetricPrimary}>
+              <span>전일 대비</span>
               <strong className={Number(chartMetrics.changeRate) >= 0 ? styles.up : styles.down}>
                 {formatPercent(chartMetrics.changeRate)}
               </strong>
-            </article>
-            <article>
-              <span>최근 20일 평균</span>
-              <strong>{chartMetrics.aboveMa20 ? '위에 있음' : '아래에 있음'}</strong>
-            </article>
-            <article>
-              <span>위쪽 기준까지</span>
-              <strong>{formatPercent(chartMetrics.resistanceDistance)}</strong>
-            </article>
-            <article>
-              <span>사고판 양</span>
-              <strong>{Number.isFinite(chartMetrics.volumeRatio) ? `${Math.round(chartMetrics.volumeRatio)}%` : '확인 필요'}</strong>
             </article>
           </section>
         )}
@@ -1108,61 +1172,118 @@ export default function TradingViewPriceChart({
         <strong>{stock?.name || '실시간 종목'} · {stock?.code || '000000'} · {intervalLabel(interval)}</strong>
       </div>
       <div className={styles.chartControlDock} aria-label="TradingView 차트 레이어">
-        <button type="button" onClick={handleFitChart} aria-label="차트 전체 보기">
-          <RotateCcw size={15} aria-hidden="true" />
-          <span>맞춤</span>
-        </button>
         <button
           type="button"
-          className={clsx(visibleLayers.ai && styles.layerActive)}
-          onClick={() => toggleLayer('ai')}
-          aria-label="AI 레이어"
-          aria-pressed={visibleLayers.ai}
+          className={clsx(styles.primaryAiAction, activeAssistPanel === 'ai' && styles.assistActionActive)}
+          onClick={handleAiHelpClick}
+          aria-label="AI 도움 받기"
+          aria-pressed={activeAssistPanel === 'ai'}
         >
           <Brain size={15} aria-hidden="true" />
-          <span>AI</span>
+          <span>AI 도움 받기</span>
         </button>
         <button
           type="button"
-          className={clsx(showDetailPanels && styles.layerActive)}
-          onClick={() => setShowDetailPanels((value) => !value)}
-          aria-label="상세 정보 패널"
-          aria-pressed={showDetailPanels}
-        >
-          <Layers size={15} aria-hidden="true" />
-          <span>상세</span>
-        </button>
-        <button
-          type="button"
-          className={clsx(visibleLayers.zones && styles.layerActive)}
-          onClick={() => toggleLayer('zones')}
-          aria-label="거래 구간 레이어"
-          aria-pressed={visibleLayers.zones}
-        >
-          <Target size={15} aria-hidden="true" />
-          <span>구간</span>
-        </button>
-        <button
-          type="button"
-          className={clsx(visibleLayers.events && styles.layerActive)}
-          onClick={() => toggleLayer('events')}
-          aria-label="뉴스 이벤트 레이어"
-          aria-pressed={visibleLayers.events}
+          className={clsx(styles.briefAction, activeAssistPanel === 'brief' && styles.assistActionActive)}
+          onClick={handleBriefClick}
+          aria-label="브리프 불러오기"
+          aria-pressed={activeAssistPanel === 'brief'}
         >
           <Newspaper size={15} aria-hidden="true" />
-          <span>뉴스</span>
-        </button>
-        <button
-          type="button"
-          className={clsx(visibleLayers.personal && styles.layerActive)}
-          onClick={() => toggleLayer('personal')}
-          aria-label="개인 평균단가 레이어"
-          aria-pressed={visibleLayers.personal}
-        >
-          <Target size={15} aria-hidden="true" />
-          <span>내 기준</span>
+          <span>브리프 불러오기</span>
         </button>
       </div>
+      {activeAssistPanel === 'ai' && aiDecision && (
+        <section
+          className={clsx(
+            styles.assistPanel,
+            styles.aiHelpPanel,
+            aiDecision.tone === 'buy' && styles.aiHelpPanelBuy,
+            aiDecision.tone === 'sell' && styles.aiHelpPanelSell
+          )}
+          aria-label="AI 도움 받기 결과"
+        >
+          <div className={styles.assistPanelHeader}>
+            <span>AI 도움 받기</span>
+            <strong>{plainDecisionLabel(aiDecision.decision)}</strong>
+          </div>
+          <p>{aiDecision.summary}</p>
+          <div className={styles.assistTimingGrid} aria-label="언제 사고 언제 팔지">
+            <article>
+              <b>살 때</b>
+              <span>{aiDecision.tradeTiming.entryTiming || aiDecision.primaryCondition}</span>
+            </article>
+            <article>
+              <b>팔 때</b>
+              <span>{aiDecision.tradeTiming.exitTiming || aiDecision.cautionReason}</span>
+            </article>
+            <article>
+              <b>기다릴 때</b>
+              <span>{aiDecision.tradeTiming.waitCondition || aiDecision.nextWatch}</span>
+            </article>
+            <article>
+              <b>판단 바꿀 때</b>
+              <span>{aiDecision.tradeTiming.invalidationTrigger || '가격·뉴스·거래가 예상과 반대로 움직이면 다시 봅니다.'}</span>
+            </article>
+          </div>
+          <div className={styles.aiFeatureGrid} aria-label="AI 세 가지 기능">
+            <article>
+              <span>1. 종목 판단</span>
+              <strong>{aiDecision.decision}</strong>
+              <p>{aiDecision.primaryCondition}</p>
+            </article>
+            <article>
+              <span>2. 뉴스 방향</span>
+              <strong>{newsDirection ? newsDirection.label : '뉴스 확인 중'}</strong>
+              <p>
+                {newsDirection
+                  ? `상승 ${newsDirection.up ?? '확인'}% · 하락 ${newsDirection.down ?? '확인'}%. ${newsDirection.action}`
+                  : '뉴스와 이벤트가 가격에 주는 영향을 확인합니다.'}
+              </p>
+            </article>
+            <article>
+              <span>3. 장후 브리프</span>
+              <strong>{briefInsight.basisDate || '최신 브리프'}</strong>
+              <p>{briefInsight.summary}</p>
+            </article>
+          </div>
+          <em>{forecastGuide?.nextAction || aiDecision.timingNextAction || aiDecision.nextWatch}</em>
+        </section>
+      )}
+      {activeAssistPanel === 'brief' && (
+        <section className={clsx(styles.assistPanel, styles.briefHelpPanel)} aria-label="브리프 불러오기 결과">
+          <div className={styles.assistPanelHeader}>
+            <span>브리프 불러오기</span>
+            <strong>{briefLoading ? '불러오는 중' : briefInsight.basisDate || '최신 브리프'}</strong>
+          </div>
+          <p>{briefInsight.summary}</p>
+          <div className={styles.briefLeaderGrid}>
+            <article>
+              <span>강했던 종목</span>
+              <strong>{briefInsight.topGainers.map(briefEntryLabel).filter(Boolean).join(' · ') || '확인 필요'}</strong>
+            </article>
+            <article>
+              <span>약했던 종목</span>
+              <strong>{briefInsight.topLosers.map(briefEntryLabel).filter(Boolean).join(' · ') || '확인 필요'}</strong>
+            </article>
+            <article>
+              <span>많이 언급</span>
+              <strong>{briefInsight.mentioned.map(briefEntryLabel).filter(Boolean).join(' · ') || '확인 필요'}</strong>
+            </article>
+          </div>
+          {briefInsight.list.length > 0 && (
+            <div className={styles.briefDateList} aria-label="저장된 브리프 날짜">
+              {briefInsight.list.map((item) => (
+                <span key={`${item.date || item.effectiveDate}-${item.topGainer || item.content}`}>
+                  <b>{item.date || item.effectiveDate}</b>
+                  <em>{compactText(item.content || `${item.topGainer || '상승 종목'} · ${item.topLoser || '하락 종목'}`, '', 54)}</em>
+                </span>
+              ))}
+            </div>
+          )}
+          <em>{briefInsight.action} · {briefInsight.source}</em>
+        </section>
+      )}
       <div className={styles.legend} aria-label="차트 범례">
         <span><CandlestickChart size={14} aria-hidden="true" />캔들</span>
         <span><i className={styles.ma5Dot} />5일선</span>
@@ -1567,7 +1688,7 @@ export default function TradingViewPriceChart({
           className={styles.tooltip}
           style={{
             left: `clamp(12px, ${hover.x + 18}px, calc(100% - 292px))`,
-            top: hover.y > 210 ? `${hover.y - 178}px` : `${hover.y + 18}px`
+            top: `max(${typeof window !== 'undefined' && window.innerWidth <= 768 ? 148 : 12}px, ${hover.y > 210 ? hover.y - 178 : hover.y + 18}px)`
           }}
         >
           <div className={styles.tooltipDate}>{hover.time}</div>
