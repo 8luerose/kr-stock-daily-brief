@@ -841,6 +841,10 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
           onRefreshAi={onRefreshAi}
           briefArchive={summaryArchive}
           briefLoading={summaryArchiveLoading}
+          onOpenLearningModal={(termName) => {
+            setLearningModalOpen(true);
+            handleAskAiForTerm(termName);
+          }}
           onReloadBrief={() => {
             setSummaryArchiveLoading(true);
             const targetYear = calendarDate.getFullYear();
