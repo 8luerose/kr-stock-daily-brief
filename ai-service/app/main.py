@@ -25,6 +25,7 @@ _QDRANT_ASYNC_LOCK = threading.Lock()
 class ChatRequest(BaseModel):
     question: str = ""
     contextDate: str | None = None
+    context: dict[str, Any] | None = None
     stockCode: str | None = None
     stockName: str | None = None
     topicType: str | None = None
@@ -1421,14 +1422,23 @@ def _ollama_timeout(json_mode: bool = False) -> float:
     return _float_env("OLLAMA_TIMEOUT_SECONDS", _float_env("LLM_TIMEOUT_SECONDS", 20.0))
 
 
-def _call_ollama_llm(messages: list[dict[str, str]], *, json_mode: bool = False) -> tuple[str | None, dict[str, Any]]:
+def _call_ollama_llm(
+    messages: list[dict[str, str]],
+    *,
+    json_mode: bool = False,
+    num_predict_override: int | None = None,
+) -> tuple[str | None, dict[str, Any]]:
     model = _ollama_model()
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
     timeout = _ollama_timeout(json_mode)
-    num_predict = int(
-        os.getenv("OLLAMA_JSON_NUM_PREDICT", "80")
-        if json_mode
-        else os.getenv("OLLAMA_NUM_PREDICT", os.getenv("LLM_MAX_TOKENS", "650"))
+    num_predict = (
+        num_predict_override
+        if num_predict_override is not None
+        else int(
+            os.getenv("OLLAMA_JSON_NUM_PREDICT", "80")
+            if json_mode
+            else os.getenv("OLLAMA_NUM_PREDICT", os.getenv("LLM_MAX_TOKENS", "650"))
+        )
     )
 
     if not model:
@@ -1445,6 +1455,7 @@ def _call_ollama_llm(messages: list[dict[str, str]], *, json_mode: bool = False)
         "model": model,
         "messages": messages,
         "stream": False,
+        "think": False,
         "options": {
             "temperature": 0.2,
             "num_predict": num_predict,
@@ -3460,6 +3471,111 @@ def _build_ollama_chat_prompt(
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _learning_term_from_request(req: ChatRequest) -> str:
+    context = req.context if isinstance(req.context, dict) else {}
+    for key in ["termName", "learningTerm", "term", "termId"]:
+        value = _clean(context.get(key), "")
+        if value:
+            return value
+
+    question = _clean(req.question, "")
+    for left, right in [("'", "'"), ('"', '"'), ("‘", "’"), ("“", "”")]:
+        if left in question and right in question:
+            start = question.find(left) + len(left)
+            end = question.find(right, start)
+            if end > start:
+                return question[start:end].strip()
+    return ""
+
+
+def _is_learning_term_request(req: ChatRequest) -> bool:
+    context = req.context if isinstance(req.context, dict) else {}
+    task = _clean(context.get("task"), "").lower()
+    if task == "beginner_stock_term_explanation":
+        return True
+    question = _clean(req.question, "")
+    return "용어" in question and "설명" in question and bool(_learning_term_from_request(req))
+
+
+def _build_ollama_learning_term_prompt(term: str) -> list[dict[str, str]]:
+    system = (
+        "너는 한국 주식 초보자에게 용어 하나만 설명하는 로컬 Ollama 학습 도우미다. "
+        "종목 분석, 날짜, 기준일, 대상, 분석 범위, 매수 추천은 절대 쓰지 않는다. "
+        "반드시 쉬운 한국어 네 줄로만 답한다."
+    )
+    user = f"""
+용어: {term}
+
+아래 형식을 정확히 지켜라.
+- 뜻: {term}의 뜻을 한 문장으로 설명
+- 차트에서: 차트에서 어디를 보면 되는지 한 문장
+- 실전 예시: "{term}"이라는 단어가 들어간 실제 사용 예문 한 문장
+- 주의: 초보자가 오해하거나 실수하기 쉬운 점 한 문장
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _clean_learning_term_answer(text: str | None) -> str:
+    raw = _clean(text, "")
+    if not raw:
+        return ""
+    banned_prefixes = ("기준일", "대상", "분석 범위", "검색 맥락", "포트폴리오", "반대 신호")
+    lines: list[str] = []
+    for line in raw.splitlines():
+        item = line.strip()
+        if not item:
+            continue
+        normalized = item.lstrip("-*0123456789. ").strip()
+        if any(normalized.startswith(prefix) for prefix in banned_prefixes):
+            continue
+        lines.append(item)
+        if len(lines) >= 6:
+            break
+    return "\n".join(lines)
+
+
+def _fallback_learning_term_answer(term: str) -> str:
+    return "\n".join([
+        f"- 뜻: {term}은 주식 차트나 매매 판단에서 쓰는 기본 용어입니다.",
+        f"- 차트에서: {term}이 가격, 거래량, 추세 중 무엇과 연결되는지 먼저 확인합니다.",
+        f"- 실전 예시: \"{term}을 확인한 뒤 바로 따라 사지 말고 거래량과 가격 흐름을 같이 봅니다.\"",
+        f"- 주의: {term} 하나만으로 매수나 매도를 결정하면 판단이 흔들릴 수 있습니다.",
+    ])
+
+
+def _learning_term_response(req: ChatRequest) -> dict[str, Any] | None:
+    if not _is_learning_term_request(req):
+        return None
+    term = _learning_term_from_request(req)
+    llm_answer, llm_meta = _call_ollama_llm(
+        _build_ollama_learning_term_prompt(term),
+        json_mode=False,
+        num_predict_override=180,
+    )
+    cleaned_answer = _clean_learning_term_answer(llm_answer)
+    used_llm = bool(cleaned_answer)
+    return {
+        "mode": "ollama_llm" if used_llm else "ollama_fallback_rule_based",
+        "provider": "ollama",
+        "model": llm_meta.get("model") or _ollama_model(),
+        "answer": cleaned_answer or _fallback_learning_term_answer(term),
+        "confidence": "medium" if used_llm else "low-medium",
+        "sources": [
+            {"title": "사용자 PC 로컬 Ollama", "type": "local_llm", "url": "ollama://local"},
+            {"title": "앱 초보자 용어 학습", "type": "learning_term", "url": "/api/learning/terms"},
+        ],
+        "limitations": [
+            "주식 용어 학습용 설명이며 특정 종목의 매수나 매도 지시가 아닙니다.",
+            "Ollama 응답이 늦거나 비어 있으면 앱의 기본 용어 설명을 먼저 보여줍니다.",
+        ],
+        "retrieval": {
+            "llm": {**llm_meta, "used": used_llm},
+            "qdrant": _qdrant_skip_meta("용어 뜻풀이는 빠른 응답을 위해 Qdrant 동기 검색을 건너뜁니다."),
+            "sourceCount": 0,
+        },
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "UP"}
@@ -3578,6 +3694,10 @@ def ollama_after_market_report(req: ChatRequest):
 
 @app.post("/chat")
 def chat(req: ChatRequest):
+    learning_response = _learning_term_response(req)
+    if learning_response is not None:
+        return learning_response
+
     subject = _clean(req.stockName or req.topicTitle, "선택한 주제")
     code = _clean(req.stockCode, "")
     topic_type = _clean(req.topicType, "market")

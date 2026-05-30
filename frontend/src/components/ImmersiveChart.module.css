@@ -265,6 +265,7 @@
   position: absolute;
   top: calc(100% + 12px);
   left: 0;
+  z-index: 2600;
   isolation: isolate;
   background: rgba(19, 24, 36, 0.98);
   backdrop-filter: blur(32px);
@@ -705,9 +706,30 @@
 
 /* dropdownRight 짤림 방지 보정 */
 .dropdownRight {
-  right: 0 !important;
+  position: fixed !important;
+  top: 88px !important;
+  right: 24px !important;
   left: auto !important;
+  z-index: 5000;
   transform-origin: top right !important;
+}
+
+@media (max-width: 1024px) {
+  .dropdownPanel {
+    position: fixed !important;
+    top: clamp(126px, 18dvh, 164px) !important;
+    left: 16px !important;
+    right: 16px !important;
+    width: auto !important;
+    max-height: calc(100dvh - 190px);
+    z-index: 2800;
+    transform-origin: top center !important;
+  }
+
+  .dropdownRight {
+    left: 16px !important;
+    right: 16px !important;
+  }
 }
 
 /* 하단 정중앙 AI로 학습하기 플로팅 박스 */

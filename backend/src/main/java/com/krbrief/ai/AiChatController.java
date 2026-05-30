@@ -32,10 +32,21 @@ public class AiChatController {
 
   @PostMapping("/chat")
   public Map<String, Object> chat(@RequestBody(required = false) Map<String, Object> request) {
-    Map<String, Object> enriched = enricher.enrich(request == null ? Map.of() : request);
+    Map<String, Object> input = request == null ? Map.of() : request;
+    Map<String, Object> enriched =
+        isLearningTermRequest(input) ? new LinkedHashMap<>(input) : enricher.enrich(input);
     LinkedHashMap<String, Object> response = new LinkedHashMap<>(client.chat(enriched));
     response.put("storage", logService.save(enriched, response));
     return response;
+  }
+
+  private boolean isLearningTermRequest(Map<String, Object> request) {
+    Object contextValue = request.get("context");
+    if (!(contextValue instanceof Map<?, ?> context)) {
+      return false;
+    }
+    Object task = context.get("task");
+    return task != null && "beginner_stock_term_explanation".equalsIgnoreCase(task.toString());
   }
 
   @PostMapping("/ollama/insights")
