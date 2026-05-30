@@ -369,6 +369,7 @@ function normalizePersonalAdjustment(value) {
   return {
     ...value,
     applied: Boolean(value.applied),
+    contextApplied: Boolean(value.contextApplied),
     sourceDecision: humanizeText(value.sourceDecision || ""),
     finalDecision: humanizeText(value.finalDecision || ""),
     statusLabel: humanizeText(value.statusLabel || ""),

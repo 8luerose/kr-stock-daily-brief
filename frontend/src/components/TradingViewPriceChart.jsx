@@ -339,6 +339,13 @@ export default function TradingViewPriceChart({
       || null
   ), [ai]);
   const needsPortfolioSetup = !personalRisk || personalRisk.status === 'not_saved';
+  const hasPersonalContext = Boolean(personalRisk && personalRisk.status && personalRisk.status !== 'not_saved');
+  const personalContextValue = hasPersonalContext
+    ? [personalRisk.statusLabel || '개인 조건', personalRisk.profitLossText].filter(Boolean).join(' · ')
+    : '미저장';
+  const personalContextSummary = hasPersonalContext
+    ? compactText(personalRisk.actionLine || personalRisk.summary, '평균단가 기준을 AI 판단에 반영했습니다.', 92)
+    : '평균단가를 저장하면 AI가 내 손익 기준을 함께 봅니다.';
 
   const personalPriceLines = useMemo(() => {
     if (!personalRisk || personalRisk.status === 'not_saved') return [];
@@ -1045,6 +1052,9 @@ export default function TradingViewPriceChart({
           <div className={styles.aiDecisionHeader}>
             <span>{aiDecision.title}</span>
             <strong>{aiDecision.decision}</strong>
+            <em className={clsx(styles.personalDecisionBadge, hasPersonalContext && styles.personalDecisionBadgeActive)}>
+              {hasPersonalContext ? '내 기준 반영' : '평단 미저장'}
+            </em>
           </div>
           <p>{aiDecision.summary}</p>
           <div className={styles.aiDecisionStats}>
@@ -1052,11 +1062,20 @@ export default function TradingViewPriceChart({
             <span>뉴스 하락 <strong>{aiDecision.down === null ? '확인 중' : `${aiDecision.down}%`}</strong></span>
             <span>재무 <strong>{aiDecision.fundamentalLabel}</strong></span>
             <span>장후 <strong>{aiDecision.mood}</strong></span>
+            <span className={clsx(hasPersonalContext && styles.aiDecisionPersonalStat)}>
+              내 기준 <strong>{personalContextValue}</strong>
+            </span>
           </div>
           <div className={styles.aiDecisionQuickLine}>
             <b>다음 확인</b>
             <span>{aiDecision.timingNextAction || aiDecision.primaryCondition || aiDecision.nextWatch}</span>
           </div>
+          {hasPersonalContext && (
+            <div className={styles.personalDecisionLine}>
+              <b>평균단가 반영</b>
+              <span>{personalContextSummary}</span>
+            </div>
+          )}
           {needsPortfolioSetup && onOpenPortfolio && (
             <button
               type="button"
@@ -1138,6 +1157,12 @@ export default function TradingViewPriceChart({
             <b>다음</b>
             <strong>{aiDecision.timingNextAction || aiDecision.nextWatch || aiDecision.primaryCondition}</strong>
           </span>
+          {hasPersonalContext && (
+            <span>
+              <b>내 기준</b>
+              <strong>{personalContextValue}</strong>
+            </span>
+          )}
         </div>
       )}
       {needsPortfolioSetup && onOpenPortfolio && (

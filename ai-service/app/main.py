@@ -1847,6 +1847,7 @@ def _adjust_decision_for_personal_context(decision: str, personal: dict[str, Any
     if status in {"not_saved", ""}:
         return decision, {
             "applied": False,
+            "contextApplied": False,
             "sourceDecision": decision,
             "finalDecision": decision,
             "statusLabel": status_label,
@@ -1863,6 +1864,7 @@ def _adjust_decision_for_personal_context(decision: str, personal: dict[str, Any
         )
         return final_decision, {
             "applied": decision != final_decision,
+            "contextApplied": True,
             "sourceDecision": decision,
             "finalDecision": final_decision,
             "statusLabel": status_label,
@@ -1879,6 +1881,7 @@ def _adjust_decision_for_personal_context(decision: str, personal: dict[str, Any
         )
         return final_decision, {
             "applied": True,
+            "contextApplied": True,
             "sourceDecision": decision,
             "finalDecision": final_decision,
             "statusLabel": status_label,
@@ -1895,6 +1898,7 @@ def _adjust_decision_for_personal_context(decision: str, personal: dict[str, Any
         )
         return final_decision, {
             "applied": True,
+            "contextApplied": True,
             "sourceDecision": decision,
             "finalDecision": final_decision,
             "statusLabel": status_label,
@@ -1907,6 +1911,7 @@ def _adjust_decision_for_personal_context(decision: str, personal: dict[str, Any
         summary = "평균단가가 없어 실제 손익 기준 조정은 제한됩니다. 차트와 뉴스 판단을 유지하되 리스크 문구를 보수적으로 표시합니다."
         return decision, {
             "applied": False,
+            "contextApplied": True,
             "sourceDecision": decision,
             "finalDecision": decision,
             "statusLabel": status_label,
@@ -1917,6 +1922,7 @@ def _adjust_decision_for_personal_context(decision: str, personal: dict[str, Any
 
     return decision, {
         "applied": False,
+        "contextApplied": True,
         "sourceDecision": decision,
         "finalDecision": decision,
         "statusLabel": status_label,
@@ -2352,6 +2358,15 @@ def _fallback_ollama_insights(
     )
     if personal_adjustment.get("applied"):
         advice_summary = f"{personal_adjustment['summary']} {advice_summary}"
+    elif personal_adjustment.get("contextApplied"):
+        advice_summary = f"개인 조건 반영: {personal_adjustment['summary']} {advice_summary}"
+
+    personal_answer_sentence = ""
+    if personal_adjustment.get("contextApplied"):
+        personal_answer_sentence = (
+            f" 개인 조건은 {personal_adjustment.get('statusLabel', '개인 조건')}으로 반영했고, "
+            f"{personal_adjustment.get('actionLine') or personal_diagnostics.get('actionLine', '평균단가 기준을 함께 확인합니다.')}"
+        )
 
     response = {
         "mode": "ollama_fallback_rule_based",
@@ -2361,7 +2376,7 @@ def _fallback_ollama_insights(
         "answer": (
             f"{subject}{f'({code})' if code else ''}은(는) 현재 {decision} 의견입니다. "
             f"{ma20['positionLabel']} 상태이고 뉴스/이벤트 점수는 {score}점입니다. 다음 거래일 확률은 상승 {probabilities['up']}%, "
-            f"하락 {probabilities['down']}%, 횡보 {probabilities['flat']}%입니다. "
+            f"하락 {probabilities['down']}%, 횡보 {probabilities['flat']}%입니다.{personal_answer_sentence} "
             "이 응답은 제공된 차트, 뉴스, 이벤트 근거를 바탕으로 한 조건형 참고입니다."
         ),
         "stockAdvice": {

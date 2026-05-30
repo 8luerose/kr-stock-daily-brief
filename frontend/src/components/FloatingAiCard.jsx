@@ -56,6 +56,13 @@ function compactStorageChip(storage) {
   return 'DB 저장';
 }
 
+function personalRiskChip(personalRisk) {
+  if (!personalRisk) return '';
+  if (!personalRisk.status || personalRisk.status === 'not_saved') return '내 기준 미저장';
+  const label = personalRisk.statusLabel || '개인 조건';
+  return `내 기준 ${[label, personalRisk.profitLossText].filter(Boolean).join(' ')}`;
+}
+
 function fundamentalStatusLabel(summary, riskNotes = []) {
   const text = [summary, ...(Array.isArray(riskNotes) ? riskNotes : [])].filter(Boolean).join(' ');
   if (!text) return '재무 확인';
@@ -160,8 +167,10 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
     ? [ai.marketReport.mood, ai.marketReport.marketBias].filter(Boolean).join(' · ')
     : afterMarketReport.mood || '장후 리포트 확인 중';
   const reportSummary = ai.marketReport?.llmComment || afterMarketReport.llmComment || '장후 브리프와 시장 분위기 코멘트를 확인합니다.';
+  const personalChip = personalRiskChip(personalRisk);
   const workflowChips = [
     `1 상담 ${adviceDecision}`,
+    personalChip,
     insightRuntimeLabel,
     `2 뉴스 ${compactProbabilityPair(nextTradingDay)}`,
     `3 장후 ${ai.marketReport?.mood || afterMarketReport.mood || '확인 중'}`,
@@ -213,7 +222,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
           <p className={styles.conclusion}>{ai.conclusion || '현재 종목의 주요 흐름을 파악하고 있습니다.'}</p>
           {workflowChips.length > 0 && (
             <div className={styles.miniOllamaStrip} aria-label="Ollama 핵심 인사이트">
-              {workflowChips.slice(0, 6).map((item) => (
+              {workflowChips.slice(0, 7).map((item) => (
                 <span key={item}>{item}</span>
               ))}
             </div>

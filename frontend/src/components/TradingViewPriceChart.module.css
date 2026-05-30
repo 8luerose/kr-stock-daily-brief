@@ -326,19 +326,29 @@
 .aiDecisionHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
 }
 
 .aiDecisionHeader span,
 .aiDecisionPanel small {
+  min-width: 0;
   color: rgba(226, 232, 240, 0.58);
   font-size: 0.72rem;
   font-weight: 850;
   line-height: 1.25;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.aiDecisionHeader > span {
+  flex: 1 1 110px;
 }
 
 .aiDecisionHeader strong {
+  flex: 0 0 auto;
   border-radius: 999px;
   color: #f8fafc;
   font-size: 0.82rem;
@@ -352,6 +362,28 @@
 .aiDecisionSell .aiDecisionHeader strong { background: rgba(239, 68, 68, 0.2); color: #fecaca; }
 .aiDecisionWatch .aiDecisionHeader strong { background: rgba(245, 158, 11, 0.18); color: #fde68a; }
 
+.personalDecisionBadge {
+  flex: 0 1 auto;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.46);
+  color: rgba(226, 232, 240, 0.66);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.2;
+  min-width: 0;
+  padding: 5px 8px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.personalDecisionBadgeActive {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(22, 163, 74, 0.14);
+  color: #bbf7d0;
+}
+
 .aiDecisionPanel p {
   margin: 0;
   color: rgba(226, 232, 240, 0.78);
@@ -363,6 +395,7 @@
 }
 
 .aiDecisionQuickLine,
+.personalDecisionLine,
 .aiCoachLine {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -380,8 +413,15 @@
   background: rgba(245, 158, 11, 0.1);
 }
 
+.personalDecisionLine {
+  border-color: rgba(34, 197, 94, 0.2);
+  background: rgba(22, 163, 74, 0.1);
+}
+
 .aiDecisionQuickLine b,
 .aiDecisionQuickLine span,
+.personalDecisionLine b,
+.personalDecisionLine span,
 .aiCoachLine b,
 .aiCoachLine span,
 .aiCoachSummary {
@@ -391,6 +431,7 @@
 }
 
 .aiDecisionQuickLine b,
+.personalDecisionLine b,
 .aiCoachLine b {
   color: #bfdbfe;
   font-size: 0.68rem;
@@ -403,7 +444,12 @@
   color: #fde68a;
 }
 
+.personalDecisionLine b {
+  color: #bbf7d0;
+}
+
 .aiDecisionQuickLine span,
+.personalDecisionLine span,
 .aiCoachLine span {
   color: rgba(226, 232, 240, 0.78);
   font-size: 0.72rem;
@@ -452,7 +498,7 @@
 
 .aiDecisionStats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
   gap: 6px;
 }
 
@@ -476,6 +522,15 @@
   font-size: 0.82rem;
   font-weight: 950;
   margin-top: 2px;
+}
+
+.aiDecisionPersonalStat {
+  border-color: rgba(34, 197, 94, 0.22) !important;
+  background: rgba(22, 163, 74, 0.12) !important;
+}
+
+.aiDecisionPersonalStat strong {
+  color: #bbf7d0;
 }
 
 .aiFactorGrid {
@@ -1625,7 +1680,7 @@
   }
 
   .aiDecisionStats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
     gap: 5px;
   }
 
@@ -1637,12 +1692,14 @@
     font-size: 0.74rem;
   }
 
-  .aiDecisionQuickLine {
+  .aiDecisionQuickLine,
+  .personalDecisionLine {
     grid-template-columns: 1fr;
     padding: 6px 7px;
   }
 
-  .aiDecisionQuickLine span {
+  .aiDecisionQuickLine span,
+  .personalDecisionLine span {
     font-size: 0.68rem;
     line-height: 1.24;
   }

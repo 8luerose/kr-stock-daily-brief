@@ -3,6 +3,8 @@ package com.krbrief.ai;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.krbrief.portfolio.PortfolioItem;
+import com.krbrief.portfolio.PortfolioItemRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,10 +15,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AiChatLogService {
   private final AiChatInteractionRepository repository;
+  private final PortfolioItemRepository portfolioItemRepository;
   private final ObjectMapper objectMapper;
 
-  public AiChatLogService(AiChatInteractionRepository repository, ObjectMapper objectMapper) {
+  public AiChatLogService(
+      AiChatInteractionRepository repository,
+      PortfolioItemRepository portfolioItemRepository,
+      ObjectMapper objectMapper) {
     this.repository = repository;
+    this.portfolioItemRepository = portfolioItemRepository;
     this.objectMapper = objectMapper;
   }
 
@@ -108,18 +115,89 @@ public class AiChatLogService {
     storage.put("basisDate", item.getBasisDate());
     storage.put("createdAt", item.getCreatedAt());
     storage.put("note", "저장된 Ollama 상담 응답을 먼저 재사용했습니다. 새 계산 결과가 도착하면 화면이 갱신됩니다.");
+    reconcilePersonalContext(response, item.getStockCode(), storage);
     response.put("storage", storage);
     return Optional.of(response);
   }
 
+  private void reconcilePersonalContext(
+      LinkedHashMap<String, Object> response, String stockCode, LinkedHashMap<String, Object> storage) {
+    LinkedHashMap<String, Object> stockAdvice = map(response.get("stockAdvice"));
+    if (stockAdvice.isEmpty()) {
+      return;
+    }
+    LinkedHashMap<String, Object> personalRisk = map(stockAdvice.get("personalRisk"));
+    String status = text(personalRisk.get("status"));
+    if (status.isBlank() || "not_saved".equals(status)) {
+      return;
+    }
+
+    Optional<PortfolioItem> currentItem = portfolioItemRepository.findById(text(stockCode));
+    if (currentItem.isPresent() && averagePriceMatches(personalRisk, currentItem.get())) {
+      return;
+    }
+
+    LinkedHashMap<String, Object> currentPersonalRisk = new LinkedHashMap<>();
+    currentPersonalRisk.put("status", "not_saved");
+    currentPersonalRisk.put("statusLabel", "샌드박스 미저장");
+    currentPersonalRisk.put(
+        "summary",
+        "현재 포트폴리오 샌드박스의 평균단가와 저장된 AI 답변의 개인 기준이 달라 개인 조건 판단은 제외했습니다.");
+    currentPersonalRisk.put("actionLine", "평균단가를 저장한 뒤 AI 새로 계산을 누르면 현재 조건으로 다시 반영합니다.");
+    currentPersonalRisk.put("checklist", List.of("평균단가를 저장합니다.", "AI 새로 계산을 누릅니다.", "내 기준 손익 문장을 다시 확인합니다."));
+
+    LinkedHashMap<String, Object> personalAdjustment = map(stockAdvice.get("personalAdjustment"));
+    personalAdjustment.put("applied", false);
+    personalAdjustment.put("contextApplied", false);
+    personalAdjustment.put("sourceDecision", stockAdvice.getOrDefault("decision", ""));
+    personalAdjustment.put("finalDecision", stockAdvice.getOrDefault("decision", ""));
+    personalAdjustment.put("statusLabel", "개인 조건 제외");
+    personalAdjustment.put(
+        "summary",
+        "저장된 AI 답변의 평균단가 기준이 현재 샌드박스 상태와 맞지 않아 개인화 판단을 숨겼습니다.");
+    personalAdjustment.put("actionLine", "새 계산을 실행하면 현재 저장값 기준으로 다시 판단합니다.");
+    personalAdjustment.put("tone", "neutral");
+
+    stockAdvice.put("personalRisk", currentPersonalRisk);
+    stockAdvice.put("personalAdjustment", personalAdjustment);
+    stockAdvice.put(
+        "summary",
+        "저장된 Ollama 답변입니다. 현재 샌드박스 상태와 맞지 않는 개인 평균단가 판단은 제외했습니다. 새 계산을 누르면 최신 조건으로 다시 계산합니다.");
+    response.put("stockAdvice", stockAdvice);
+
+    LinkedHashMap<String, Object> portfolioGuidance = map(response.get("portfolioGuidance"));
+    if (!portfolioGuidance.isEmpty()) {
+      portfolioGuidance.put("summary", currentPersonalRisk.get("summary"));
+      portfolioGuidance.put("positionDiagnostics", currentPersonalRisk);
+      response.put("portfolioGuidance", portfolioGuidance);
+    }
+
+    storage.put("personalContextStale", true);
+    storage.put(
+        "note",
+        "저장된 Ollama 상담 응답을 먼저 재사용했습니다. 다만 현재 포트폴리오 샌드박스와 맞지 않는 개인 평균단가 판단은 제외했습니다.");
+  }
+
+  private boolean averagePriceMatches(Map<String, Object> personalRisk, PortfolioItem currentItem) {
+    Double currentAveragePrice = currentItem.getAveragePrice();
+    double storedAveragePrice = number(personalRisk.get("averagePrice"));
+    if (currentAveragePrice == null) {
+      return !Double.isFinite(storedAveragePrice);
+    }
+    if (!Double.isFinite(storedAveragePrice)) {
+      return false;
+    }
+    return Math.abs(currentAveragePrice - storedAveragePrice) <= 1.0d;
+  }
+
   @SuppressWarnings("unchecked")
-  private Map<String, Object> map(Object value) {
+  private LinkedHashMap<String, Object> map(Object value) {
     if (value instanceof Map<?, ?> raw) {
       LinkedHashMap<String, Object> out = new LinkedHashMap<>();
       raw.forEach((key, item) -> out.put(String.valueOf(key), item));
       return out;
     }
-    return Map.of();
+    return new LinkedHashMap<>();
   }
 
   private String json(Object value) {
@@ -148,6 +226,17 @@ public class AiChatLogService {
       if (value != null && !value.isBlank()) return value;
     }
     return "";
+  }
+
+  private double number(Object value) {
+    if (value instanceof Number number) {
+      return number.doubleValue();
+    }
+    try {
+      return Double.parseDouble(text(value));
+    } catch (NumberFormatException e) {
+      return Double.NaN;
+    }
   }
 
   private String text(Object value) {
