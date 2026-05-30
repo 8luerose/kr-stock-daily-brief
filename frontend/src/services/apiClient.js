@@ -444,6 +444,19 @@ function normalizeDecisionFactors(items) {
   })).filter((item) => item.label && item.summary);
 }
 
+function normalizeBeginnerCoach(value = {}) {
+  const coach = value && typeof value === "object" ? value : {};
+  return {
+    title: humanizeText(coach.title || "초보자 AI 코치"),
+    plainSummary: humanizeText(coach.plainSummary || ""),
+    goodReason: humanizeText(coach.goodReason || ""),
+    cautionReason: humanizeText(coach.cautionReason || ""),
+    nextAction: humanizeText(coach.nextAction || ""),
+    avoidAction: humanizeText(coach.avoidAction || ""),
+    checklist: normalizeTextList(coach.checklist)
+  };
+}
+
 function normalizeOllamaInsights(remote = {}) {
   const advice = remote.stockAdvice || {};
   const sentiment = remote.newsSentiment || {};
@@ -499,6 +512,7 @@ function normalizeOllamaInsights(remote = {}) {
       nextWatch: normalizeTextList(report.nextWatch)
     },
     decisionFactors: normalizeDecisionFactors(remote.decisionFactors),
+    beginnerCoach: normalizeBeginnerCoach(remote.beginnerCoach),
     qdrant: remote.retrieval?.qdrant || null,
     beginnerNotes: normalizeTextList(remote.beginnerNotes),
     limitations: normalizeTextList(remote.limitations),

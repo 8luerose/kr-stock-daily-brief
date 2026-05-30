@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle, ShieldAlert, Clock3, Database, Info, Cpu, Newspaper, TrendingUp } from 'lucide-react';
+import { Bot, ChevronUp, ChevronDown, CheckCircle2, XCircle, ShieldAlert, Clock3, Database, Info, Cpu, Newspaper, TrendingUp, Lightbulb } from 'lucide-react';
 import clsx from 'clsx';
 import styles from './FloatingAiCard.module.css';
 
@@ -75,6 +75,7 @@ export default function FloatingAiCard({ ai, events, asOf }) {
   const newsSentiment = insights?.newsSentiment || {};
   const nextTradingDay = newsSentiment?.nextTradingDay || {};
   const afterMarketReport = insights?.afterMarketReport || {};
+  const beginnerCoach = insights?.beginnerCoach || null;
   const decisionFactors = Array.isArray(insights?.decisionFactors) ? insights.decisionFactors.slice(0, 4) : [];
   const qdrant = insights?.qdrant || ai.marketReport?.qdrant || null;
   const qdrantModeLabel = qdrant?.embeddingUsed
@@ -112,6 +113,13 @@ export default function FloatingAiCard({ ai, events, asOf }) {
   const marketDashboard = ai.marketReport?.marketDashboard || null;
   const topGainer = marketDashboard?.topGainer || null;
   const topLoser = marketDashboard?.topLoser || null;
+  const hasBeginnerCoach = Boolean(
+    beginnerCoach?.plainSummary
+    || beginnerCoach?.goodReason
+    || beginnerCoach?.cautionReason
+    || beginnerCoach?.nextAction
+    || beginnerCoach?.avoidAction
+  );
 
   return (
     <details
@@ -207,6 +215,45 @@ export default function FloatingAiCard({ ai, events, asOf }) {
               </div>
               {insights.answer && (
                 <p className={styles.ollamaAnswer}>{insights.answer}</p>
+              )}
+              {hasBeginnerCoach && (
+                <div className={styles.beginnerCoachCard} aria-label="초보자 AI 코치">
+                  <div className={styles.beginnerCoachHeader}>
+                    <div>
+                      <Lightbulb size={16} />
+                      <strong>{beginnerCoach.title || '초보자 AI 코치'}</strong>
+                    </div>
+                    <span>{adviceDecision}</span>
+                  </div>
+                  {beginnerCoach.plainSummary && <p>{beginnerCoach.plainSummary}</p>}
+                  <div className={styles.beginnerCoachReasonGrid}>
+                    <article>
+                      <b>좋게 볼 이유</b>
+                      <span>{beginnerCoach.goodReason || newsSentiment.upReasons?.[0] || '가격과 거래량 확인이 필요합니다.'}</span>
+                    </article>
+                    <article>
+                      <b>주의할 이유</b>
+                      <span>{beginnerCoach.cautionReason || newsSentiment.downRisks?.[0] || newsSentiment.caution}</span>
+                    </article>
+                  </div>
+                  <div className={styles.beginnerCoachActionGrid}>
+                    <article>
+                      <b>다음 행동</b>
+                      <span>{beginnerCoach.nextAction || stockAdvice.watchConditions?.[0] || '다음 종가와 거래량을 확인합니다.'}</span>
+                    </article>
+                    <article>
+                      <b>피할 행동</b>
+                      <span>{beginnerCoach.avoidAction || '뉴스 제목이나 확률 하나만 보고 바로 매매하지 않습니다.'}</span>
+                    </article>
+                  </div>
+                  {beginnerCoach.checklist?.length > 0 && (
+                    <ul className={styles.beginnerCoachChecklist}>
+                      {beginnerCoach.checklist.slice(0, 3).map((item, index) => (
+                        <li key={`${item}-${index}`}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
               <div className={styles.ollamaGrid}>
                 <article className={styles.ollamaCard}>

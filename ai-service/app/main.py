@@ -2019,6 +2019,58 @@ def _sentiment_action_guide(decision: str, probabilities: dict[str, int]) -> lis
     ]
 
 
+def _beginner_coach_card(
+    decision: str,
+    score: int,
+    ma20: dict[str, str],
+    probabilities: dict[str, int],
+    up_reasons: list[str],
+    down_risks: list[str],
+    personal_diagnostics: dict[str, str],
+    fundamentals: dict[str, Any],
+) -> dict[str, Any]:
+    up = probabilities.get("up", 0)
+    down = probabilities.get("down", 0)
+    good_reason = _clean(
+        up_reasons[0] if up_reasons else "",
+        f"현재가는 {ma20['positionLabel']}이고 상승 참고 확률은 {up}%입니다. 거래량이 붙는지 확인해야 합니다.",
+    )
+    caution_reason = _clean(
+        down_risks[0] if down_risks else "",
+        f"하락 참고 확률은 {down}%입니다. 20일선 {ma20['ma20']} 이탈 여부를 먼저 확인해야 합니다.",
+    )
+    if decision == "매수 검토":
+        next_action = f"관심 후보로 두되, 현재가가 20일선 {ma20['ma20']} 위에서 버티고 거래량이 늘 때만 분할 검토합니다."
+        avoid_action = "시초가 급등이나 뉴스 제목만 보고 한 번에 크게 매수하지 않습니다."
+    elif decision == "매도 검토":
+        next_action = "보유 중이면 손절·비중 축소 기준을 먼저 정하고 지지선 이탈 여부를 확인합니다."
+        avoid_action = "하락 확률이 높을 때 물타기로 평균단가만 낮추는 행동은 피합니다."
+    else:
+        next_action = "새 매수보다 다음 종가, 거래량, 뉴스 원문이 같은 방향인지 확인합니다."
+        avoid_action = "근거가 엇갈릴 때 빨리 결론을 내리거나 확률만 보고 매수하지 않습니다."
+    plain_summary = (
+        f"초보자 기준 결론은 '{decision}'입니다. "
+        f"뉴스·이벤트 점수 {score}점, 상승 {up}%·하락 {down}%라서 가격 반응 확인이 필요합니다."
+    )
+    checklist = [
+        f"현재가가 20일선 {ma20['ma20']} 위에서 마감하는지 확인",
+        "뉴스 원문과 공시가 실제 호재인지 확인",
+        _clean(personal_diagnostics.get("actionLine"), "평균단가와 손실 허용선을 먼저 정합니다."),
+    ]
+    fundamental_point = _clean((fundamentals.get("points") or [""])[0], "")
+    if fundamental_point:
+        checklist.append(fundamental_point)
+    return {
+        "title": "초보자 AI 코치",
+        "plainSummary": plain_summary,
+        "goodReason": good_reason,
+        "cautionReason": caution_reason,
+        "nextAction": next_action,
+        "avoidAction": avoid_action,
+        "checklist": list(dict.fromkeys(checklist))[:3],
+    }
+
+
 def _summary_points(summary: dict[str, Any] | None) -> list[str]:
     if not isinstance(summary, dict):
         return ["저장된 장후 브리프가 부족해 종목 차트와 이벤트 중심으로 요약합니다."]
@@ -2067,6 +2119,16 @@ def _fallback_ollama_insights(
     fallback_reason = _friendly_llm_fallback_reason(llm_meta.get("fallbackReason"))
     decision_reason = _decision_reason(decision, score, ma20)
     report_comment = _after_market_comment(subject, decision, score, probabilities, summary_points)
+    beginner_coach = _beginner_coach_card(
+        decision,
+        score,
+        ma20,
+        probabilities,
+        up_reasons,
+        down_risks,
+        personal_diagnostics,
+        fundamentals,
+    )
 
     return {
         "mode": "ollama_fallback_rule_based",
@@ -2150,6 +2212,7 @@ def _fallback_ollama_insights(
                 "거래량이 평균 대비 유지되는지 확인",
             ],
         },
+        "beginnerCoach": beginner_coach,
         "beginnerNotes": [
             "매수/관망/매도는 지시가 아니라 조건형 의견입니다.",
             "확률은 예측 보조이며 실제 수익을 보장하지 않습니다.",
@@ -2221,7 +2284,7 @@ def _merge_insight_dict(base: dict[str, Any], generated: dict[str, Any] | None) 
     if not generated:
         return base
     merged = {**base}
-    for key in ["stockAdvice", "newsSentiment", "afterMarketReport"]:
+    for key in ["stockAdvice", "newsSentiment", "afterMarketReport", "beginnerCoach"]:
         if isinstance(generated.get(key), dict):
             current = merged.get(key) if isinstance(merged.get(key), dict) else {}
             next_value = {**current}
@@ -2363,17 +2426,20 @@ def _build_ollama_insights_prompt(
     seed_advice = seed.get("stockAdvice") if isinstance(seed.get("stockAdvice"), dict) else {}
     seed_sentiment = seed.get("newsSentiment") if isinstance(seed.get("newsSentiment"), dict) else {}
     seed_report = seed.get("afterMarketReport") if isinstance(seed.get("afterMarketReport"), dict) else {}
+    seed_coach = seed.get("beginnerCoach") if isinstance(seed.get("beginnerCoach"), dict) else {}
     seed_probabilities = seed_sentiment.get("nextTradingDay") if isinstance(seed_sentiment.get("nextTradingDay"), dict) else {}
     seed_summary = "\n".join([
         f"초안 결정: {_clean(seed_advice.get('decision'), '관망')}",
         f"초안 이유: {_compact(seed_advice.get('summary'), 120)}",
         f"뉴스 점수/확률: {_clean(seed_sentiment.get('score'), '0')}점, 상승 {_clean(seed_probabilities.get('up'), '확인')}%, 하락 {_clean(seed_probabilities.get('down'), '확인')}%, 횡보 {_clean(seed_probabilities.get('flat'), '확인')}%",
         f"장후 분위기: {_clean(seed_report.get('mood'), '확인 필요')}",
+        f"초보자 코치 초안: {_compact(seed_coach.get('plainSummary'), 120)}",
     ])
     system = (
         "너는 한국 주식 초보자를 위한 로컬 Ollama 투자 학습 보조자다. "
         "반드시 제공된 근거 안에서만 답하고 투자 지시, 수익 보장, 확정 표현을 금지한다. "
         "점수와 확률은 시스템 초안을 그대로 유지하고, 문장만 더 자연스럽게 다듬는다. "
+        "'호재', '악재', '20일선' 같은 단어는 초보자가 이해할 수 있게 이유와 행동으로 풀어 쓴다. "
         "반드시 한국어 JSON 객체 하나만 반환하고, 각 배열은 최대 2개 항목으로 짧게 쓴다. "
         "마크다운, 코드블록, JSON 밖 설명은 쓰지 않는다."
     )
@@ -2410,6 +2476,15 @@ def _build_ollama_insights_prompt(
   "afterMarketReport": {{
     "llmComment": "",
     "nextWatch": []
+  }},
+  "beginnerCoach": {{
+    "title": "초보자 AI 코치",
+    "plainSummary": "",
+    "goodReason": "",
+    "cautionReason": "",
+    "nextAction": "",
+    "avoidAction": "",
+    "checklist": []
   }},
   "beginnerNotes": [],
   "limitations": []

@@ -298,6 +298,123 @@
   overflow-wrap: anywhere;
 }
 
+.beginnerCoachCard {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(6, 78, 59, 0.32), rgba(15, 23, 42, 0.54));
+  padding: var(--spacing-3);
+}
+
+.beginnerCoachHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.beginnerCoachHeader div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.beginnerCoachHeader svg {
+  color: #86efac;
+  flex: 0 0 auto;
+}
+
+.beginnerCoachHeader strong,
+.beginnerCoachHeader span,
+.beginnerCoachCard p,
+.beginnerCoachReasonGrid b,
+.beginnerCoachReasonGrid span,
+.beginnerCoachActionGrid b,
+.beginnerCoachActionGrid span,
+.beginnerCoachChecklist li {
+  min-width: 0;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.beginnerCoachHeader strong {
+  color: #dcfce7;
+  font-size: 0.88rem;
+  font-weight: 950;
+  line-height: 1.28;
+}
+
+.beginnerCoachHeader span {
+  border: 1px solid rgba(134, 239, 172, 0.24);
+  border-radius: var(--radius-round);
+  background: rgba(15, 23, 42, 0.44);
+  color: #bbf7d0;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1.2;
+  padding: 5px 8px;
+}
+
+.beginnerCoachCard p {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.beginnerCoachReasonGrid,
+.beginnerCoachActionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.beginnerCoachReasonGrid article,
+.beginnerCoachActionGrid article {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.35);
+  padding: 8px;
+}
+
+.beginnerCoachReasonGrid b,
+.beginnerCoachActionGrid b {
+  color: var(--color-text-primary);
+  font-size: 0.74rem;
+  font-weight: 950;
+  line-height: 1.3;
+}
+
+.beginnerCoachReasonGrid span,
+.beginnerCoachActionGrid span {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.38;
+}
+
+.beginnerCoachChecklist {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.beginnerCoachChecklist li {
+  color: #bbf7d0;
+  font-size: 0.75rem;
+  line-height: 1.36;
+}
+
 .ollamaGrid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1139,6 +1256,8 @@
   .ollamaWorkflowGrid { grid-template-columns: 1fr; }
   .decisionFactorPanel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sentimentReasonGrid { grid-template-columns: 1fr; }
+  .beginnerCoachReasonGrid,
+  .beginnerCoachActionGrid { grid-template-columns: 1fr; }
   .newsGrid { grid-template-columns: 1fr; }
   .checklist { grid-template-columns: 1fr; }
 
