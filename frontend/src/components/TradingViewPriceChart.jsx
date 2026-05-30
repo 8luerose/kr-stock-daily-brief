@@ -411,17 +411,34 @@ export default function TradingViewPriceChart({
     const up = Number(probabilities.up);
     const down = Number(probabilities.down);
     const flat = Number(probabilities.flat);
+    const tradeTiming = advice.tradeTiming || {};
+    const entryTiming = compactText(tradeTiming.entryTiming, '', 104)
+      || firstCompact(advice.buyConditions, '20일선 위 유지와 거래량 증가가 함께 필요합니다.', 104);
+    const exitTiming = compactText(tradeTiming.exitTiming, '', 104)
+      || firstCompact(advice.sellConditions, '지지선 이탈과 하락 거래량 증가를 먼저 확인합니다.', 104);
+    const waitCondition = compactText(tradeTiming.waitCondition, '', 104)
+      || firstCompact(advice.watchConditions, '다음 종가와 거래량을 확인할 때까지 관망합니다.', 104);
+    const invalidationTrigger = compactText(tradeTiming.invalidationTrigger, '', 104)
+      || compactText(beginnerCoach.avoidAction, '', 104)
+      || '뉴스·거래량·20일선 흐름이 판단과 반대로 움직이면 다시 확인합니다.';
+    const firstTimingCheck = firstCompact(tradeTiming.tomorrowChecklist, '', 104);
     const primaryCondition = decision.includes('매수')
-      ? compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.buyConditions, '20일선 위 유지와 거래량 증가가 함께 필요합니다.')
+      ? entryTiming || compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.buyConditions, '20일선 위 유지와 거래량 증가가 함께 필요합니다.')
       : decision.includes('매도')
-        ? compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.sellConditions, '지지선 이탈과 하락 거래량 증가를 먼저 확인합니다.')
-        : compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.watchConditions, '다음 종가와 거래량을 확인할 때까지 관망합니다.');
+        ? exitTiming || compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.sellConditions, '지지선 이탈과 하락 거래량 증가를 먼저 확인합니다.')
+        : waitCondition || compactText(beginnerCoach.nextAction, '', 104) || firstCompact(advice.watchConditions, '다음 종가와 거래량을 확인할 때까지 관망합니다.');
     const positiveReason = compactText(beginnerCoach.goodReason, '', 88) || firstCompact(sentiment.upReasons, '좋게 볼 근거는 가격 반응과 거래량으로 재확인해야 합니다.');
     const cautionReason = compactText(beginnerCoach.cautionReason, '', 88) || firstCompact(sentiment.downRisks, sentiment.caution || '반대 신호와 뉴스 원문을 확인해야 합니다.');
-    const nextWatch = compactText(beginnerCoach.nextAction, '', 104) || firstCompact(report.nextWatch, primaryCondition);
+    const nextWatch = firstTimingCheck || compactText(beginnerCoach.nextAction, '', 104) || firstCompact(report.nextWatch, primaryCondition);
     const avoidAction = compactText(beginnerCoach.avoidAction, '', 96);
     const coachSummary = compactText(beginnerCoach.plainSummary, '', 112);
     const fundamentalLabel = fundamentalStatusLabel(ai?.fundamentalGuidance?.summary, advice.riskNotes).replace(/^재무\s*/, '');
+    const timingNextAction = decision.includes('매수')
+      ? entryTiming || nextWatch
+      : decision.includes('매도')
+        ? exitTiming || nextWatch
+        : waitCondition || nextWatch;
+    const hasTradeTiming = Boolean(entryTiming || exitTiming || waitCondition || invalidationTrigger);
     const model = insights?.model || ai?.llmModel || '';
     const modeLabel = insights?.modeLabel || ai?.modeLabel || '근거 기반 AI';
     const title = insights
@@ -452,6 +469,15 @@ export default function TradingViewPriceChart({
       positiveReason,
       cautionReason,
       nextWatch,
+      timingNextAction,
+      hasTradeTiming,
+      tradeTiming: {
+        title: compactText(tradeTiming.title, '언제 사고 팔지', 28),
+        entryTiming,
+        exitTiming,
+        waitCondition,
+        invalidationTrigger
+      },
       avoidAction,
       coachSummary,
       title,
@@ -861,8 +887,28 @@ export default function TradingViewPriceChart({
           </div>
           <div className={styles.aiDecisionQuickLine}>
             <b>다음 확인</b>
-            <span>{aiDecision.primaryCondition || aiDecision.nextWatch}</span>
+            <span>{aiDecision.timingNextAction || aiDecision.primaryCondition || aiDecision.nextWatch}</span>
           </div>
+          {aiDecision.hasTradeTiming && (
+            <div className={styles.aiTimingGrid} aria-label="AI 매매 타이밍">
+              <div>
+                <b>살 때</b>
+                <span>{aiDecision.tradeTiming.entryTiming || aiDecision.primaryCondition}</span>
+              </div>
+              <div>
+                <b>팔 때</b>
+                <span>{aiDecision.tradeTiming.exitTiming || aiDecision.cautionReason}</span>
+              </div>
+              <div>
+                <b>기다릴 때</b>
+                <span>{aiDecision.tradeTiming.waitCondition || aiDecision.nextWatch}</span>
+              </div>
+              <div>
+                <b>판단 바꿀 때</b>
+                <span>{aiDecision.tradeTiming.invalidationTrigger || aiDecision.primaryCondition}</span>
+              </div>
+            </div>
+          )}
           {aiDecision.avoidAction && (
             <div className={styles.aiCoachLine}>
               <b>피할 행동</b>
@@ -913,7 +959,7 @@ export default function TradingViewPriceChart({
           </span>
           <span>
             <b>다음</b>
-            <strong>{aiDecision.nextWatch || aiDecision.primaryCondition}</strong>
+            <strong>{aiDecision.timingNextAction || aiDecision.nextWatch || aiDecision.primaryCondition}</strong>
           </span>
         </div>
       )}
