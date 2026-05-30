@@ -118,7 +118,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   }, [activePanel, onPanelOpenChange]);
 
   useEffect(() => {
-    if (activePanel !== 'calendar' || summaryArchive || summaryArchiveLoading) return;
+    if (summaryArchive || summaryArchiveLoading) return;
     let mounted = true;
     setSummaryArchiveLoading(true);
     loadSummaryArchive()
@@ -132,7 +132,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         if (mounted) setSummaryArchiveLoading(false);
       });
     return () => { mounted = false; };
-  }, [activePanel, summaryArchive, summaryArchiveLoading]);
+  }, [summaryArchive, summaryArchiveLoading]);
 
   const chartData = useMemo(() => {
     if (!chart?.rows) return [];
@@ -544,9 +544,16 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
   const latestBrief = summaryArchive?.latest || null;
   const handleStockCodeSubmit = (event) => {
     event.preventDefault();
-    const nextCode = stockCodeInput.replace(/\D/g, '').slice(0, 6);
+    const keyword = stockCodeInput.trim();
+    const digitCode = keyword.replace(/\D/g, '').slice(0, 6);
+    const normalizedKeyword = keyword.toLowerCase();
+    const matchedOption = normalizedStockOptions.find((option) => {
+      const fields = [option.code, option.name, option.label].filter(Boolean).map((value) => String(value).toLowerCase());
+      return fields.some((value) => value === normalizedKeyword || value.includes(normalizedKeyword));
+    });
+    const nextCode = matchedOption?.code || (/^\d{6}$/.test(digitCode) ? digitCode : '');
     if (!/^\d{6}$/.test(nextCode)) {
-      setStockCodeError('6자리 종목코드를 입력하세요. 예: 005930');
+      setStockCodeError('기업명이나 6자리 종목코드를 입력하세요.');
       return;
     }
     setStockCodeError('');
@@ -590,6 +597,35 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
           <span className={styles.intervalStatus} data-testid="interval-status" aria-live="polite">
             {intervalLabel}
           </span>
+        </div>
+
+        <form className={styles.quickSearchForm} onSubmit={handleStockCodeSubmit} aria-label="기업 검색">
+          <label htmlFor="quick-stock-search">기업 검색</label>
+          <input
+            id="quick-stock-search"
+            value={stockCodeInput}
+            placeholder="삼성전자 또는 005930"
+            autoComplete="off"
+            aria-invalid={Boolean(stockCodeError)}
+            aria-describedby={stockCodeError ? 'quick-stock-search-error' : undefined}
+            onChange={(event) => {
+              setStockCodeInput(event.target.value);
+              setStockCodeError('');
+            }}
+          />
+          <button type="submit">AI 판단</button>
+          {stockCodeError && <em id="quick-stock-search-error">{stockCodeError}</em>}
+        </form>
+
+        <div className={styles.briefDateStrip} aria-label="pykrx 브리프 달력">
+          <span>브리프 달력</span>
+          {summaryArchiveLoading && <b>불러오는 중</b>}
+          {!summaryArchiveLoading && summaryDates.length === 0 && <b>기록 없음</b>}
+          {!summaryArchiveLoading && summaryDates.slice(0, 3).map((item) => (
+            <button type="button" key={item.date || item.effectiveDate} aria-label={`${item.date || item.effectiveDate} 브리프`}>
+              {item.date || item.effectiveDate}
+            </button>
+          ))}
         </div>
 
         <div className={styles.actionGroup}>

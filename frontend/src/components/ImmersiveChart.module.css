@@ -131,8 +131,125 @@
   border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.actionGroup {
+.quickSearchForm {
+  flex: 1 1 360px;
+  min-width: 260px;
+  max-width: 520px;
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: rgba(6, 10, 18, 0.76);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: 0 14px 36px rgba(2, 6, 23, 0.28);
+  padding: 5px 6px 5px 14px;
+  pointer-events: auto;
+}
+
+.quickSearchForm label {
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.quickSearchForm input {
+  min-width: 0;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 0.92rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  outline: none;
+}
+
+.quickSearchForm input::placeholder {
+  color: rgba(148, 163, 184, 0.72);
+}
+
+.quickSearchForm button {
+  height: 34px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #dbeafe, #bbf7d0);
+  color: #0f172a;
+  font-size: 0.8rem;
+  font-weight: 950;
+  line-height: 1;
+  padding: 0 14px;
+  white-space: nowrap;
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.quickSearchForm button:hover {
+  filter: brightness(1.04);
+}
+
+.quickSearchForm button:active {
+  transform: scale(0.97);
+}
+
+.quickSearchForm em {
+  grid-column: 1 / -1;
+  color: #fecaca;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.25;
+  padding-left: 2px;
+}
+
+.briefDateStrip {
+  flex: 0 1 330px;
+  min-width: 190px;
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 46px;
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.72);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  padding: 5px 8px 5px 12px;
+  pointer-events: auto;
+}
+
+.briefDateStrip span {
+  color: #bae6fd;
+  font-size: 0.76rem;
+  font-weight: 950;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.briefDateStrip b,
+.briefDateStrip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.62);
+  color: rgba(241, 245, 249, 0.88);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.actionGroup {
+  display: none;
   align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-3);
@@ -1405,6 +1522,20 @@
     right: clamp(16px, 4vw, 48px);
   }
 
+  .quickSearchForm {
+    flex-basis: 300px;
+    min-width: 230px;
+  }
+
+  .briefDateStrip {
+    flex-basis: 230px;
+    min-width: 160px;
+  }
+
+  .briefDateStrip button:nth-of-type(n+3) {
+    display: none;
+  }
+
   .actionGroup {
     gap: var(--spacing-2);
   }
@@ -1443,6 +1574,63 @@
   }
 
   .intervalStatus {
+    display: none;
+  }
+
+  .quickSearchForm {
+    flex: 1 1 auto;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 37px;
+    padding: 3px 4px 3px 10px;
+  }
+
+  .quickSearchForm label {
+    display: none;
+  }
+
+  .quickSearchForm input {
+    height: 30px;
+    font-size: 0.82rem;
+  }
+
+  .quickSearchForm button {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 0.72rem;
+  }
+
+  .quickSearchForm em {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 132px;
+    right: 0;
+    border-radius: 999px;
+    background: rgba(127, 29, 29, 0.86);
+    padding: 4px 8px;
+  }
+
+  .briefDateStrip {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 42px;
+    min-height: 37px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .briefDateStrip span {
+    font-size: 0;
+  }
+
+  .briefDateStrip span::before {
+    content: "▣";
+    color: #bae6fd;
+    font-size: 1rem;
+  }
+
+  .briefDateStrip b,
+  .briefDateStrip button {
     display: none;
   }
 
