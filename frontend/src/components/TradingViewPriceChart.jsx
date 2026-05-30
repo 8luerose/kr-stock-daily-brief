@@ -178,8 +178,14 @@ function factorToneClass(tone, styles) {
 }
 
 function probabilityValue(value) {
+  if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : null;
+}
+
+function priceLineValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
 }
 
 function hoverPriceState(row) {
@@ -531,6 +537,55 @@ export default function TradingViewPriceChart({
     };
   }, [ai]);
 
+  const forecastGuide = useMemo(() => {
+    if (!chartMetrics?.latest || !aiDecision) return null;
+    const close = priceLineValue(chartMetrics.latest.close);
+    if (!close) return null;
+    const resistance = priceLineValue(chartMetrics.resistance);
+    const support = priceLineValue(chartMetrics.support);
+    const ma20 = priceLineValue(chartMetrics.ma20);
+    const upProbability = probabilityValue(aiDecision.up);
+    const downProbability = probabilityValue(aiDecision.down);
+    const hasProbability = upProbability !== null && downProbability !== null;
+    const edge = hasProbability ? Math.abs(upProbability - downProbability) : 0;
+    const bufferRate = Math.max(1.2, Math.min(4.8, 1.2 + edge * 0.06));
+    const upTrigger = resistance && resistance > close
+      ? resistance
+      : close * (1 + bufferRate / 100);
+    const defenseBase = support && support < close ? support : ma20 && ma20 < close ? ma20 : close * 0.975;
+    const watchBase = ma20 || close;
+    const decisionText = aiDecision.decision || '관망';
+    const tone = decisionText.includes('매수')
+      ? 'positive'
+      : decisionText.includes('매도')
+        ? 'negative'
+        : hasProbability && upProbability >= downProbability + 8
+          ? 'positive'
+          : hasProbability && downProbability >= upProbability + 8
+            ? 'negative'
+            : 'neutral';
+    const headline = tone === 'positive'
+      ? '상승 확인선 돌파 후 거래량을 봅니다.'
+      : tone === 'negative'
+        ? '방어 기준선 이탈 여부를 먼저 봅니다.'
+        : '확인선과 방어선 사이에서는 관망 기준을 봅니다.';
+    const nextAction = tone === 'positive'
+      ? `종가가 ${formatCurrency(upTrigger)} 위에서 유지되는지 확인합니다.`
+      : tone === 'negative'
+        ? `${formatCurrency(defenseBase)} 이탈과 하락 거래량 증가를 같이 확인합니다.`
+        : `${formatCurrency(watchBase)} 부근에서 거래량이 붙는지 확인합니다.`;
+    return {
+      tone,
+      headline,
+      nextAction,
+      upTrigger,
+      defenseBase,
+      watchBase,
+      probabilityLabel: hasProbability ? `상승 ${upProbability}% · 하락 ${downProbability}%` : '확률 계산 중',
+      modeLabel: aiDecision.live ? 'Ollama LLM 기준' : aiDecision.modeLabel || '근거 계산 기준'
+    };
+  }, [aiDecision, chartMetrics]);
+
   const hoverInsight = useMemo(() => {
     if (!hover || !aiDecision) return null;
     const close = Number(hover.close);
@@ -722,6 +777,11 @@ export default function TradingViewPriceChart({
           addPriceLine(line.price, line.label, line.color, line.key === 'average' ? LineStyle.Solid : LineStyle.Dashed);
         });
       }
+      if (visibleLayers.ai && forecastGuide) {
+        addPriceLine(forecastGuide.upTrigger, 'AI 상승 확인선', '#22c55e', LineStyle.Solid);
+        addPriceLine(forecastGuide.defenseBase, 'AI 방어 기준선', '#f97316', LineStyle.Dashed);
+        addPriceLine(forecastGuide.watchBase, 'AI 관망 기준선', '#60a5fa', LineStyle.Dotted);
+      }
 
       chart.subscribeCrosshairMove((param) => {
       if (!param?.time || !param.point) {
@@ -759,7 +819,7 @@ export default function TradingViewPriceChart({
       disposed = true;
       cleanupChart();
     };
-  }, [dataByTime, events, indicatorSnapshot, personalPriceLines, prepared, visibleLayers.events, visibleLayers.personal, visibleLayers.zones, zoneSummaries]);
+  }, [dataByTime, events, forecastGuide, indicatorSnapshot, personalPriceLines, prepared, visibleLayers.ai, visibleLayers.events, visibleLayers.personal, visibleLayers.zones, zoneSummaries]);
 
   const latest = prepared.rows[prepared.rows.length - 1];
 
@@ -862,6 +922,28 @@ export default function TradingViewPriceChart({
           <p>
             20일선 {formatCurrency(chartMetrics.ma20)} · 지지선 {formatCurrency(chartMetrics.support)} · 저항선 {formatCurrency(chartMetrics.resistance)}
           </p>
+        </aside>
+      )}
+      {visibleLayers.ai && forecastGuide && (
+        <aside
+          className={clsx(
+            styles.forecastHud,
+            forecastGuide.tone === 'positive' && styles.forecastHudPositive,
+            forecastGuide.tone === 'negative' && styles.forecastHudNegative
+          )}
+          aria-label="TradingView 차트 AI 기준선"
+        >
+          <div className={styles.forecastHudTopline}>
+            <span>TradingView AI 기준선</span>
+            <strong>{forecastGuide.probabilityLabel}</strong>
+          </div>
+          <p>{forecastGuide.headline}</p>
+          <div className={styles.forecastLevelGrid}>
+            <span>상승 확인 <b>{formatCurrency(forecastGuide.upTrigger)}</b></span>
+            <span>관망 기준 <b>{formatCurrency(forecastGuide.watchBase)}</b></span>
+            <span>방어 기준 <b>{formatCurrency(forecastGuide.defenseBase)}</b></span>
+          </div>
+          <em>{forecastGuide.nextAction} · {forecastGuide.modeLabel}</em>
         </aside>
       )}
       {visibleLayers.ai && aiDecision && (

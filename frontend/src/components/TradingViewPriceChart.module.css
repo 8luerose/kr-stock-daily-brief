@@ -298,20 +298,25 @@
 .aiDecisionPanel {
   position: absolute;
   left: clamp(16px, 4vw, 56px);
-  top: auto;
-  bottom: clamp(188px, 22vh, 224px);
+  top: clamp(366px, 42vh, 402px);
+  bottom: auto;
   z-index: 4;
   display: grid;
   gap: 8px;
   width: min(460px, 34vw);
+  max-height: min(438px, calc(100dvh - 436px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 8px;
   background: rgba(8, 13, 24, 0.58);
   color: rgba(226, 232, 240, 0.84);
   padding: 11px;
-  pointer-events: none;
+  pointer-events: auto;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.34) transparent;
 }
 
 .aiDecisionBuy { border-color: rgba(34, 197, 94, 0.34); }
@@ -581,6 +586,112 @@
 
 .mobileChartLens {
   display: none;
+}
+
+.forecastHud {
+  position: absolute;
+  left: 50%;
+  top: 142px;
+  z-index: 4;
+  display: grid;
+  gap: 8px;
+  width: min(440px, 30vw);
+  min-width: 360px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(8, 13, 24, 0.66), rgba(37, 99, 235, 0.12));
+  color: rgba(226, 232, 240, 0.84);
+  padding: 10px;
+  pointer-events: none;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.forecastHudPositive {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: linear-gradient(135deg, rgba(8, 13, 24, 0.66), rgba(34, 197, 94, 0.12));
+}
+
+.forecastHudNegative {
+  border-color: rgba(249, 115, 22, 0.32);
+  background: linear-gradient(135deg, rgba(8, 13, 24, 0.66), rgba(249, 115, 22, 0.12));
+}
+
+.forecastHudTopline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.forecastHudTopline span,
+.forecastHudTopline strong,
+.forecastHud p,
+.forecastHud em,
+.forecastLevelGrid span,
+.forecastLevelGrid b {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.forecastHudTopline span {
+  color: rgba(191, 219, 254, 0.72);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.forecastHudTopline strong {
+  color: #f8fafc;
+  font-size: 0.76rem;
+  font-weight: 950;
+  line-height: 1.22;
+  text-align: right;
+}
+
+.forecastHud p,
+.forecastHud em {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.74);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 740;
+  line-height: 1.34;
+}
+
+.forecastHud p {
+  color: #f8fafc;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.forecastLevelGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.forecastLevelGrid span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.42);
+  color: rgba(226, 232, 240, 0.62);
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 6px;
+}
+
+.forecastLevelGrid b {
+  color: #f8fafc;
+  font-size: 0.74rem;
+  font-weight: 950;
+  line-height: 1.2;
 }
 
 .personalRiskOverlay {
@@ -1225,6 +1336,10 @@
     display: none;
   }
 
+  .forecastHud {
+    display: none;
+  }
+
   .personalRiskOverlay {
     display: none;
   }
@@ -1360,6 +1475,22 @@
     top: 376px;
     bottom: auto;
     width: min(300px, 30vw);
+    max-height: calc(100dvh - 420px);
+  }
+
+  .forecastHud {
+    top: 130px;
+    width: min(360px, 32vw);
+    min-width: 280px;
+  }
+
+  .forecastHud p,
+  .forecastHud em {
+    display: none;
+  }
+
+  .forecastLevelGrid {
+    grid-template-columns: 1fr;
   }
 
   .aiDecisionPanel p,
