@@ -287,7 +287,8 @@ function summaryNeedsRefresh(summary = {}) {
     summary.kospiPick,
     summary.kosdaqPick
   ].filter(Boolean).join(" ");
-  return !hasLeader || /pykrx_error|empty_rates|TOP_GAINER_|TOP_LOSER_|KOSPI_PICK_|KOSDAQ_PICK_/i.test(sourceText);
+  if (/TOP_GAINER_|TOP_LOSER_|KOSPI_PICK_|KOSDAQ_PICK_/i.test(sourceText)) return true;
+  return !hasLeader;
 }
 
 function normalizeStockOption(item = {}) {

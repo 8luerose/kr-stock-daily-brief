@@ -339,17 +339,19 @@ def _qdrant_collection() -> str:
 
 
 def _qdrant_vector_provider() -> str:
-    provider = os.getenv("QDRANT_VECTOR_PROVIDER", "ollama").strip().lower()
-    return provider if provider in {"ollama", "hash", "auto"} else "ollama"
+    provider = os.getenv("QDRANT_VECTOR_PROVIDER", "auto").strip().lower()
+    return provider if provider in {"ollama", "hash", "auto"} else "auto"
 
 
 def _qdrant_embedding_model() -> str:
+    configured = os.getenv("QDRANT_EMBEDDING_MODEL", "").strip()
+    if configured and configured.lower() != "auto":
+        return configured
     return (
-        os.getenv("QDRANT_EMBEDDING_MODEL", "").strip()
-        or os.getenv("OLLAMA_EMBEDDING_MODEL", "").strip()
-        or os.getenv("OLLAMA_MODEL", "").strip()
+        os.getenv("OLLAMA_EMBEDDING_MODEL", "").strip()
+        or _ollama_model()
         or os.getenv("LLM_MODEL", "").strip()
-        or "llama3.1:latest"
+        or ""
     )
 
 
@@ -1399,7 +1401,14 @@ def _call_anthropic_compatible_llm(messages: list[dict[str, str]]) -> tuple[str 
         }
 
 
-def _ollama_model() -> str:
+_AUTO_OLLAMA_MODEL_VALUES = {"", "auto", "local", "local_first", "installed", "first"}
+
+
+def _ollama_base_url() -> str:
+    return os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+
+
+def _configured_ollama_model() -> str:
     preferred = os.getenv("LLM_PROVIDER", "").strip().lower()
     model = os.getenv("OLLAMA_MODEL", "").strip()
     if model:
@@ -1407,6 +1416,52 @@ def _ollama_model() -> str:
     if preferred == "ollama":
         return os.getenv("LLM_MODEL", "").strip()
     return ""
+
+
+def _ollama_installed_models(base_url: str | None = None, timeout: float | None = None) -> list[str]:
+    endpoint = _join_api_path(base_url or _ollama_base_url(), "/api/tags")
+    with request.urlopen(endpoint, timeout=timeout or _float_env("OLLAMA_STATUS_TIMEOUT_SECONDS", 2.5)) as res:
+        data = json.loads(res.read().decode("utf-8"))
+    return [
+        _clean(item.get("name"), "")
+        for item in data.get("models", [])
+        if isinstance(item, dict) and _clean(item.get("name"), "")
+    ]
+
+
+def _resolve_ollama_model(base_url: str | None = None) -> tuple[str, dict[str, Any]]:
+    requested_model = _configured_ollama_model()
+    requested_key = requested_model.strip().lower()
+    meta = {
+        "requestedModel": requested_model,
+        "resolvedModel": requested_model,
+        "autoSelected": False,
+        "autoSelectReason": "",
+    }
+    try:
+        models = _ollama_installed_models(base_url)
+    except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError):
+        return ("" if requested_key in _AUTO_OLLAMA_MODEL_VALUES else requested_model), meta
+
+    if requested_key not in _AUTO_OLLAMA_MODEL_VALUES and requested_model in models:
+        return requested_model, meta
+
+    if models:
+        selected = models[0]
+        meta["resolvedModel"] = selected
+        meta["autoSelected"] = selected != requested_model
+        if requested_key in _AUTO_OLLAMA_MODEL_VALUES:
+            meta["autoSelectReason"] = "OLLAMA_MODEL=auto라 로컬 Ollama 설치 모델 중 첫 번째 모델을 사용했습니다."
+        else:
+            meta["autoSelectReason"] = f"요청 모델 {requested_model}이 설치 목록에 없어 {selected} 모델로 대체했습니다."
+        return selected, meta
+
+    return ("" if requested_key in _AUTO_OLLAMA_MODEL_VALUES else requested_model), meta
+
+
+def _ollama_model() -> str:
+    model, _ = _resolve_ollama_model()
+    return model
 
 
 def _float_env(name: str, default: float) -> float:
@@ -1429,8 +1484,8 @@ def _call_ollama_llm(
     num_predict_override: int | None = None,
     timeout_override: float | None = None,
 ) -> tuple[str | None, dict[str, Any]]:
-    model = _ollama_model()
-    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+    base_url = _ollama_base_url()
+    model, model_meta = _resolve_ollama_model(base_url)
     timeout = timeout_override if timeout_override is not None else _ollama_timeout(json_mode)
     num_predict = (
         num_predict_override
@@ -1450,6 +1505,7 @@ def _call_ollama_llm(
             "baseUrl": base_url,
             "fallbackReason": "OLLAMA_MODEL이 설정되지 않았습니다.",
             "timeoutSeconds": timeout,
+            **model_meta,
         }
 
     payload_data = {
@@ -1481,10 +1537,11 @@ def _call_ollama_llm(
                 "enabled": True,
                 "provider": "ollama",
                 "model": model,
-                "baseUrl": base_url,
-                "fallbackReason": "Ollama 응답에 content가 없습니다.",
-                "timeoutSeconds": timeout,
-            }
+            "baseUrl": base_url,
+            "fallbackReason": "Ollama 응답에 content가 없습니다.",
+            "timeoutSeconds": timeout,
+            **model_meta,
+        }
         return content, {
             "enabled": True,
             "provider": "ollama",
@@ -1493,6 +1550,7 @@ def _call_ollama_llm(
             "fallbackReason": "",
             "timeoutSeconds": timeout,
             "numPredict": payload_data["options"]["num_predict"],
+            **model_meta,
         }
     except (error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as exc:
         return None, {
@@ -1502,19 +1560,22 @@ def _call_ollama_llm(
             "baseUrl": base_url,
             "fallbackReason": f"Ollama 호출 실패: {type(exc).__name__}",
             "timeoutSeconds": timeout,
+            **model_meta,
         }
 
 
 def _ollama_config_meta() -> dict[str, Any]:
-    model = _ollama_model()
+    base_url = _ollama_base_url()
+    model, model_meta = _resolve_ollama_model(base_url)
     return {
         "enabled": bool(model),
         "provider": "ollama",
         "model": model,
-        "baseUrl": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/"),
+        "baseUrl": base_url,
         "fallbackReason": "",
         "timeoutSeconds": _ollama_timeout(False),
         "jsonTimeoutSeconds": _ollama_timeout(True),
+        **model_meta,
     }
 
 
@@ -1527,21 +1588,20 @@ def _ollama_runtime_status(base_url: str, model: str) -> dict[str, Any]:
         "checkedEndpoint": _join_api_path(base_url, "/api/tags"),
         "checkTimeoutSeconds": timeout,
         "reason": "",
+        "requestedModel": _configured_ollama_model(),
+        "resolvedModel": model,
+        "autoSelected": False,
     }
     if not model:
         status["reason"] = "OLLAMA_MODEL이 설정되지 않았습니다."
         return status
     try:
-        with request.urlopen(status["checkedEndpoint"], timeout=timeout) as res:
-            data = json.loads(res.read().decode("utf-8"))
-        models = [
-            _clean(item.get("name"), "")
-            for item in data.get("models", [])
-            if isinstance(item, dict) and _clean(item.get("name"), "")
-        ]
+        models = _ollama_installed_models(base_url, timeout)
         status["reachable"] = True
         status["installedModels"] = models[:12]
         status["modelAvailable"] = model in models
+        requested = status["requestedModel"]
+        status["autoSelected"] = bool(model and model != requested)
         if not status["modelAvailable"]:
             status["reason"] = f"Ollama는 응답했지만 {model} 모델이 설치 목록에 없습니다."
         return status

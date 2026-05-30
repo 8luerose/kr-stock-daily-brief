@@ -16,7 +16,12 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from io import StringIO
 
-KRX_AUTH_ENABLED = os.getenv("KRX_AUTH_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+KRX_AUTH_MODE = os.getenv("KRX_AUTH_ENABLED", "auto").strip().lower()
+KRX_CREDENTIALS_PRESENT = bool(os.getenv("KRX_ID") and os.getenv("KRX_PW"))
+KRX_AUTH_ENABLED = KRX_AUTH_MODE in {"1", "true", "yes", "on"} or (
+    KRX_AUTH_MODE in {"", "auto"} and KRX_CREDENTIALS_PRESENT
+)
+KRX_AUTH_STATUS = "enabled" if KRX_AUTH_ENABLED else "disabled"
 if not KRX_AUTH_ENABLED:
     os.environ.pop("KRX_ID", None)
     os.environ.pop("KRX_PW", None)
@@ -26,9 +31,10 @@ from pykrx import stock
 import pandas as pd
 
 # --- KRX access hardening ---
-# pykrx >= 1.2.5 supports KRX login via KRX_ID/KRX_PW, but that path can add
-# slow repeated login attempts when credentials expire. Default to anonymous
-# browser-like requests unless KRX_AUTH_ENABLED=true is explicitly set.
+# pykrx >= 1.2.5 supports KRX login via KRX_ID/KRX_PW. In auto mode, use the
+# credentials when both are present; otherwise use anonymous browser-like
+# requests. If one login attempt fails, fall back to anonymous requests to avoid
+# repeated slow login retries.
 
 NAVER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -92,7 +98,15 @@ BASELINE_SECTOR_TAXONOMY = (
 
 try:
     import requests
+    from pykrx.website.comm import auth as _krx_auth
     from pykrx.website.comm import webio as _webio
+
+    if KRX_AUTH_ENABLED and getattr(_krx_auth, "_auth_session", None) is None:
+        KRX_AUTH_STATUS = "login_failed_fallback_anonymous"
+        os.environ.pop("KRX_ID", None)
+        os.environ.pop("KRX_PW", None)
+    elif KRX_AUTH_ENABLED:
+        KRX_AUTH_STATUS = "login_ok"
 
     _KRX_HDRS = {
         "User-Agent": NAVER_UA,
@@ -1386,7 +1400,15 @@ def _most_mentioned_by_board_posts(
 
 @app.get("/health")
 def health():
-    return {"status": "UP"}
+    return {
+        "status": "UP",
+        "krxAuth": {
+            "mode": KRX_AUTH_MODE or "auto",
+            "enabled": KRX_AUTH_ENABLED,
+            "credentialsPresent": KRX_CREDENTIALS_PRESENT,
+            "status": KRX_AUTH_STATUS,
+        },
+    }
 
 
 @lru_cache(maxsize=8)
@@ -2003,6 +2025,7 @@ def leaders(
         f"source={source}",
         f"effective_date={effective_ymd}",
         f"prev_date={prev}",
+        f"krx_auth_status={KRX_AUTH_STATUS}",
         "mostMentioned=naver_board_posts(universe=traded_value_topN)",
         f"mentions_universe_size={len(universe)}",
     ]

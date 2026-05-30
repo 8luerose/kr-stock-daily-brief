@@ -51,7 +51,8 @@ curl -X POST "http://localhost:8080/api/summaries/2026-02-26/generate"
 
 전제:
 - Git, Docker Desktop 또는 Docker Compose, `make`가 설치되어 있어야 한다.
-- 호스트 PC의 Ollama를 쓰려면 Ollama 앱/서버가 켜져 있고 `.env`의 `OLLAMA_MODEL`과 같은 모델이 내려받아져 있어야 한다.
+- 호스트 PC의 Ollama를 쓴다. Docker 안에 Ollama 컨테이너는 띄우지 않는다.
+- `OLLAMA_MODEL=auto`이면 호스트 PC Ollama에 이미 설치된 모델 중 첫 번째 모델을 자동 선택한다.
 - `.env`는 민감 정보가 들어갈 수 있어 git에 올리지 않는다. 새 PC에서는 직접 만들어야 한다.
 
 1. 저장소를 받은 뒤 프로젝트 루트로 이동한다.
@@ -69,13 +70,13 @@ cp .env.example .env
 ```dotenv
 LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.1:latest
+OLLAMA_MODEL=auto
 MARKETDATA_PROVIDER=pykrx
+KRX_AUTH_ENABLED=auto
 ```
 
-4. 호스트 PC의 Ollama에 같은 모델을 준비한다.
+4. 호스트 PC에 Ollama 모델이 하나 이상 있는지 확인한다.
 ```bash
-ollama pull llama3.1:latest
 ollama list
 ```
 
@@ -90,13 +91,7 @@ make ollama-status
 - UI: http://localhost:5173
 - Backend health: http://localhost:8080/actuator/health
 
-Docker 안에 Ollama까지 함께 띄우고 싶다면 `.env`에서 `OLLAMA_BASE_URL=http://ollama:11434`로 바꾼 뒤 아래를 실행한다.
-```bash
-make ollama-up
-make ollama-pull OLLAMA_MODEL=llama3.1:latest
-make up
-make health
-```
+주의: 이 프로젝트 실행에서는 Docker 내부 Ollama를 쓰지 않는다. `make ollama-up`, `make ollama-pull`은 실행하지 않는다.
 
 git에 올라가지 않는 실행 파일/데이터:
 - 루트 `.env`
@@ -258,9 +253,9 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `QDRANT_URL` | No | Vector store URL used by ai-service to store and retrieve AI grounding documents |
 | `QDRANT_ENABLED` | No | Enable or disable Qdrant grounding memory. Default: `true` |
 | `QDRANT_COLLECTION` | No | Qdrant collection for AI grounding memory. Default: `kr_stock_ai_memory_ollama` |
-| `QDRANT_VECTOR_PROVIDER` | No | Qdrant vector source: `ollama`, `hash`, or `auto`. Default: `ollama` |
-| `QDRANT_EMBEDDING_MODEL` | No | Ollama model used for semantic Qdrant vectors. Default: `llama3.1:latest` |
-| `QDRANT_VECTOR_SIZE` | No | Qdrant vector size. Ollama `llama3.1:latest` uses `4096`; hash fallback can use smaller sizes |
+| `QDRANT_VECTOR_PROVIDER` | No | Qdrant vector source: `auto`, `ollama`, or `hash`. Default: `auto`, so it falls back to hash vectors when the local Ollama model cannot embed |
+| `QDRANT_EMBEDDING_MODEL` | No | Ollama model used for semantic Qdrant vectors. Default: `auto` |
+| `QDRANT_VECTOR_SIZE` | No | Qdrant vector size. Default: `4096` |
 | `QDRANT_MAX_DOCUMENTS` | No | Maximum grounding documents stored per AI request. Default: `16` |
 | `QDRANT_TIMEOUT_SECONDS` | No | Qdrant HTTP timeout. Default: `2.5` |
 | `QDRANT_EMBEDDING_TIMEOUT_SECONDS` | No | Ollama embedding timeout for Qdrant vectorization before hash fallback. Default: `2` |
@@ -281,7 +276,7 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `LLM_TIMEOUT_SECONDS` | No | AI service live LLM wait time before rule-based fallback |
 | `LLM_MAX_TOKENS` | No | Max live LLM response tokens |
 | `OLLAMA_BASE_URL` | No | Local Ollama URL. Docker Desktop default: `http://host.docker.internal:11434` |
-| `OLLAMA_MODEL` | No | Local Ollama model for `/api/ai/ollama/insights` and `LLM_PROVIDER=ollama`. Docker default: `llama3.1:latest` |
+| `OLLAMA_MODEL` | No | Local Ollama model for `/api/ai/ollama/insights` and `LLM_PROVIDER=ollama`. Default: `auto`, which selects an installed host Ollama model |
 | `OLLAMA_TIMEOUT_SECONDS` | No | Ollama wait time before rule-based fallback for full text answers. Docker default: `18` |
 | `OLLAMA_LEARNING_TIMEOUT_SECONDS` | No | Short wait time for beginner learning answers before the focused built-in explanation is returned. Default: `4` |
 | `OLLAMA_JSON_TIMEOUT_SECONDS` | No | Faster wait time for `/api/ai/ollama/insights` JSON cards before rule-based fallback. Docker default: `6` |
@@ -293,8 +288,8 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
 | `ADMIN_KEY` | Recommended | Admin key for protected operations |
 | `APP_ADMIN_TRUSTED_CIDRS` | No | Comma-separated CIDRs for trusted admin bypass |
-| `KRX_AUTH_ENABLED` | No | Use KRX login credentials only when set to `true`. Default: `false` to avoid slow repeated login failures |
-| `KRX_ID` / `KRX_PW` | No | Optional KRX Data Portal credentials. Keep empty unless `KRX_AUTH_ENABLED=true` is required |
+| `KRX_AUTH_ENABLED` | No | `auto` uses `KRX_ID`/`KRX_PW` when both are present; otherwise anonymous browser-like requests are used |
+| `KRX_ID` / `KRX_PW` | No | Optional KRX Data Portal credentials. Real values stay only in local `.env` |
 
 ### LLM 모델 변경
 
@@ -302,10 +297,9 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 
 Ollama 로컬 기본 예:
 ```bash
-ollama pull llama3.1
 LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
-OLLAMA_MODEL=llama3.1:latest
+OLLAMA_MODEL=auto
 OLLAMA_TIMEOUT_SECONDS=18
 OLLAMA_JSON_TIMEOUT_SECONDS=6
 OLLAMA_JSON_NUM_PREDICT=80
@@ -337,9 +331,7 @@ docker compose up -d --build ai-service backend
 curl http://localhost:8080/api/ai/status
 ```
 
-Docker 내부 Ollama를 쓰려면 `docker compose --profile ollama up -d ollama`로 Ollama 컨테이너를 띄우고, `OLLAMA_BASE_URL=http://ollama:11434`와 `OLLAMA_MODEL`을 지정한다. 모델이 없거나 호출이 실패하면 화면은 규칙형 미리보기로 계속 동작한다.
-
-`make ollama-up`은 Docker Ollama 컨테이너를 올리고, `make ollama-pull OLLAMA_MODEL=llama3.1:latest`는 컨테이너 안에 모델을 내려받는다. `/api/ai/status` 또는 `make ollama-status`에서 `provider`, `configured`, `model`, `baseUrl`, `timeoutSeconds`, `jsonTimeoutSeconds`, `runtime.reachable`, `runtime.modelAvailable`을 확인한다. live LLM이 느리거나 실패하면 `/api/ai/chat`과 `/api/ai/ollama/insights`는 규칙형 근거 기반 응답으로 돌아간다.
+Docker 내부 Ollama는 사용하지 않는다. `/api/ai/status` 또는 `make ollama-status`에서 `provider`, `configured`, `model`, `baseUrl`, `runtime.reachable`, `runtime.modelAvailable`을 확인한다. live LLM이 느리거나 실패하면 `/api/ai/chat`과 `/api/ai/ollama/insights`는 규칙형 근거 기반 응답으로 돌아간다.
 
 종목 선택 직후 뜨는 `/api/ai/ollama/insights`는 사용자 체감 속도가 우선이라 기본값에서 Qdrant 동기 검색을 건너뛴다. 대신 `QDRANT_INSIGHTS_ASYNC_UPSERT_ENABLED=true`이면 응답 생성 뒤 같은 근거 문서를 Qdrant에 백그라운드 저장한다. 전체 RAG 근거 저장/검색은 `/api/ai/chat` 경로에서 유지되며, 인사이트 경로까지 동기 검색하려면 `QDRANT_INSIGHTS_SYNC_ENABLED=true`로 바꾼다.
 
@@ -358,8 +350,8 @@ Docker 내부 Ollama를 쓰려면 `docker compose --profile ollama up -d ollama`
 - `make deploy-smoke`: verify deployed backend/frontend health and core API/search contracts with `DEPLOY_*` URLs
 - `make generate-today`: generate today summary (Asia/Seoul date)
 - `make latest`: get latest saved summary
-- `make ollama-up`: start the optional Docker Ollama service
-- `make ollama-pull OLLAMA_MODEL=llama3.1:latest`: pull a local Ollama model into the optional Docker service
+- `make ollama-up`: optional Docker Ollama service. 현재 로컬 PC Ollama 사용 방침에서는 실행하지 않는다.
+- `make ollama-pull OLLAMA_MODEL=<model>`: optional Docker Ollama service model pull. 현재 로컬 PC Ollama 사용 방침에서는 실행하지 않는다.
 - `make ollama-status`: print `/api/ai/status`, including Ollama reachability and model availability
 
 CI also runs the same quality gate on push/PR through `.github/workflows/quality.yml`.
