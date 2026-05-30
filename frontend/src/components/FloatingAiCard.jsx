@@ -45,6 +45,17 @@ function leaderName(entry, fallback) {
   return entry?.name && entry.name !== '-' ? entry.name : fallback;
 }
 
+function compactProbabilityPair(nextTradingDay = {}) {
+  return `↑${probabilityLabel(nextTradingDay.up)} · ↓${probabilityLabel(nextTradingDay.down)}`;
+}
+
+function compactStorageChip(storage) {
+  if (!storage?.saved) return '';
+  if (storage.table === 'ai_chat_interactions') return storage.id ? `상담 DB #${storage.id}` : '상담 DB 저장';
+  if (storage.table === 'ai_after_market_reports') return storage.cached ? '장후 DB 재사용' : '장후 DB 저장';
+  return 'DB 저장';
+}
+
 function fundamentalStatusLabel(summary, riskNotes = []) {
   const text = [summary, ...(Array.isArray(riskNotes) ? riskNotes : [])].filter(Boolean).join(' ');
   if (!text) return '재무 확인';
@@ -90,7 +101,14 @@ export default function FloatingAiCard({ ai, events, asOf }) {
     ? [ai.marketReport.mood, ai.marketReport.marketBias].filter(Boolean).join(' · ')
     : afterMarketReport.mood || '장후 리포트 확인 중';
   const reportSummary = ai.marketReport?.llmComment || afterMarketReport.llmComment || '장후 브리프와 시장 분위기 코멘트를 확인합니다.';
-  const fundamentalLabel = fundamentalStatusLabel(ai.fundamentalGuidance?.summary, stockAdvice.riskNotes);
+  const workflowChips = [
+    `1 상담 ${adviceDecision}`,
+    `2 뉴스 ${compactProbabilityPair(nextTradingDay)}`,
+    `3 장후 ${ai.marketReport?.mood || afterMarketReport.mood || '확인 중'}`,
+    compactStorageChip(insights?.storage || ai.storage),
+    compactStorageChip(ai.marketReport?.storage),
+    qdrant?.enabled ? `Qdrant 근거 ${qdrant.retrievedCount || 0}개` : ''
+  ].filter(Boolean);
   const marketDashboard = ai.marketReport?.marketDashboard || null;
   const topGainer = marketDashboard?.topGainer || null;
   const topLoser = marketDashboard?.topLoser || null;
@@ -116,12 +134,9 @@ export default function FloatingAiCard({ ai, events, asOf }) {
           <p className={styles.conclusion}>{ai.conclusion || '현재 종목의 주요 흐름을 파악하고 있습니다.'}</p>
           {insights && (
             <div className={styles.miniOllamaStrip} aria-label="Ollama 핵심 인사이트">
-              <span>상담 {adviceDecision}</span>
-              <span>{fundamentalLabel}</span>
-              <span>뉴스 상승 {probabilityLabel(nextTradingDay.up)}</span>
-              <span>장후 {afterMarketReport.mood || '확인 중'}</span>
-              {ai.marketReport?.mood && <span>장후 {ai.marketReport.mood}</span>}
-              {reportStorageLabel && <span>{reportStorageLabel}</span>}
+              {workflowChips.slice(0, 5).map((item) => (
+                <span key={item}>{item}</span>
+              ))}
             </div>
           )}
         </div>
