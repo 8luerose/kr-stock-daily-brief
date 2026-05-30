@@ -180,25 +180,15 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 8px 32px rgba(49, 130, 246, 0.06);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   position: relative;
-  transition: all var(--transition-fast);
   animation: springUp var(--transition-normal) forwards;
-}
-
-.sidebarDecisionCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(49, 130, 246, 0.12);
 }
 
 .sidebarDecisionBuy {
   background: linear-gradient(135deg, rgba(244, 63, 94, 0.08), rgba(28, 34, 52, 0.4));
   border-color: rgba(244, 63, 94, 0.25);
-  box-shadow: 0 8px 32px rgba(244, 63, 94, 0.06);
-}
-
-.sidebarDecisionBuy:hover {
-  box-shadow: 0 12px 40px rgba(244, 63, 94, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .sidebarDecisionCard span {
@@ -515,13 +505,14 @@
 }
 
 /* Legend & Latest Pill Overlay */
+/* Legend & Latest Pill Overlay (PC: 겹침 철저히 방지하여 2단으로 정갈하게 배치) */
 .legend {
   position: absolute;
-  top: 88px;
+  bottom: 24px;
   left: 32px;
   display: flex;
   gap: 12px;
-  background: rgba(19, 24, 36, 0.75);
+  background: rgba(19, 24, 36, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
@@ -531,7 +522,7 @@
   font-size: 0.76rem;
   color: var(--color-text-secondary);
   font-weight: 800;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .legend span {
@@ -555,9 +546,9 @@
 
 .latestBar {
   position: absolute;
-  bottom: 24px;
+  bottom: 64px;
   left: 32px;
-  background: rgba(19, 24, 36, 0.75);
+  background: rgba(19, 24, 36, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
@@ -570,7 +561,7 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .latestBar strong {
@@ -684,11 +675,11 @@
   word-break: keep-all;
 }
 
-/* Toss Brand Badge */
+/* Toss Brand Badge (PC: 사이드바 및 범례와 절대 겹치지 않는 우측 하단 구석 배치) */
 .brandBadge {
   position: absolute;
-  top: 88px;
-  right: 400px;
+  bottom: 24px;
+  right: 32px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -771,21 +762,16 @@
     display: grid;
   }
 
+  /* 모바일 가시성을 극대화하기 위해 중복되거나 차트를 가리는 HUD 요소를 스마트하게 숨김 */
   .legend {
-    top: 130px;
-    left: 16px;
-    padding: 4px 12px;
-    font-size: 0.7rem;
+    display: none !important;
   }
 
   .latestBar {
-    bottom: 96px;
-    left: 16px;
-    padding: 4px 12px;
-    font-size: 0.72rem;
+    display: none !important;
   }
 
   .brandBadge {
-    display: none;
+    display: none !important;
   }
 }

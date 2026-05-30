@@ -15,6 +15,12 @@ function loadTradingViewLibrary() {
   return window.__tradingViewLibraryPromise;
 }
 
+function getPeriodLabel(interval) {
+  if (interval === 'weekly') return '전주';
+  if (interval === 'monthly') return '전월';
+  return '전일';
+}
+
 function formatCurrency(value) {
   if (value === null || value === undefined || value === '') return '확인 필요';
   if (!Number.isFinite(Number(value))) return '확인 필요';
@@ -105,7 +111,7 @@ function plainDecisionLabel(value) {
   return '기다림';
 }
 
-function plainDecisionSummary(aiDecision, chartMetrics) {
+function plainDecisionSummary(aiDecision, chartMetrics, interval) {
   const decision = aiDecision?.decision || '';
   const topPrice = formatCurrency(chartMetrics?.resistance);
   const avg20 = formatCurrency(chartMetrics?.ma20);
@@ -117,7 +123,7 @@ function plainDecisionSummary(aiDecision, chartMetrics) {
     return `가격이 더 오르지 못하고 밀리면 팔지 검토하세요. ${support} 아래로 내려가면 위험을 먼저 줄여야 합니다.`;
   }
   if (decision.includes('분석')) {
-    return 'AI가 차트와 뉴스를 확인하고 있습니다. 지금은 전일 대비 가격 변화만 먼저 보세요.';
+    return `AI가 차트와 뉴스를 확인하고 있습니다. 지금은 ${getPeriodLabel(interval)} 대비 가격 변화만 먼저 보세요.`;
   }
   return `지금은 기다리면서 ${avg20} 위에 머무는지 확인하는 쪽입니다.`;
 }
@@ -817,7 +823,7 @@ export default function TradingViewPriceChart({
     const kosdaqTopGainer = kosdaqGainers[0] || topGainers[0] || { name: latestBrief?.kosdaqTopGainer, rate: latestBrief?.kosdaqTopGainerRate };
     const kosdaqTopLoser = kosdaqLosers[0] || topLosers[0] || { name: latestBrief?.kosdaqTopLoser, rate: latestBrief?.kosdaqTopLoserRate };
     const briefLines = [
-      `📊 ${marketDate} 한국 주식 일간 브리프 (전일 대비)`,
+      `📊 ${marketDate} 한국 주식 일간 브리프 (${getPeriodLabel(interval)} 대비)`,
       '',
       briefLine('🟢 KOSPI 상승 1위', kospiTopGainer),
       briefLine('🔴 KOSPI 하락 1위', kospiTopLoser),
@@ -828,13 +834,13 @@ export default function TradingViewPriceChart({
       `🏆 KOSPI 픽: ${briefPickLabel(latestBrief?.kospiPick, latestBrief?.kospiTopGainerRate, kospiTopGainer)}`,
       `🏆 KOSDAQ 픽: ${briefPickLabel(latestBrief?.kosdaqPick, latestBrief?.kosdaqTopGainerRate, kosdaqTopGainer)}`,
       '',
-      ...briefTopLines('📈 KOSPI 전일대비 상승 TOP3', kospiGainers.length ? kospiGainers : topGainers),
+      ...briefTopLines(`📈 KOSPI ${getPeriodLabel(interval)}대비 상승 TOP3`, kospiGainers.length ? kospiGainers : topGainers),
       '',
-      ...briefTopLines('📉 KOSPI 전일대비 하락 TOP3', kospiLosers.length ? kospiLosers : topLosers),
+      ...briefTopLines(`📉 KOSPI ${getPeriodLabel(interval)}대비 하락 TOP3`, kospiLosers.length ? kospiLosers : topLosers),
       '',
-      ...briefTopLines('📈 KOSDAQ 전일대비 상승 TOP3', kosdaqGainers.length ? kosdaqGainers : topGainers),
+      ...briefTopLines(`📈 KOSDAQ ${getPeriodLabel(interval)}대비 상승 TOP3`, kosdaqGainers.length ? kosdaqGainers : topGainers),
       '',
-      ...briefTopLines('📉 KOSDAQ 전일대비 하락 TOP3', kosdaqLosers.length ? kosdaqLosers : topLosers)
+      ...briefTopLines(`📉 KOSDAQ ${getPeriodLabel(interval)}대비 하락 TOP3`, kosdaqLosers.length ? kosdaqLosers : topLosers)
     ];
     return {
       basisDate,
@@ -845,7 +851,7 @@ export default function TradingViewPriceChart({
       list,
       lines: briefLines
     };
-  }, [briefArchive]);
+  }, [briefArchive, interval]);
 
   const decisionCompass = useMemo(() => {
     if (!forecastGuide) return [];
@@ -1149,7 +1155,7 @@ export default function TradingViewPriceChart({
             <span>{latest.time} 기준 현재가</span>
             <strong>{formatCurrency(latest.close)}</strong>
             <em className={clsx(Number(chartMetrics?.changeRate) >= 0 ? styles.pos : styles.neg)}>
-              전일 대비 {formatPercent(chartMetrics?.changeRate)}
+              {getPeriodLabel(interval)} 대비 {formatPercent(chartMetrics?.changeRate)}
             </em>
           </section>
         )}
@@ -1164,7 +1170,7 @@ export default function TradingViewPriceChart({
             <strong>
               {aiDecision.tone === 'buy' ? '🔴 매수 검토 권장' : aiDecision.tone === 'sell' ? '🔵 매도 검토 권장' : '🟢 관망 권장'}
             </strong>
-            <p>{plainDecisionSummary(aiDecision, chartMetrics)}</p>
+            <p>{plainDecisionSummary(aiDecision, chartMetrics, interval)}</p>
             <div className={styles.sidebarActionBox}>
               <b>내일 장 시작 시 체크 포인트</b>
               <span>{plainNextCheck(aiDecision, chartMetrics)}</span>
@@ -1245,7 +1251,7 @@ export default function TradingViewPriceChart({
               </article>
               <article>
                 <span>3단계 가격 대응</span>
-                <strong>전일비 {formatPercent(chartMetrics?.changeRate)}</strong>
+                <strong>{getPeriodLabel(interval)}비 {formatPercent(chartMetrics?.changeRate)}</strong>
                 <p>{plainNextCheck(aiDecision, chartMetrics)}</p>
               </article>
             </div>
@@ -1325,7 +1331,7 @@ export default function TradingViewPriceChart({
           </div>
           <div className={styles.signalGrid}>
             <div>
-              <span>전일 대비</span>
+              <span>{getPeriodLabel(interval)} 대비</span>
               <strong className={Number(chartMetrics.changeRate) >= 0 ? styles.up : styles.down}>
                 {formatPercent(chartMetrics.changeRate)}
               </strong>

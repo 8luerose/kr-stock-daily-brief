@@ -629,7 +629,6 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         <div className={styles.briefDateStrip} aria-label="pykrx 브리프 달력">
           <span>브리프</span>
           {summaryArchiveLoading && <b>불러오는 중</b>}
-          {!summaryArchiveLoading && summaryDates.length === 0 && <b>기록 없음</b>}
           {!summaryArchiveLoading && summaryDates.slice(0, 3).map((item) => (
             <button type="button" key={item.date || item.effectiveDate} aria-label={`${item.date || item.effectiveDate} 브리프`}>
               {item.date || item.effectiveDate}
@@ -676,133 +675,10 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
                     </div>
                     {stockCodeError && <em id="stock-code-direct-error">{stockCodeError}</em>}
                   </form>
-                  <div
-                    className={clsx(
-                      styles.stockAdviceSnapshot,
-                      stockPanelAdvice.tone === 'buy' && styles.stockAdviceBuy,
-                      stockPanelAdvice.tone === 'sell' && styles.stockAdviceSell,
-                      stockPanelAdvice.tone === 'loading' && styles.stockAdviceLoading
-                    )}
-                    aria-label="선택 종목 즉시 AI 상담 요약"
-                  >
-                    <div className={styles.stockAdviceTopline}>
-                      <span>이 종목 지금 사도 되나요?</span>
-                      <strong>{stockPanelAdvice.decision}</strong>
-                    </div>
-                    <p>{stockPanelAdvice.summary}</p>
-                    <div className={styles.stockAdviceMetrics}>
-                      <span>현재가 <b>{stockPanelAdvice.priceLabel}</b></span>
-                      <span>20일선 <b>{stockPanelAdvice.ma20Label}</b></span>
-                      <span>뉴스 <b>{stockPanelAdvice.newsLabel}</b></span>
-                      <span>근거 <b>{stockPanelAdvice.sourceLabel}</b></span>
-                    </div>
-                    <div className={styles.stockAdviceActions}>
-                      <article>
-                        <b>다음 확인</b>
-                        <span>{stockPanelAdvice.nextAction}</span>
-                      </article>
-                      <article>
-                        <b>주의할 점</b>
-                        <span>{stockPanelAdvice.caution}</span>
-                      </article>
-                    </div>
-                  </div>
-                  <div className={styles.stockNewsSnapshot} aria-label="뉴스 감성 호재 악재 근거">
-                    <div className={styles.stockNewsTopline}>
-                      <span>뉴스가 왜 호재/악재인가요?</span>
-                      <strong
-                        className={clsx(
-                          stockPanelNews.tone === 'positive' && styles.stockNewsPositive,
-                          stockPanelNews.tone === 'negative' && styles.stockNewsNegative
-                        )}
-                      >
-                        {stockPanelNews.effect}
-                      </strong>
-                    </div>
-                    <article className={styles.stockNewsHeadline}>
-                      <b>{stockPanelNews.title}</b>
-                      <span>{stockPanelNews.reason}</span>
-                    </article>
-                    <div className={styles.stockNewsReasonGrid}>
-                      <article>
-                        <b>좋게 볼 이유</b>
-                        <span>{stockPanelNews.upReason}</span>
-                      </article>
-                      <article>
-                        <b>주의할 이유</b>
-                        <span>{stockPanelNews.downRisk}</span>
-                      </article>
-                    </div>
-                    <div className={styles.stockNewsFooter}>
-                      <span>감성 {stockPanelNews.scoreLabel}</span>
-                      <span>{stockPanelNews.confidence}</span>
-                    </div>
-                    <p>{stockPanelNews.action}</p>
-                  </div>
-                  <div
-                    className={clsx(
-                      styles.stockMarketSnapshot,
-                      stockPanelMarketReport.tone === 'risk' && styles.stockMarketRisk,
-                      stockPanelMarketReport.tone === 'positive' && styles.stockMarketPositive,
-                      stockPanelMarketReport.tone === 'loading' && styles.stockMarketLoading
-                    )}
-                    aria-label="장후 시장 리포트가 종목 판단에 주는 영향"
-                  >
-                    <div className={styles.stockMarketTopline}>
-                      <span>오늘 시장 분위기가 내 종목에 주는 영향</span>
-                      <strong>{stockPanelMarketReport.mood} · {stockPanelMarketReport.bias}</strong>
-                    </div>
-                    <p>{stockPanelMarketReport.summary}</p>
-                    <div className={styles.stockMarketLeaderGrid}>
-                      <span>상승 리더 <b>{stockPanelMarketReport.gainerText}</b></span>
-                      <span>하락 리더 <b>{stockPanelMarketReport.loserText}</b></span>
-                    </div>
-                    <div className={styles.stockMarketImpact}>
-                      <b>내 종목 적용</b>
-                      <span>{stockPanelMarketReport.stockImpact}</span>
-                    </div>
-                    <div className={styles.stockMarketFooter}>
-                      <span>{stockPanelMarketReport.storageLabel}</span>
-                      {stockPanelMarketReport.basisDate && <span>기준 {stockPanelMarketReport.basisDate}</span>}
-                    </div>
-                    <em>{stockPanelMarketReport.action}</em>
-                  </div>
-                  {stockPanelConsensus && (
-                    <div
-                      className={clsx(
-                        styles.stockConsensusSnapshot,
-                        stockPanelConsensus.tone === 'positive' && styles.stockConsensusPositive,
-                        stockPanelConsensus.tone === 'negative' && styles.stockConsensusNegative,
-                        stockPanelConsensus.tone === 'mixed' && styles.stockConsensusMixed
-                      )}
-                      aria-label="상담 뉴스 장후 종합 판단"
-                    >
-                      <div className={styles.stockConsensusTopline}>
-                        <span>{stockPanelConsensus.title}</span>
-                        <strong>{stockPanelConsensus.agreement}</strong>
-                      </div>
-                      <b>{stockPanelConsensus.headline}</b>
-                      <p>{stockPanelConsensus.summary}</p>
-                      <div className={styles.stockConsensusSignalGrid}>
-                        {stockPanelConsensus.signals.map((signal) => (
-                          <span
-                            key={`${signal.label}-${signal.state}`}
-                            className={clsx(
-                              signal.tone === 'positive' && styles.stockConsensusSignalPositive,
-                              signal.tone === 'negative' && styles.stockConsensusSignalNegative
-                            )}
-                          >
-                            <em>{signal.label}</em>
-                            <strong>{signal.state}</strong>
-                          </span>
-                        ))}
-                      </div>
-                      <article>
-                        <b>다음 행동</b>
-                        <span>{stockPanelConsensus.nextAction}</span>
-                      </article>
-                    </div>
-                  )}
+
+
+
+
                   {false && <div className={styles.aiPipelinePanel} aria-label="종목 선택 후 AI 실행 흐름">
                     <b>종목을 고르면 AI가 바로 확인하는 3가지</b>
                     <div className={styles.aiPipelineSummary} aria-label="Ollama 실행 상태 요약">
