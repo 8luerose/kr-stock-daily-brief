@@ -1,28 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
+import { Brain, CandlestickChart, Newspaper, RotateCcw, Target } from 'lucide-react';
 import styles from './TradingViewPriceChart.module.css';
 
 function loadTradingViewLibrary() {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('browser_only_chart_library'));
   }
-  if (window.LightweightCharts) {
-    return Promise.resolve(window.LightweightCharts);
-  }
   if (window.__tradingViewLibraryPromise) {
     return window.__tradingViewLibraryPromise;
   }
-  window.__tradingViewLibraryPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = '/vendor/lightweight-charts.standalone.production.js';
-    script.async = true;
-    script.onload = () => {
-      if (window.LightweightCharts) resolve(window.LightweightCharts);
-      else reject(new Error('tradingview_library_missing'));
-    };
-    script.onerror = () => reject(new Error('tradingview_library_load_failed'));
-    document.head.appendChild(script);
-  });
+  window.__tradingViewLibraryPromise = import('lightweight-charts');
   return window.__tradingViewLibraryPromise;
 }
 
@@ -128,7 +116,15 @@ function chartContainerSize(element) {
   };
 }
 
+function intervalLabel(interval) {
+  if (interval === 'weekly') return '1주';
+  if (interval === 'monthly') return '1개월';
+  return '1일';
+}
+
 export default function TradingViewPriceChart({
+  stock,
+  interval = 'daily',
   chartData,
   zones = [],
   events = [],
@@ -138,8 +134,22 @@ export default function TradingViewPriceChart({
   onTermClick
 }) {
   const containerRef = useRef(null);
+  const chartApiRef = useRef(null);
   const [hover, setHover] = useState(null);
   const [chartError, setChartError] = useState('');
+  const [visibleLayers, setVisibleLayers] = useState({
+    ai: true,
+    zones: true,
+    events: true
+  });
+
+  const toggleLayer = (key) => {
+    setVisibleLayers((current) => ({ ...current, [key]: !current[key] }));
+  };
+
+  const handleFitChart = () => {
+    chartApiRef.current?.timeScale?.().fitContent?.();
+  };
 
   const prepared = useMemo(() => {
     const rows = (chartData || [])
@@ -372,6 +382,7 @@ export default function TradingViewPriceChart({
         pinch: true
       }
     });
+      chartApiRef.current = chart;
       const applyChartSize = () => {
         const nextSize = chartContainerSize(element);
         if (typeof chart.resize === 'function') {
@@ -437,10 +448,10 @@ export default function TradingViewPriceChart({
 
       const markerApi = createSeriesMarkers(
       candleSeries,
-      events
+      visibleLayers.events ? events
         .filter((event) => event?.date)
         .slice(0, compactChart ? 5 : 12)
-        .map((event) => markerForEvent(event, compactChart))
+        .map((event) => markerForEvent(event, compactChart)) : []
     );
 
       const priceLines = [];
@@ -459,7 +470,9 @@ export default function TradingViewPriceChart({
 
       addPriceLine(indicatorSnapshot?.supportLevel, '지지선', '#22c55e');
       addPriceLine(indicatorSnapshot?.resistanceLevel, '저항선', '#ef4444');
-      zoneSummaries.forEach((zone) => addPriceLine(zone.midPrice, zone.label || 'AI 구간', zone.color, LineStyle.Dotted));
+      if (visibleLayers.zones) {
+        zoneSummaries.forEach((zone) => addPriceLine(zone.midPrice, zone.label || 'AI 구간', zone.color, LineStyle.Dotted));
+      }
 
       chart.subscribeCrosshairMove((param) => {
       if (!param?.time || !param.point) {
@@ -482,6 +495,7 @@ export default function TradingViewPriceChart({
       chart.timeScale().fitContent();
 
       cleanupChart = () => {
+        chartApiRef.current = null;
         if (resizeTimer) window.clearTimeout(resizeTimer);
         resizeObserver.disconnect();
         markerApi.setMarkers([]);
@@ -496,7 +510,7 @@ export default function TradingViewPriceChart({
       disposed = true;
       cleanupChart();
     };
-  }, [dataByTime, events, indicatorSnapshot, prepared, zoneSummaries]);
+  }, [dataByTime, events, indicatorSnapshot, prepared, visibleLayers.events, visibleLayers.zones, zoneSummaries]);
 
   const latest = prepared.rows[prepared.rows.length - 1];
 
@@ -505,11 +519,47 @@ export default function TradingViewPriceChart({
       <div ref={containerRef} className={styles.chart} data-testid="tradingview-price-chart" />
       {chartError && <div className={styles.chartError}>{chartError}</div>}
       <div className={styles.brandBadge}>
-        <span>TradingView Lightweight Charts</span>
-        <strong>캔들 · 거래량 · MA</strong>
+        <span>TradingView Lightweight Charts · Apache 2.0</span>
+        <strong>{stock?.name || '실시간 종목'} · {stock?.code || '000000'} · {intervalLabel(interval)}</strong>
+      </div>
+      <div className={styles.chartControlDock} aria-label="TradingView 차트 레이어">
+        <button type="button" onClick={handleFitChart} aria-label="차트 전체 보기">
+          <RotateCcw size={15} aria-hidden="true" />
+          <span>맞춤</span>
+        </button>
+        <button
+          type="button"
+          className={clsx(visibleLayers.ai && styles.layerActive)}
+          onClick={() => toggleLayer('ai')}
+          aria-label="AI 레이어"
+          aria-pressed={visibleLayers.ai}
+        >
+          <Brain size={15} aria-hidden="true" />
+          <span>AI</span>
+        </button>
+        <button
+          type="button"
+          className={clsx(visibleLayers.zones && styles.layerActive)}
+          onClick={() => toggleLayer('zones')}
+          aria-label="거래 구간 레이어"
+          aria-pressed={visibleLayers.zones}
+        >
+          <Target size={15} aria-hidden="true" />
+          <span>구간</span>
+        </button>
+        <button
+          type="button"
+          className={clsx(visibleLayers.events && styles.layerActive)}
+          onClick={() => toggleLayer('events')}
+          aria-label="뉴스 이벤트 레이어"
+          aria-pressed={visibleLayers.events}
+        >
+          <Newspaper size={15} aria-hidden="true" />
+          <span>뉴스</span>
+        </button>
       </div>
       <div className={styles.legend} aria-label="차트 범례">
-        <span><i className={styles.candleDot} />캔들</span>
+        <span><CandlestickChart size={14} aria-hidden="true" />캔들</span>
         <span><i className={styles.ma5Dot} />5일선</span>
         <span><i className={styles.ma20Dot} />20일선</span>
         <span><i className={styles.ma60Dot} />60일선</span>
@@ -555,7 +605,7 @@ export default function TradingViewPriceChart({
           </p>
         </aside>
       )}
-      {aiDecision && (
+      {visibleLayers.ai && aiDecision && (
         <aside
           className={clsx(
             styles.aiDecisionPanel,
@@ -592,7 +642,7 @@ export default function TradingViewPriceChart({
           <small>{aiDecision.modeLabel}</small>
         </aside>
       )}
-      {zoneSummaries.length > 0 && (
+      {visibleLayers.zones && zoneSummaries.length > 0 && (
         <div className={styles.zoneRail} aria-label="AI 거래 구간">
           {zoneSummaries.map((zone) => (
             <div key={`${zone.type}-${zone.label}-${zone.price}`} className={styles.zoneItem}>

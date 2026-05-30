@@ -59,6 +59,53 @@
   line-height: 1.2;
 }
 
+.chartControlDock {
+  position: absolute;
+  top: 148px;
+  right: clamp(16px, 5vw, 72px);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: min(520px, 44vw);
+  pointer-events: auto;
+}
+
+.chartControlDock button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  background: rgba(8, 13, 24, 0.54);
+  color: rgba(226, 232, 240, 0.7);
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1;
+  padding: 7px 9px;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.chartControlDock button:hover {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(15, 23, 42, 0.74);
+  color: #f8fafc;
+}
+
+.chartControlDock button:active {
+  transform: translateY(1px);
+}
+
+.chartControlDock .layerActive {
+  border-color: rgba(96, 165, 250, 0.42);
+  background: rgba(37, 99, 235, 0.22);
+  color: #dbeafe;
+}
+
 .legend {
   position: absolute;
   top: 92px;
@@ -88,10 +135,19 @@
   -webkit-backdrop-filter: blur(18px);
 }
 
+.legend i,
+.legend svg {
+  flex: 0 0 auto;
+}
+
 .legend i {
   width: 16px;
   height: 3px;
   border-radius: 999px;
+}
+
+.legend svg {
+  color: rgba(226, 232, 240, 0.82);
 }
 
 .candleDot { background: linear-gradient(90deg, #22c55e 0 48%, #ef4444 52% 100%); }
@@ -484,6 +540,26 @@
     max-width: none;
   }
 
+  .chartControlDock {
+    top: 62px;
+    left: auto;
+    right: 12px;
+    bottom: auto;
+    justify-content: flex-end;
+    max-width: 140px;
+  }
+
+  .chartControlDock button {
+    justify-content: center;
+    width: 32px;
+    min-height: 30px;
+    padding: 0;
+  }
+
+  .chartControlDock button span {
+    display: none;
+  }
+
   .legend span {
     min-height: 26px;
     font-size: 0.68rem;
@@ -492,7 +568,7 @@
 
   .latestBar {
     left: 12px;
-    right: 12px;
+    right: 158px;
     top: 62px;
     max-width: none;
     gap: 8px;
@@ -502,6 +578,10 @@
   .latestBar span,
   .latestBar em {
     font-size: 0.7rem;
+  }
+
+  .latestBar em {
+    display: none;
   }
 
   .latestBar strong {

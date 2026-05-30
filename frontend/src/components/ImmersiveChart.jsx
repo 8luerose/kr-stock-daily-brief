@@ -152,6 +152,8 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     <div className={styles.container}>
       <div className={styles.chartWrapper}>
         <TradingViewPriceChart
+          stock={stock}
+          interval={interval}
           chartData={chartData}
           zones={zones}
           events={events}
