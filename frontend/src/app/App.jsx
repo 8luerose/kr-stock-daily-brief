@@ -17,6 +17,40 @@ function intervalLabel(interval) {
   return '1일';
 }
 
+function qdrantToastState(ai = {}) {
+  const qdrant = ai.ollamaInsights?.qdrant || ai.marketReport?.qdrant || null;
+  if (!qdrant) {
+    return { label: '근거 확인 전', state: 'waiting', detail: '' };
+  }
+  if (!qdrant.enabled) {
+    return { label: '근거 저장 꺼짐', state: 'waiting', detail: 'Qdrant 비활성' };
+  }
+  if (!qdrant.skipped) {
+    const retrieved = qdrant.retrievedCount || 0;
+    const stored = qdrant.storedCount || 0;
+    return {
+      label: `근거 ${retrieved}개`,
+      state: 'ready',
+      detail: `Qdrant 검색 ${retrieved}개 · 저장 ${stored}개`
+    };
+  }
+  if (qdrant.asyncUpsertScheduled) {
+    return {
+      label: '근거 저장 중',
+      state: 'loading',
+      detail: 'Qdrant 백그라운드 저장 중'
+    };
+  }
+  if (qdrant.asyncUpsertDeduped) {
+    return {
+      label: '근거 저장 대기',
+      state: 'loading',
+      detail: '같은 종목 근거 저장 예약됨'
+    };
+  }
+  return { label: '빠른 응답', state: 'waiting', detail: 'Qdrant 검색 생략' };
+}
+
 function buildPipelineToast({ data, activeCode, interval, loading }) {
   const waitingAiSteps = [
     { label: '상담', state: 'waiting' },
@@ -65,15 +99,18 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
     || (data.ai?.marketReport?.storage?.cached ? '장후 DB 재사용'
       : data.ai?.marketReport?.storage?.saved ? '장후 DB 저장'
         : report ? '장후 결과 반영' : '');
+  const qdrantState = qdrantToastState(data.ai);
+  const qdrantDetail = qdrantState.detail ? ` · ${qdrantState.detail}` : '';
   if (ollamaStatus === 'loading') {
     return {
       title: `${data.stock?.name || activeCode} Ollama 3대 기능 실행 중`,
-      detail: '상담 의견과 뉴스 방향을 계산하고, 장후 리포트 저장본을 함께 확인합니다.',
+      detail: `상담 의견과 뉴스 방향을 계산하고, 장후 리포트 저장본을 함께 확인합니다.${qdrantDetail}`,
       tone: 'loading',
       steps: [
         { label: '상담', state: 'loading' },
         { label: '뉴스', state: 'loading' },
-        { label: '장후', state: reportStatus === 'ready' ? 'ready' : 'loading' }
+        { label: '장후', state: reportStatus === 'ready' ? 'ready' : 'loading' },
+        qdrantState
       ]
     };
   }
@@ -87,43 +124,47 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
       steps: [
         { label: '상담', state: 'delayed' },
         { label: '뉴스', state: 'delayed' },
-        { label: '장후', state: reportStatus === 'ready' ? 'ready' : 'waiting' }
+        { label: '장후', state: reportStatus === 'ready' ? 'ready' : 'waiting' },
+        qdrantState
       ]
     };
   }
   if (reportStatus === 'loading') {
     return {
       title: '장후 리포트 확인 중',
-      detail: '저장된 일간 브리프에 Ollama 시장 코멘트를 연결하고 있습니다.',
+      detail: `저장된 일간 브리프에 Ollama 시장 코멘트를 연결하고 있습니다.${qdrantDetail}`,
       tone: 'loading',
       steps: [
         { label: 'AI 상담', state: 'ready' },
         { label: '뉴스 감성', state: 'ready' },
-        { label: '장후 요약', state: 'loading' }
+        { label: '장후 요약', state: 'loading' },
+        qdrantState
       ]
     };
   }
   if (ollamaStatus === 'ready' && reportStatus === 'unavailable') {
     return {
       title: `${data.stock?.name || activeCode} 상담·뉴스 반영 완료`,
-      detail: `장후 리포트만 지연 중입니다. ${modeLabel}${storageLabel ? ` · ${storageLabel}` : ''}`,
+      detail: `장후 리포트만 지연 중입니다. ${modeLabel}${storageLabel ? ` · ${storageLabel}` : ''}${qdrantDetail}`,
       tone: 'delayed',
       steps: [
         { label: 'AI 상담', state: 'ready' },
         { label: '뉴스 감성', state: 'ready' },
-        { label: '장후 요약', state: 'delayed' }
+        { label: '장후 요약', state: 'delayed' },
+        qdrantState
       ]
     };
   }
   if (ollamaStatus === 'ready') {
     return {
       title: `${data.stock?.name || activeCode} Ollama 3대 기능 반영 완료`,
-      detail: `${modeLabel}${storageLabel ? ` · ${storageLabel}` : ''}${reportLabel ? ` · ${reportLabel}` : ''}`,
+      detail: `${modeLabel}${storageLabel ? ` · ${storageLabel}` : ''}${reportLabel ? ` · ${reportLabel}` : ''}${qdrantDetail}`,
       tone: 'ready',
       steps: [
         { label: 'AI 상담', state: 'ready' },
         { label: '뉴스 감성', state: 'ready' },
-        { label: '장후 요약', state: report ? 'ready' : 'waiting' }
+        { label: '장후 요약', state: report ? 'ready' : 'waiting' },
+        qdrantState
       ]
     };
   }

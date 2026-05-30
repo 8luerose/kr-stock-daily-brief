@@ -180,17 +180,17 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
     `1 지금 사도 되나요? ${adviceDecision}`,
     personalChip,
     insightRuntimeLabel,
+    qdrant?.enabled && !qdrant?.skipped
+      ? `Qdrant 근거 ${qdrant.retrievedCount || 0}개`
+      : qdrant?.asyncUpsertScheduled
+        ? 'Qdrant 저장 중'
+        : qdrant?.asyncUpsertDeduped ? 'Qdrant 저장 대기' : '',
     `2 뉴스 감성 ${compactProbabilityPair(nextTradingDay)}`,
     `3 장후 요약 ${ai.marketReport?.mood || afterMarketReport.mood || '확인 중'}`,
     consensus?.agreement ? `종합 ${consensus.agreement}` : '',
     reportRuntimeLabelText,
     compactStorageChip(insights?.storage || ai.storage),
-    compactStorageChip(ai.marketReport?.storage),
-    qdrant?.enabled && !qdrant?.skipped
-      ? `Qdrant 근거 ${qdrant.retrievedCount || 0}개`
-      : qdrant?.asyncUpsertScheduled
-        ? 'Qdrant 저장 중'
-        : qdrant?.asyncUpsertDeduped ? 'Qdrant 저장 대기' : ''
+    compactStorageChip(ai.marketReport?.storage)
   ].filter(Boolean);
   const marketDashboard = ai.marketReport?.marketDashboard || null;
   const topGainer = marketDashboard?.topGainer || null;
