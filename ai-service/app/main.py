@@ -1790,6 +1790,105 @@ def _leader_list(summary: dict[str, Any], key: str, fallback_key: str) -> list[s
     return [fallback] if fallback else []
 
 
+def _first_leader(summary: dict[str, Any], key: str, fallback_key: str) -> dict[str, Any]:
+    rows = summary.get(key) if isinstance(summary.get(key), list) else []
+    for row in rows:
+        if isinstance(row, dict) and _clean(row.get("name"), ""):
+            return {
+                "code": _clean(row.get("code"), ""),
+                "name": _clean(row.get("name"), ""),
+                "rate": _number(row.get("rate"), None),
+            }
+    fallback = _clean(summary.get(fallback_key), "")
+    return {"code": "", "name": fallback, "rate": None} if fallback and fallback != "-" else {}
+
+
+def _market_dashboard(summary: dict[str, Any], mood: str, market_bias: str) -> dict[str, Any]:
+    top_gainer = _first_leader(summary, "topGainers", "topGainer")
+    top_loser = _first_leader(summary, "topLosers", "topLoser")
+    kospi_top = _first_leader(summary, "kospiTopGainers", "kospiTopGainer")
+    kosdaq_top = _first_leader(summary, "kosdaqTopGainers", "kosdaqTopGainer")
+    kospi_drop = _first_leader(summary, "kospiTopLosers", "kospiTopLoser")
+    kosdaq_drop = _first_leader(summary, "kosdaqTopLosers", "kosdaqTopLoser")
+    return {
+        "basisDate": _clean(summary.get("effectiveDate") or summary.get("date"), ""),
+        "mood": mood,
+        "marketBias": market_bias,
+        "topGainer": top_gainer,
+        "topLoser": top_loser,
+        "kospiTopGainer": kospi_top,
+        "kospiTopLoser": kospi_drop,
+        "kosdaqTopGainer": kosdaq_top,
+        "kosdaqTopLoser": kosdaq_drop,
+        "mostMentioned": _clean(summary.get("mostMentioned"), ""),
+        "dataNote": _clean(summary.get("rankingWarning"), "") or _clean(summary.get("verification", {}).get("verificationLimitations") if isinstance(summary.get("verification"), dict) else "", ""),
+    }
+
+
+def _leader_summary_items(summary: dict[str, Any]) -> list[dict[str, Any]]:
+    explanations = summary.get("leaderExplanations") if isinstance(summary.get("leaderExplanations"), dict) else {}
+    top_gainer = _first_leader(summary, "topGainers", "topGainer")
+    top_loser = _first_leader(summary, "topLosers", "topLoser")
+    rows: list[dict[str, Any]] = []
+    if top_gainer:
+        explanation = explanations.get("topGainer") if isinstance(explanations.get("topGainer"), dict) else {}
+        rows.append(
+            {
+                "type": "상승 리더",
+                "name": top_gainer.get("name", ""),
+                "rate": top_gainer.get("rate"),
+                "summary": _clean(explanation.get("summary"), "상승률 1위는 다음 거래일 거래량 유지 여부를 먼저 확인해야 합니다."),
+                "watch": "급등 후 바로 추격하지 말고 눌림과 거래대금 유지 여부를 확인합니다.",
+            }
+        )
+    if top_loser:
+        explanation = explanations.get("topLoser") if isinstance(explanations.get("topLoser"), dict) else {}
+        rows.append(
+            {
+                "type": "하락 리더",
+                "name": top_loser.get("name", ""),
+                "rate": top_loser.get("rate"),
+                "summary": _clean(explanation.get("summary"), "하락률 1위는 악재 원인과 지지선 이탈 여부를 먼저 확인해야 합니다."),
+                "watch": "반등 기대보다 하락 원인, 공시, 거래량 급증 여부를 먼저 확인합니다.",
+            }
+        )
+    return rows[:2]
+
+
+def _after_market_action_plan(mood: str, market_bias: str, dashboard: dict[str, Any]) -> list[str]:
+    top_gainer = dashboard.get("topGainer", {}) if isinstance(dashboard.get("topGainer"), dict) else {}
+    top_loser = dashboard.get("topLoser", {}) if isinstance(dashboard.get("topLoser"), dict) else {}
+    gainer_name = _clean(top_gainer.get("name"), "상승 1위")
+    loser_name = _clean(top_loser.get("name"), "하락 1위")
+    if "위험" in mood or "방어" in market_bias:
+        return [
+            f"{loser_name}처럼 급락한 종목의 공시·뉴스 원인을 먼저 확인합니다.",
+            "보유 종목은 20일선과 전저점 이탈 기준을 장 시작 전에 정합니다.",
+            f"{gainer_name} 같은 급등 후보는 추격보다 거래대금 유지와 눌림을 기다립니다.",
+        ]
+    if "관심" in mood or "확대" in market_bias:
+        return [
+            f"{gainer_name}의 상승 원인이 시장 전체로 확산되는지 확인합니다.",
+            "관심 종목은 전일 고점 돌파와 거래량 증가가 같이 나올 때만 검토합니다.",
+            f"{loser_name} 같은 약세 후보가 지수에 부담을 주는지 함께 봅니다.",
+        ]
+    return [
+        "시초가 방향이 엇갈리면 첫 30분 거래대금 상위 종목부터 확인합니다.",
+        f"{gainer_name}과 {loser_name}의 원인을 비교해 시장이 테마장인지 개별 이슈장인지 구분합니다.",
+        "관심 종목은 20일선 위 종가 유지와 거래량 회복을 동시에 확인합니다.",
+    ]
+
+
+def _session_brief(mood: str, dashboard: dict[str, Any]) -> str:
+    top_gainer = dashboard.get("topGainer", {}) if isinstance(dashboard.get("topGainer"), dict) else {}
+    top_loser = dashboard.get("topLoser", {}) if isinstance(dashboard.get("topLoser"), dict) else {}
+    gainer = _clean(top_gainer.get("name"), "상승 후보")
+    loser = _clean(top_loser.get("name"), "하락 후보")
+    gainer_rate = _percent_text(top_gainer.get("rate"))
+    loser_rate = _percent_text(top_loser.get("rate"))
+    return f"장후 분위기는 {mood}입니다. 상승 쪽은 {gainer}({gainer_rate}), 하락 쪽은 {loser}({loser_rate})를 기준으로 다음 거래일 강약을 비교합니다."
+
+
 def _after_market_report_fallback(
     summary: dict[str, Any],
     basis_date: str,
@@ -1818,18 +1917,27 @@ def _after_market_report_fallback(
         market_bias = "관심 확대"
 
     fallback_reason = _friendly_llm_fallback_reason(llm_meta.get("fallbackReason"))
+    dashboard = _market_dashboard(summary, mood, market_bias)
+    action_plan = _after_market_action_plan(mood, market_bias, dashboard)
+    leader_summaries = _leader_summary_items(summary)
+    session_brief = _session_brief(mood, dashboard)
 
     return {
         "mode": "ollama_fallback_rule_based",
+        "schemaVersion": 2,
         "provider": "ollama",
         "model": _clean(llm_meta.get("model"), ""),
         "basisDate": basis_date,
         "title": "매일 장후 시장 요약 리포트",
         "mood": mood,
         "marketBias": market_bias,
+        "sessionBrief": session_brief,
+        "marketDashboard": dashboard,
+        "leaderSummaries": leader_summaries,
         "keyPoints": points[:4],
         "llmComment": comment,
         "nextWatch": [_clean(item, "") for item in next_watch[:4] if _clean(item, "")],
+        "actionPlan": action_plan,
         "beginnerNotes": [
             "장후 리포트는 오늘 시장에서 무엇을 먼저 볼지 정리하는 기능입니다.",
             "상승률 1위는 바로 매수 대상이 아니라 다음 거래일 거래량과 눌림을 확인할 후보입니다.",
@@ -1882,6 +1990,7 @@ def _build_after_market_report_prompt(summary: dict[str, Any], basis_date: str) 
   "keyPoints": [],
   "llmComment": "",
   "nextWatch": [],
+  "actionPlan": [],
   "beginnerNotes": []
 }}
 빈 값에는 브리프를 읽고 실제 한국어 문장을 채워라. 배열은 최대 3개 항목만 쓴다.
@@ -1896,7 +2005,7 @@ def _merge_after_market_report(base: dict[str, Any], generated: dict[str, Any] |
     for field in ["llmComment"]:
         if isinstance(generated.get(field), str):
             merged[field] = _merge_text_value(merged.get(field), generated[field])
-    for field in ["keyPoints", "nextWatch", "beginnerNotes", "limitations"]:
+    for field in ["keyPoints", "nextWatch", "actionPlan", "beginnerNotes", "limitations"]:
         if isinstance(generated.get(field), list):
             merged[field] = _merge_list_value(merged.get(field), generated[field])
     return merged

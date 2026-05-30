@@ -58,6 +58,7 @@ public class AiAfterMarketReport {
       String responseJson,
       String generatedTrigger,
       Long auditInteractionId) {
+    Instant now = Instant.now();
     this.reportDate = reportDate;
     this.responseMode = responseMode;
     this.provider = provider;
@@ -67,6 +68,8 @@ public class AiAfterMarketReport {
     this.responseJson = responseJson;
     this.generatedTrigger = generatedTrigger;
     this.auditInteractionId = auditInteractionId;
+    this.createdAt = now;
+    this.updatedAt = now;
   }
 
   @PrePersist

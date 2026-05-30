@@ -35,6 +35,16 @@ function effectClass(effect = '') {
   return styles.effectNeutral;
 }
 
+function leaderRate(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '';
+  return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`;
+}
+
+function leaderName(entry, fallback) {
+  return entry?.name && entry.name !== '-' ? entry.name : fallback;
+}
+
 export default function FloatingAiCard({ ai, events, asOf }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -60,6 +70,9 @@ export default function FloatingAiCard({ ai, events, asOf }) {
     ? [ai.marketReport.mood, ai.marketReport.marketBias].filter(Boolean).join(' · ')
     : afterMarketReport.mood || '장후 리포트 확인 중';
   const reportSummary = ai.marketReport?.llmComment || afterMarketReport.llmComment || '장후 브리프와 시장 분위기 코멘트를 확인합니다.';
+  const marketDashboard = ai.marketReport?.marketDashboard || null;
+  const topGainer = marketDashboard?.topGainer || null;
+  const topLoser = marketDashboard?.topLoser || null;
 
   return (
     <details
@@ -342,6 +355,37 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                         ? 'Ollama가 시장 상승·하락 후보와 다음 거래일 확인 포인트를 정리하고 있습니다.'
                         : '최신 브리프가 없거나 AI 서비스 응답이 지연되었습니다.')}
                   </p>
+                  {ai.marketReport?.sessionBrief && (
+                    <p className={styles.sessionBrief}>{ai.marketReport.sessionBrief}</p>
+                  )}
+                  {marketDashboard && (
+                    <div className={styles.marketDashboard} aria-label="장후 시장 대시보드">
+                      <div>
+                        <span>상승 리더</span>
+                        <strong className={styles.posIcon}>
+                          {leaderName(topGainer, '확인 필요')} {leaderRate(topGainer?.rate)}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>하락 리더</span>
+                        <strong className={styles.negIcon}>
+                          {leaderName(topLoser, '확인 필요')} {leaderRate(topLoser?.rate)}
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+                  {ai.marketReport?.leaderSummaries?.length > 0 && (
+                    <div className={styles.leaderSummaryList} aria-label="상승 하락 리더 해석">
+                      {ai.marketReport.leaderSummaries.slice(0, 2).map((item, index) => (
+                        <article key={`${item.type}-${item.name}-${index}`}>
+                          <b>{item.type}</b>
+                          <strong>{item.name} {leaderRate(item.rate)}</strong>
+                          <p>{item.summary}</p>
+                          <span>{item.watch}</span>
+                        </article>
+                      ))}
+                    </div>
+                  )}
                   {ai.marketReport?.keyPoints?.length > 0 && (
                     <ul className={styles.compactList}>
                       {ai.marketReport.keyPoints.slice(0, 3).map((item, index) => (
@@ -359,6 +403,16 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                   <strong>장후 리포트 다음 확인</strong>
                   <ul>
                     {ai.marketReport.nextWatch.slice(0, 3).map((item, index) => (
+                      <li key={`${item}-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {ai.marketReport?.actionPlan?.length > 0 && (
+                <div className={styles.nextWatchBox}>
+                  <strong>내일 장 시작 전 행동 계획</strong>
+                  <ul>
+                    {ai.marketReport.actionPlan.slice(0, 3).map((item, index) => (
                       <li key={`${item}-${index}`}>{item}</li>
                     ))}
                   </ul>

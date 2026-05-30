@@ -575,6 +575,100 @@
   overflow-wrap: anywhere;
 }
 
+.sessionBrief {
+  margin-top: 8px !important;
+  border-left: 2px solid rgba(96, 165, 250, 0.5);
+  background: rgba(96, 165, 250, 0.08);
+  padding: 8px 9px;
+}
+
+.marketDashboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.marketDashboard div {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.42);
+  padding: 8px;
+}
+
+.marketDashboard span,
+.marketDashboard strong {
+  display: block;
+  min-width: 0;
+  line-height: 1.25;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.marketDashboard span {
+  color: var(--color-text-tertiary);
+  font-size: 0.68rem;
+  font-weight: 850;
+}
+
+.marketDashboard strong {
+  font-size: 0.8rem;
+  font-weight: 950;
+  margin-top: 3px;
+}
+
+.leaderSummaryList {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.leaderSummaryList article {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 9px;
+}
+
+.leaderSummaryList b,
+.leaderSummaryList strong,
+.leaderSummaryList p,
+.leaderSummaryList span {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.leaderSummaryList b {
+  color: #bfdbfe;
+  font-size: 0.7rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.leaderSummaryList strong {
+  color: var(--color-text-primary);
+  font-size: 0.84rem;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.leaderSummaryList p,
+.leaderSummaryList span {
+  color: var(--color-text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.36;
+  margin: 0;
+}
+
+.leaderSummaryList span {
+  color: var(--color-text-tertiary);
+}
+
 .reportStorageNote {
   display: block;
   margin-top: 9px;

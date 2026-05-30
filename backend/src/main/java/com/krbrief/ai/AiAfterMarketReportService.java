@@ -41,7 +41,13 @@ public class AiAfterMarketReportService {
   public Map<String, Object> savedOrGenerate(SummaryDto summary, String trigger) {
     LocalDate reportDate = reportDate(summary);
     return repository.findById(reportDate)
-        .map(this::toResponse)
+        .map(report -> {
+          Map<String, Object> response = readJson(report.getResponseJson());
+          if (needsSchemaRefresh(response)) {
+            return generateAndSave(summary, trigger + "_schema_refresh");
+          }
+          return toResponse(report, response);
+        })
         .orElseGet(() -> generateAndSave(summary, trigger));
   }
 
@@ -80,9 +86,19 @@ public class AiAfterMarketReportService {
     return request;
   }
 
-  private Map<String, Object> toResponse(AiAfterMarketReport report) {
-    LinkedHashMap<String, Object> response = new LinkedHashMap<>(readJson(report.getResponseJson()));
-    response.put("storage", storage(report.getReportDate(), report.getGeneratedTrigger(), Map.of(), true));
+  private Map<String, Object> toResponse(AiAfterMarketReport report, Map<String, Object> storedResponse) {
+    LinkedHashMap<String, Object> response = new LinkedHashMap<>(storedResponse);
+    LinkedHashMap<String, Object> storage =
+        new LinkedHashMap<>(storage(report.getReportDate(), report.getGeneratedTrigger(), Map.of(), true));
+    storage.put("responseMode", report.getResponseMode());
+    storage.put("provider", report.getProvider());
+    storage.put("model", report.getModel());
+    storage.put("createdAt", report.getCreatedAt());
+    storage.put("updatedAt", report.getUpdatedAt());
+    if (report.getAuditInteractionId() != null) {
+      storage.put("auditInteractionId", report.getAuditInteractionId());
+    }
+    response.put("storage", storage);
     return response;
   }
 
@@ -127,6 +143,17 @@ public class AiAfterMarketReportService {
           "mood", "확인 필요",
           "llmComment", "저장된 장후 AI 리포트 JSON을 읽지 못했습니다.");
     }
+  }
+
+  private boolean needsSchemaRefresh(Map<String, Object> response) {
+    if (response == null || response.isEmpty()) {
+      return true;
+    }
+    return !(response.get("marketDashboard") instanceof Map<?, ?>)
+        || !(response.get("leaderSummaries") instanceof java.util.List<?>)
+        || !(response.get("actionPlan") instanceof java.util.List<?>)
+        || !"2".equals(String.valueOf(response.get("schemaVersion")))
+        || !response.containsKey("sessionBrief");
   }
 
   private String writeJson(Map<String, Object> value) {
