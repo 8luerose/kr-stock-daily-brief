@@ -97,7 +97,8 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
                     modeLabel: storedOllamaInsights.modeLabel,
                     llmModel: storedOllamaInsights.model,
                     llmProvider: 'ollama',
-                    llmUsed: storedOllamaInsights.mode === 'ollama_llm'
+                    llmUsed: storedOllamaInsights.mode === 'ollama_llm',
+                    ollamaInsightsRefreshStatus: 'refreshing'
                   }
                 };
               });
@@ -148,6 +149,7 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
                     ...ai,
                     ollamaInsights: currentAi.ollamaInsights,
                     ollamaInsightsStatus: currentAi.ollamaInsightsStatus || (currentAi.ollamaInsights ? 'ready' : 'loading'),
+                    ollamaInsightsRefreshStatus: currentAi.ollamaInsightsRefreshStatus,
                     marketReport: currentAi.marketReport,
                     marketReportStatus: currentAi.marketReportStatus,
                     aiLayerStatus: currentAi.ollamaInsights ? 'ready' : 'fallback_ready',
@@ -181,7 +183,8 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
                     modeLabel: ollamaInsights.modeLabel,
                     llmModel: ollamaInsights.model,
                     llmProvider: 'ollama',
-                    llmUsed: ollamaInsights.mode === 'ollama_llm'
+                    llmUsed: ollamaInsights.mode === 'ollama_llm',
+                    ollamaInsightsRefreshStatus: 'fresh'
                   }
                 };
               });
@@ -194,7 +197,8 @@ export function useWorkspace(initialCode = '005930', initialInterval = 'daily') 
                       ...current.ai,
                       ollamaInsightsStatus: 'ready',
                       aiLayerStatus: 'ready',
-                      modeLabel: current.ai.modeLabel || 'DB 저장본 유지'
+                      modeLabel: current.ai.modeLabel || 'DB 저장본 유지',
+                      ollamaInsightsRefreshStatus: 'kept_cached'
                     }
                     : {
                       ...current.ai,

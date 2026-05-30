@@ -63,7 +63,10 @@ function fundamentalStatusLabel(summary, riskNotes = []) {
   return '재무 반영';
 }
 
-function ollamaRuntimeLabel(status, hasInsights, runtime) {
+function ollamaRuntimeLabel(status, hasInsights, runtime, refreshStatus = '') {
+  if (refreshStatus === 'refreshing') return `${runtime?.label || 'DB 저장본 표시'} · 새 계산 중`;
+  if (refreshStatus === 'fresh') return runtime?.label || '새 Ollama 결과 반영';
+  if (refreshStatus === 'kept_cached') return 'DB 저장본 유지';
   if (runtime?.label) return runtime.label;
   if (status === 'loading') return '새 Ollama 계산 중';
   if (status === 'delayed') return 'Ollama 지연 · 자동 반영';
@@ -72,7 +75,10 @@ function ollamaRuntimeLabel(status, hasInsights, runtime) {
   return 'Ollama 대기';
 }
 
-function ollamaRuntimeNote(status, hasInsights, runtime) {
+function ollamaRuntimeNote(status, hasInsights, runtime, refreshStatus = '') {
+  if (refreshStatus === 'refreshing') return '저장된 Ollama 결과를 먼저 보여주고 있으며, 뒤에서는 새 상담·뉴스·장후 계산을 다시 돌리고 있습니다.';
+  if (refreshStatus === 'fresh') return runtime?.note || '새 Ollama 계산 결과가 화면에 반영되었습니다.';
+  if (refreshStatus === 'kept_cached') return '새 Ollama 계산이 끝나지 않아 이전 DB 저장본을 유지했습니다.';
   if (runtime?.note) return runtime.note;
   if (status === 'loading') return '차트와 기본 근거는 먼저 보여주고, 상담·뉴스 방향 답변은 로컬 LLM 응답이 오면 이어 붙입니다.';
   if (status === 'delayed') return '로컬 LLM 계산이 오래 걸리고 있습니다. 화면은 계속 쓸 수 있고, 결과가 도착하면 자동으로 바뀝니다.';
@@ -131,8 +137,9 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
         : ai.aiLayerStatus === 'ollama_delayed' ? 'delayed'
           : ai.aiLayerStatus === 'loading' ? 'loading' : 'waiting');
   const marketReportStatus = ai.marketReportStatus || (ai.marketReport ? 'ready' : 'waiting');
-  const insightRuntimeLabel = ollamaRuntimeLabel(ollamaStatus, Boolean(insights), insightRuntime);
-  const insightRuntimeNote = ollamaRuntimeNote(ollamaStatus, Boolean(insights), insightRuntime);
+  const insightRefreshStatus = ai.ollamaInsightsRefreshStatus || '';
+  const insightRuntimeLabel = ollamaRuntimeLabel(ollamaStatus, Boolean(insights), insightRuntime, insightRefreshStatus);
+  const insightRuntimeNote = ollamaRuntimeNote(ollamaStatus, Boolean(insights), insightRuntime, insightRefreshStatus);
   const reportRuntimeLabelText = reportRuntimeLabel(marketReportStatus, Boolean(ai.marketReport), reportRuntime, reportStorageLabel);
   const reportRuntimeNoteText = reportRuntimeNote(marketReportStatus, Boolean(ai.marketReport), reportRuntime, reportStorageNote);
   const personalRisk = stockAdvice.personalRisk || ai.portfolioGuidance?.positionDiagnostics || null;

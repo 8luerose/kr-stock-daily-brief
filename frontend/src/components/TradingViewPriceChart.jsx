@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { Brain, CandlestickChart, Newspaper, RotateCcw, Target } from 'lucide-react';
+import { Brain, CandlestickChart, Layers, Newspaper, RotateCcw, Target } from 'lucide-react';
 import styles from './TradingViewPriceChart.module.css';
 
 function loadTradingViewLibrary() {
@@ -251,6 +251,7 @@ export default function TradingViewPriceChart({
     events: true,
     personal: true
   });
+  const [showDetailPanels, setShowDetailPanels] = useState(false);
 
   const toggleLayer = (key) => {
     setVisibleLayers((current) => ({ ...current, [key]: !current[key] }));
@@ -609,6 +610,15 @@ export default function TradingViewPriceChart({
         tone: ['positive', 'negative', 'neutral'].includes(signal?.tone) ? signal.tone : 'neutral'
       }))
       : [];
+    const runtime = ai?.ollamaInsights?.runtimeCache || null;
+    const refreshStatus = ai?.ollamaInsightsRefreshStatus || '';
+    const runtimeLabel = refreshStatus === 'refreshing'
+      ? `${runtime?.label || 'DB 저장본 표시'} · 새 계산 중`
+      : refreshStatus === 'fresh'
+        ? runtime?.label || '새 Ollama 결과 반영'
+        : refreshStatus === 'kept_cached'
+          ? 'DB 저장본 유지'
+          : runtime?.label || '';
     return {
       tone,
       headline,
@@ -620,7 +630,8 @@ export default function TradingViewPriceChart({
       consensusSummary: compactText(consensus?.summary, '상담, 뉴스 확률, 장후 리포트를 함께 연결합니다.', 96),
       signals,
       probabilityLabel: hasProbability ? `상승 ${upProbability}% · 하락 ${downProbability}%` : '확률 계산 중',
-      modeLabel: aiDecision.live ? 'Ollama LLM 기준' : aiDecision.modeLabel || '근거 계산 기준'
+      modeLabel: aiDecision.live ? 'Ollama LLM 기준' : aiDecision.modeLabel || '근거 계산 기준',
+      runtimeLabel
     };
   }, [ai, aiDecision, chartMetrics]);
 
@@ -866,6 +877,7 @@ export default function TradingViewPriceChart({
   }, [dataByTime, events, forecastGuide, indicatorSnapshot, personalPriceLines, prepared, visibleLayers.ai, visibleLayers.events, visibleLayers.personal, visibleLayers.zones, zoneSummaries]);
 
   const latest = prepared.rows[prepared.rows.length - 1];
+  const visibleZoneSummaries = showDetailPanels ? zoneSummaries : zoneSummaries.slice(0, 3);
 
   return (
     <div className={clsx(styles.stage, focusMode && styles.aiCardFocusMode)}>
@@ -889,6 +901,16 @@ export default function TradingViewPriceChart({
         >
           <Brain size={15} aria-hidden="true" />
           <span>AI</span>
+        </button>
+        <button
+          type="button"
+          className={clsx(showDetailPanels && styles.layerActive)}
+          onClick={() => setShowDetailPanels((value) => !value)}
+          aria-label="상세 정보 패널"
+          aria-pressed={showDetailPanels}
+        >
+          <Layers size={15} aria-hidden="true" />
+          <span>상세</span>
         </button>
         <button
           type="button"
@@ -1004,11 +1026,11 @@ export default function TradingViewPriceChart({
               ))}
             </div>
           )}
-          <small>{forecastGuide.probabilityLabel} · {forecastGuide.consensusSummary}</small>
+          <small>{forecastGuide.probabilityLabel} · {forecastGuide.runtimeLabel ? `${forecastGuide.runtimeLabel} · ` : ''}{forecastGuide.consensusSummary}</small>
           <em>{forecastGuide.nextAction} · {forecastGuide.modeLabel}</em>
         </aside>
       )}
-      {visibleLayers.ai && aiDecision && (
+      {visibleLayers.ai && showDetailPanels && aiDecision && (
         <aside
           className={clsx(
             styles.aiDecisionPanel,
@@ -1107,7 +1129,7 @@ export default function TradingViewPriceChart({
           </span>
         </div>
       )}
-      {visibleLayers.personal && personalRisk && personalRisk.status !== 'not_saved' && (
+      {visibleLayers.personal && showDetailPanels && personalRisk && personalRisk.status !== 'not_saved' && (
         <aside
           className={clsx(
             styles.personalRiskOverlay,
@@ -1135,7 +1157,7 @@ export default function TradingViewPriceChart({
           )}
         </aside>
       )}
-      {visibleLayers.events && newsDirection && (
+      {visibleLayers.events && showDetailPanels && newsDirection && (
         <aside
           className={clsx(
             styles.newsDirectionPanel,
@@ -1164,13 +1186,13 @@ export default function TradingViewPriceChart({
           <em>{newsDirection.loading ? 'Ollama 로컬 LLM 분석 준비 중' : `문맥 ${newsDirection.contextLabel} · ${newsDirection.confidence} · ${newsDirection.action}`}</em>
         </aside>
       )}
-      {visibleLayers.zones && zoneSummaries.length > 0 && (
+      {visibleLayers.zones && visibleZoneSummaries.length > 0 && (
         <div className={styles.zoneRail} aria-label="AI 거래 구간">
           <div className={styles.zoneRailHeader}>
             <span>AI 가격 구간 지도</span>
             <strong>{zoneMapSummary}</strong>
           </div>
-          {zoneSummaries.map((zone) => (
+          {visibleZoneSummaries.map((zone) => (
             <div
               key={`${zone.type}-${zone.label}-${zone.price}`}
               className={clsx(

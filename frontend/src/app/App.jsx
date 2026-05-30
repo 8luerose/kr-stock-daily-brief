@@ -52,7 +52,14 @@ function buildPipelineToast({ data, activeCode, interval, loading }) {
   const insights = data.ai?.ollamaInsights;
   const report = data.ai?.marketReport || insights?.afterMarketReport;
   const modeLabel = insights?.mode === 'ollama_llm' || data.ai?.llmUsed ? 'Ollama LLM' : '규칙형 미리보기';
-  const storageLabel = insights?.runtimeCache?.label
+  const refreshStatus = data.ai?.ollamaInsightsRefreshStatus || '';
+  const storageLabel = refreshStatus === 'refreshing'
+    ? `${insights?.runtimeCache?.label || 'DB 저장본 표시'} · 새 계산 중`
+    : refreshStatus === 'fresh'
+      ? insights?.runtimeCache?.label || '새 계산 반영'
+      : refreshStatus === 'kept_cached'
+        ? 'DB 저장본 유지'
+        : insights?.runtimeCache?.label
     || (insights?.storage?.saved ? '상담 DB 저장' : ollamaStatus === 'ready' ? '상담 저장 확인 필요' : '');
   const reportLabel = data.ai?.marketReport?.runtimeCache?.label
     || (data.ai?.marketReport?.storage?.cached ? '장후 DB 재사용'

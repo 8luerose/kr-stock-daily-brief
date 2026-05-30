@@ -155,6 +155,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     const hasNews = Boolean(insights?.newsSentiment?.summary || insights?.newsSentiment?.nextTradingDay);
     const report = ai?.marketReport || insights?.afterMarketReport || null;
     const isOllamaLlm = insights?.mode === 'ollama_llm' || ai?.llmUsed;
+    const refreshStatus = ai?.ollamaInsightsRefreshStatus || '';
     const adviceState = hasAdvice ? 'ready' : isLoading ? 'loading' : isDelayed ? 'delayed' : 'waiting';
     const newsState = hasNews ? 'ready' : isLoading ? 'loading' : isDelayed ? 'delayed' : 'waiting';
     const adviceDecision = insights?.stockAdvice?.decision || (isLoading ? '분석 중' : isDelayed ? '규칙형 유지' : '대기');
@@ -171,7 +172,13 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
         : marketReportStatus === 'unavailable' ? '장후 리포트 지연' : '장후 리포트 대기';
     const reportState = report ? 'ready' : marketReportStatus === 'loading' ? 'loading' : marketReportStatus === 'unavailable' ? 'delayed' : 'waiting';
     const llmLabel = isOllamaLlm ? 'Ollama LLM 응답' : isLoading ? 'Ollama 계산 중' : isDelayed ? 'Ollama 지연 · 도착 시 자동 반영' : 'Ollama 대기';
-    const storageLabel = insights?.runtimeCache?.label
+    const storageLabel = refreshStatus === 'refreshing'
+      ? `${insights?.runtimeCache?.label || 'DB 저장본 표시'} · 새 계산 중`
+      : refreshStatus === 'fresh'
+        ? insights?.runtimeCache?.label || '새 계산 반영'
+        : refreshStatus === 'kept_cached'
+          ? 'DB 저장본 유지'
+          : insights?.runtimeCache?.label
       || (insights?.storage?.saved ? '상담 DB 저장' : hasAdvice ? '상담 저장 확인 필요' : '저장 전');
     const qdrantLabel = insights?.qdrant?.enabled ? `Qdrant ${insights.qdrant.retrievedCount || 0}개` : 'Qdrant 대기';
     const reportStorageLabel = ai?.marketReport?.runtimeCache?.label
@@ -213,6 +220,7 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
     const qdrant = insights?.qdrant || ai?.marketReport?.qdrant;
     const storage = insights?.storage || ai?.storage;
     const runtimeCache = insights?.runtimeCache;
+    const refreshStatus = ai?.ollamaInsightsRefreshStatus || '';
     const reportRuntimeCache = ai?.marketReport?.runtimeCache;
     const ollamaStatus = resolveOllamaStatus(ai, insights);
     const marketReportStatus = ai?.marketReportStatus || (ai?.marketReport ? 'ready' : 'waiting');
@@ -228,7 +236,13 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       readyCount,
       totalCount: aiExecutionSteps.length,
       mode: ollamaStatus === 'loading' ? 'Ollama LLM 준비' : insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : '근거 계산',
-      storageLabel: runtimeCache?.label
+      storageLabel: refreshStatus === 'refreshing'
+        ? `${runtimeCache?.label || 'DB 저장본 표시'} · 새 계산 중`
+        : refreshStatus === 'fresh'
+          ? runtimeCache?.label || '새 계산 반영'
+          : refreshStatus === 'kept_cached'
+            ? 'DB 저장본 유지'
+            : runtimeCache?.label
         || (ollamaStatus === 'loading' ? '새 Ollama 계산 중'
           : isOllamaDelayed(ollamaStatus) ? '도착 시 자동 반영'
             : storage?.saved ? `상담 DB #${storage.id || '저장'}` : '기업 선택 저장 안 함'),
@@ -299,7 +313,11 @@ export default function ImmersiveChart({ stock, chart, zones, events, ai, indica
       priceLabel: formatCurrency(latest?.close),
       ma20Label: formatCurrency(ma20),
       newsLabel,
-      sourceLabel: insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : loading ? 'Ollama 계산 중' : delayed ? '지연 · 자동 반영' : '근거 계산'
+      sourceLabel: ai?.ollamaInsightsRefreshStatus === 'refreshing'
+        ? '저장본 표시 · 새 계산 중'
+        : ai?.ollamaInsightsRefreshStatus === 'kept_cached'
+          ? 'DB 저장본 유지'
+          : insights?.mode === 'ollama_llm' || ai?.llmUsed ? 'Ollama LLM' : loading ? 'Ollama 계산 중' : delayed ? '지연 · 자동 반영' : '근거 계산'
     };
   }, [ai, chartData, decisionSummary, indicatorSnapshot]);
 
