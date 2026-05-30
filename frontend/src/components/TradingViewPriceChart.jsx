@@ -129,6 +129,19 @@ function personalRiskTone(status) {
   return 'neutral';
 }
 
+function probabilityTone(up, down) {
+  if (Number.isFinite(up) && Number.isFinite(down)) {
+    if (up >= down + 8) return 'up';
+    if (down >= up + 8) return 'down';
+  }
+  return 'neutral';
+}
+
+function probabilityValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : null;
+}
+
 export default function TradingViewPriceChart({
   stock,
   interval = 'daily',
@@ -347,6 +360,48 @@ export default function TradingViewPriceChart({
       title,
       modeLabel: compactText(statusLabel, '근거 기반 AI', 48),
       live: insights?.mode === 'ollama_llm' || ai?.llmUsed
+    };
+  }, [ai]);
+
+  const newsDirection = useMemo(() => {
+    const insights = ai?.ollamaInsights;
+    const aiLayerStatus = ai?.aiLayerStatus || (insights ? 'ready' : '');
+    const isWaitingForOllama = aiLayerStatus === 'loading' && !insights;
+    if (!insights && !isWaitingForOllama) return null;
+
+    const sentiment = insights?.newsSentiment || {};
+    const probabilities = sentiment?.nextTradingDay || {};
+    const up = probabilityValue(probabilities.up);
+    const down = probabilityValue(probabilities.down);
+    const flat = probabilityValue(probabilities.flat);
+    const score = Number(sentiment.score ?? sentiment.scoreBreakdown?.adjustedScore);
+    const tone = isWaitingForOllama ? 'neutral' : probabilityTone(up, down);
+    const label = isWaitingForOllama
+      ? '계산 중'
+      : tone === 'up'
+        ? '상승 우위'
+        : tone === 'down'
+          ? '하락 주의'
+          : '중립';
+    const headline = sentiment.headlineAnalyses?.[0]?.title
+      || sentiment.headlineSignals?.[0]
+      || '뉴스 헤드라인 근거를 확인 중입니다.';
+    const action = firstCompact(
+      sentiment.actionGuide || sentiment.tradingScenarios,
+      isWaitingForOllama ? 'Ollama가 뉴스와 이벤트를 읽는 중입니다.' : sentiment.caution || '뉴스 원문과 거래량 반응을 함께 확인합니다.',
+      92
+    );
+    return {
+      label,
+      tone,
+      up,
+      down,
+      flat,
+      score: Number.isFinite(score) ? Math.round(score) : null,
+      confidence: compactText(sentiment.confidence || sentiment.evidenceQuality, '근거 확인 중', 28),
+      headline: compactText(headline, '뉴스 헤드라인 확인 필요', 88),
+      action,
+      loading: isWaitingForOllama
     };
   }, [ai]);
 
@@ -725,6 +780,35 @@ export default function TradingViewPriceChart({
               ))}
             </div>
           )}
+        </aside>
+      )}
+      {visibleLayers.events && newsDirection && (
+        <aside
+          className={clsx(
+            styles.newsDirectionPanel,
+            newsDirection.tone === 'up' && styles.newsDirectionUp,
+            newsDirection.tone === 'down' && styles.newsDirectionDown
+          )}
+          aria-label="뉴스 감성 단기 방향"
+        >
+          <div className={styles.newsDirectionHeader}>
+            <span>뉴스 방향</span>
+            <strong>{newsDirection.label}</strong>
+            {newsDirection.score !== null && <b>{newsDirection.score > 0 ? '+' : ''}{newsDirection.score}점</b>}
+          </div>
+          <div className={styles.newsProbabilityBars} aria-label="다음 거래일 확률">
+            <span style={{ '--value': `${newsDirection.up ?? 0}%` }}>
+              상승 <b>{newsDirection.up === null ? '확인 중' : `${newsDirection.up}%`}</b>
+            </span>
+            <span style={{ '--value': `${newsDirection.down ?? 0}%` }}>
+              하락 <b>{newsDirection.down === null ? '확인 중' : `${newsDirection.down}%`}</b>
+            </span>
+            <span style={{ '--value': `${newsDirection.flat ?? 0}%` }}>
+              횡보 <b>{newsDirection.flat === null ? '확인 중' : `${newsDirection.flat}%`}</b>
+            </span>
+          </div>
+          <p>{newsDirection.headline}</p>
+          <em>{newsDirection.loading ? 'Ollama 로컬 LLM 분석 준비 중' : `${newsDirection.confidence} · ${newsDirection.action}`}</em>
         </aside>
       )}
       {visibleLayers.zones && zoneSummaries.length > 0 && (
