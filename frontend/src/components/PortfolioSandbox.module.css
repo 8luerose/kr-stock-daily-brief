@@ -102,6 +102,69 @@
   overflow-wrap: anywhere;
 }
 
+.aiSyncPanel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-2);
+  min-width: 0;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(14, 165, 233, 0.08));
+  padding: var(--spacing-3);
+}
+
+.aiSyncPanel > svg {
+  color: #93c5fd;
+  flex-shrink: 0;
+}
+
+.aiSyncPanel div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.aiSyncPanel strong,
+.aiSyncPanel span,
+.aiSyncPanel button {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.aiSyncPanel strong {
+  color: var(--color-text-primary);
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.aiSyncPanel span {
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 680;
+  line-height: 1.38;
+}
+
+.aiSyncPanel button {
+  min-height: 34px;
+  border: 1px solid rgba(147, 197, 253, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.42);
+  color: #dbeafe;
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 7px 9px;
+  white-space: normal;
+}
+
+.aiSyncPanel button:hover {
+  border-color: rgba(147, 197, 253, 0.4);
+  background: rgba(37, 99, 235, 0.18);
+}
+
 .addSection {
   background: var(--color-bg-elevated);
   padding: var(--spacing-4);
@@ -392,6 +455,15 @@
   .summaryGrid div,
   .reviewCard {
     padding: var(--spacing-2);
+  }
+
+  .aiSyncPanel {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .aiSyncPanel button {
+    grid-column: 1 / -1;
+    justify-self: stretch;
   }
 }
 

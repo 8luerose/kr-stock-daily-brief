@@ -335,6 +335,7 @@ function App() {
         activeCode={activeCode} 
         stockName={data?.stock?.name}
         activeStock={data?.stock}
+        onRefreshAi={refreshAi}
       />
 
       <HiddenAdminSheet isOpen={adminOpen} onClose={() => setAdminOpen(false)} asOf={data?.asOf} />

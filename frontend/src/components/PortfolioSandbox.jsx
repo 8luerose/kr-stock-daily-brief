@@ -65,7 +65,7 @@ function buildLocalPortfolio(activeCode, stockName, weight, personal = {}) {
   };
 }
 
-export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockName, activeStock }) {
+export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockName, activeStock, onRefreshAi }) {
   const [weight, setWeight] = useState(10);
   const [averagePrice, setAveragePrice] = useState('');
   const [holdingPeriod, setHoldingPeriod] = useState('미입력');
@@ -75,6 +75,7 @@ export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockNam
   const [loadingPortfolio, setLoadingPortfolio] = useState(false);
   const [saving, setSaving] = useState(false);
   const [syncError, setSyncError] = useState('');
+  const [aiSyncState, setAiSyncState] = useState('idle');
 
   const currentItem = useMemo(
     () => portfolio?.items?.find((item) => item.code === activeCode) || null,
@@ -121,6 +122,7 @@ export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockNam
     setAveragePrice('');
     setHoldingPeriod('미입력');
     setRiskTolerance('중간');
+    setAiSyncState('idle');
   }, [activeCode, currentItem]);
 
   const personalContext = { averagePrice, holdingPeriod, riskTolerance };
@@ -133,6 +135,49 @@ export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockNam
   const personalSummary = reviewItem
     ? `평균단가 ${displayedAveragePrice ? `${Math.round(displayedAveragePrice).toLocaleString()}원` : '미입력'} · 보유기간 ${holdingPeriod || '미입력'} · 손실허용 ${riskTolerance || '미입력'}`
     : '';
+  const aiSyncCopy = useMemo(() => {
+    if (saving || aiSyncState === 'saving') {
+      return {
+        title: 'AI 개인화 저장 중',
+        detail: '평균단가와 손실허용을 저장한 뒤 차트 AI 상담을 다시 연결합니다.'
+      };
+    }
+    if (aiSyncState === 'saved') {
+      return {
+        title: 'Ollama 재계산 요청 완료',
+        detail: '차트와 AI 카드가 DB 저장본을 먼저 보여주고, 새 Ollama 상담이 끝나면 개인 조건 기준으로 갱신됩니다.'
+      };
+    }
+    if (aiSyncState === 'requested') {
+      return {
+        title: 'Ollama 새 계산 요청됨',
+        detail: '현재 종목의 상담·뉴스 방향·장후 요약을 평균단가와 손실허용 기준으로 다시 확인합니다.'
+      };
+    }
+    if (syncError) {
+      return {
+        title: 'AI 반영 제한',
+        detail: '서버 저장이 실패해 현재 화면 안에서만 개인 조건을 점검합니다.'
+      };
+    }
+    if (reviewItem) {
+      return {
+        title: 'AI 개인화 준비 완료',
+        detail: '저장된 평균단가와 손실허용은 다음 Ollama 상담에서 리스크 기준으로 함께 반영됩니다.'
+      };
+    }
+    return {
+      title: 'AI 개인화 전',
+      detail: '평균단가, 보유기간, 손실허용을 저장하면 매수 검토보다 내 손익 기준과 리스크 관리선을 먼저 계산합니다.'
+    };
+  }, [aiSyncState, reviewItem, saving, syncError]);
+
+  function requestAiRefresh(state = 'requested') {
+    invalidateAiCachesForStock(activeCode);
+    onRefreshAi?.();
+    window.dispatchEvent(new CustomEvent('portfolio-sandbox-updated', { detail: { code: activeCode } }));
+    setAiSyncState(state);
+  }
 
   async function handleSave() {
     const nextWeight = Number(weight);
@@ -151,18 +196,19 @@ export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockNam
 
     setSaving(true);
     setSyncError('');
+    setAiSyncState('saving');
     try {
       const nextPortfolio = currentItem
         ? await updatePortfolioItemWeight(activeCode, payload)
         : await upsertPortfolioItem(payload);
       setPortfolio(nextPortfolio);
       setAdded(true);
-      invalidateAiCachesForStock(activeCode);
-      window.dispatchEvent(new CustomEvent('portfolio-sandbox-updated', { detail: { code: activeCode } }));
+      requestAiRefresh('saved');
     } catch {
       setPortfolio(buildLocalPortfolio(activeCode, stockName, payload.weight, payload));
       setAdded(true);
       setSyncError('서버 저장에 실패해 현재 화면 기준으로만 점검 결과를 표시합니다.');
+      setAiSyncState('local');
     } finally {
       setSaving(false);
     }
@@ -191,6 +237,19 @@ export default function PortfolioSandbox({ isOpen, onClose, activeCode, stockNam
             </div>
           )}
           <p className={styles.desc}>현재 보고 있는 종목을 가상의 포트폴리오에 담고 AI 리스크를 점검해보세요.</p>
+
+          <div className={styles.aiSyncPanel} aria-label="Ollama AI 개인화 반영 상태">
+            <RefreshCw size={15} className={saving || aiSyncState === 'saving' ? styles.spinIcon : undefined} />
+            <div>
+              <strong>{aiSyncCopy.title}</strong>
+              <span>{aiSyncCopy.detail}</span>
+            </div>
+            {reviewItem && (
+              <button type="button" onClick={() => requestAiRefresh('requested')}>
+                AI 다시 계산
+              </button>
+            )}
+          </div>
 
           <div className={styles.addSection}>
             <div className={styles.stockInfo} data-testid="portfolio-stock-info">
