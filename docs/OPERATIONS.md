@@ -78,8 +78,8 @@ LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
 OLLAMA_MODEL=llama3.1:latest
 OLLAMA_TIMEOUT_SECONDS=18
-OLLAMA_JSON_TIMEOUT_SECONDS=6
-OLLAMA_JSON_NUM_PREDICT=120
+OLLAMA_JSON_TIMEOUT_SECONDS=10
+OLLAMA_JSON_NUM_PREDICT=80
 AI_CLIENT_READ_TIMEOUT_SECONDS=60
 docker compose up -d --build ai-service backend frontend
 curl http://localhost:8080/api/ai/status
@@ -112,6 +112,8 @@ curl http://localhost:8080/api/ai/status
 
 응답 속도 조절은 `LLM_TIMEOUT_SECONDS`, `LLM_MAX_TOKENS`, `OLLAMA_TIMEOUT_SECONDS`, `OLLAMA_JSON_TIMEOUT_SECONDS`, `OLLAMA_NUM_PREDICT`, `OLLAMA_JSON_NUM_PREDICT`, `AI_CLIENT_READ_TIMEOUT_SECONDS`로 한다.
 LLM timeout이 지나면 ai-service가 규칙형 근거 기반 응답으로 돌아가고, backend는 `AI_CLIENT_READ_TIMEOUT_SECONDS` 안에 응답을 받아야 한다.
+
+종목 선택 직후의 `/api/ai/ollama/insights`는 기본값에서 `QDRANT_INSIGHTS_SYNC_ENABLED=false`로 둔다. 이 경로는 차트 화면의 체감 응답이 우선이므로 Qdrant 동기 embedding/search를 건너뛰고, 전체 RAG 저장과 검색은 `/api/ai/chat` 경로가 담당한다. 인사이트 API에서도 Qdrant 검색을 강제로 쓰려면 `QDRANT_INSIGHTS_SYNC_ENABLED=true`로 바꾼다.
 
 `/api/ai/ollama/insights`는 한 번에 세 가지를 반환한다.
 

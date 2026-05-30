@@ -206,6 +206,7 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `QDRANT_MAX_DOCUMENTS` | No | Maximum grounding documents stored per AI request. Default: `16` |
 | `QDRANT_TIMEOUT_SECONDS` | No | Qdrant HTTP timeout. Default: `2.5` |
 | `QDRANT_EMBEDDING_TIMEOUT_SECONDS` | No | Ollama embedding timeout for Qdrant vectorization before hash fallback. Default: `2` |
+| `QDRANT_INSIGHTS_SYNC_ENABLED` | No | Run Qdrant upsert/search inside `/api/ai/ollama/insights`. Default: `false` so stock selection shows the local LLM card faster |
 | `LLM_PROVIDER` | No | `ollama`, `anthropic_compatible`, `openai_compatible`, `anthropic`, `openai`, or `auto`. Docker default is `ollama` |
 | `LLM_MODEL` | No | OpenAI-compatible model name |
 | `LLM_BASE_URL` | No | OpenAI-compatible API base URL |
@@ -223,10 +224,10 @@ Copy `.env.example` to `.env` and adjust values for your environment.
 | `OLLAMA_BASE_URL` | No | Local Ollama URL. Docker Desktop default: `http://host.docker.internal:11434` |
 | `OLLAMA_MODEL` | No | Local Ollama model for `/api/ai/ollama/insights` and `LLM_PROVIDER=ollama`. Docker default: `llama3.1:latest` |
 | `OLLAMA_TIMEOUT_SECONDS` | No | Ollama wait time before rule-based fallback for full text answers. Docker default: `18` |
-| `OLLAMA_JSON_TIMEOUT_SECONDS` | No | Faster wait time for `/api/ai/ollama/insights` JSON cards before rule-based fallback. Docker default: `6` |
+| `OLLAMA_JSON_TIMEOUT_SECONDS` | No | Faster wait time for `/api/ai/ollama/insights` JSON cards before rule-based fallback. Docker default: `10` |
 | `OLLAMA_STATUS_TIMEOUT_SECONDS` | No | Short reachability check timeout for `/api/ai/status`. Default: `1.2` |
 | `OLLAMA_NUM_PREDICT` | No | Ollama max generated tokens. Docker default: `420` |
-| `OLLAMA_JSON_NUM_PREDICT` | No | Shorter Ollama JSON insight token budget. Docker default: `120` |
+| `OLLAMA_JSON_NUM_PREDICT` | No | Shorter Ollama JSON insight token budget. Docker default: `80` |
 | `AI_CLIENT_CONNECT_TIMEOUT_SECONDS` | No | Backend connection timeout to ai-service |
 | `AI_CLIENT_READ_TIMEOUT_SECONDS` | No | Backend read timeout to ai-service |
 | `PUBLIC_KEY` | No | Access gate key (leave empty to disable) |
@@ -244,8 +245,8 @@ LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://host.docker.internal:11434
 OLLAMA_MODEL=llama3.1:latest
 OLLAMA_TIMEOUT_SECONDS=18
-OLLAMA_JSON_TIMEOUT_SECONDS=6
-OLLAMA_JSON_NUM_PREDICT=120
+OLLAMA_JSON_TIMEOUT_SECONDS=10
+OLLAMA_JSON_NUM_PREDICT=80
 AI_CLIENT_READ_TIMEOUT_SECONDS=60
 docker compose up -d --build ai-service backend frontend
 curl http://localhost:8080/api/ai/status
@@ -277,6 +278,8 @@ curl http://localhost:8080/api/ai/status
 Docker 내부 Ollama를 쓰려면 `docker compose --profile ollama up -d ollama`로 Ollama 컨테이너를 띄우고, `OLLAMA_BASE_URL=http://ollama:11434`와 `OLLAMA_MODEL`을 지정한다. 모델이 없거나 호출이 실패하면 화면은 규칙형 미리보기로 계속 동작한다.
 
 `make ollama-up`은 Docker Ollama 컨테이너를 올리고, `make ollama-pull OLLAMA_MODEL=llama3.1:latest`는 컨테이너 안에 모델을 내려받는다. `/api/ai/status` 또는 `make ollama-status`에서 `provider`, `configured`, `model`, `baseUrl`, `timeoutSeconds`, `jsonTimeoutSeconds`, `runtime.reachable`, `runtime.modelAvailable`을 확인한다. live LLM이 느리거나 실패하면 `/api/ai/chat`과 `/api/ai/ollama/insights`는 규칙형 근거 기반 응답으로 돌아간다.
+
+종목 선택 직후 뜨는 `/api/ai/ollama/insights`는 사용자 체감 속도가 우선이라 기본값에서 Qdrant 동기 검색을 건너뛴다. 전체 RAG 근거 저장/검색은 `/api/ai/chat` 경로에서 유지되며, 인사이트 경로까지 동기 검색하려면 `QDRANT_INSIGHTS_SYNC_ENABLED=true`로 바꾼다.
 
 ---
 

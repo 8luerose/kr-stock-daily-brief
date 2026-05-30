@@ -380,6 +380,17 @@ def _qdrant_meta_base() -> dict[str, Any]:
     }
 
 
+def _qdrant_skip_meta(reason: str) -> dict[str, Any]:
+    meta = _qdrant_meta_base()
+    meta["skipped"] = True
+    meta["error"] = reason
+    return meta
+
+
+def _qdrant_insights_sync_enabled() -> bool:
+    return os.getenv("QDRANT_INSIGHTS_SYNC_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _qdrant_json(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     data = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8") if payload is not None else None
     req = request.Request(
@@ -1287,7 +1298,7 @@ def _float_env(name: str, default: float) -> float:
 
 def _ollama_timeout(json_mode: bool = False) -> float:
     if json_mode:
-        return _float_env("OLLAMA_JSON_TIMEOUT_SECONDS", 6.0)
+        return _float_env("OLLAMA_JSON_TIMEOUT_SECONDS", 10.0)
     return _float_env("OLLAMA_TIMEOUT_SECONDS", _float_env("LLM_TIMEOUT_SECONDS", 20.0))
 
 
@@ -1296,7 +1307,7 @@ def _call_ollama_llm(messages: list[dict[str, str]], *, json_mode: bool = False)
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
     timeout = _ollama_timeout(json_mode)
     num_predict = int(
-        os.getenv("OLLAMA_JSON_NUM_PREDICT", "120")
+        os.getenv("OLLAMA_JSON_NUM_PREDICT", "80")
         if json_mode
         else os.getenv("OLLAMA_NUM_PREDICT", os.getenv("LLM_MAX_TOKENS", "650"))
     )
@@ -1507,6 +1518,7 @@ def _llm_status(check_runtime: bool = True) -> dict[str, Any]:
             "maxDocuments": _qdrant_max_documents(),
             "timeoutSeconds": _qdrant_timeout(),
             "embeddingTimeoutSeconds": _qdrant_embedding_timeout(),
+            "insightsSyncEnabled": _qdrant_insights_sync_enabled(),
         },
     }
 
@@ -2848,9 +2860,9 @@ def _build_ollama_insights_prompt(
     documents: list[dict[str, str]],
     seed: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
-    prompt_documents = _ollama_prompt_documents(documents)[:6]
+    prompt_documents = _ollama_prompt_documents(documents)[:3]
     context = "\n".join(
-        f"[{doc['id']}] {doc['type']} | {doc['title']} | {_compact(doc.get('text'), 140)}"
+        f"[{doc['id']}] {doc['type']} | {doc['title']} | {_compact(doc.get('text'), 90)}"
         for doc in prompt_documents
     )
     seed = seed if isinstance(seed, dict) else {}
@@ -2862,19 +2874,16 @@ def _build_ollama_insights_prompt(
     seed_probabilities = seed_sentiment.get("nextTradingDay") if isinstance(seed_sentiment.get("nextTradingDay"), dict) else {}
     seed_summary = "\n".join([
         f"초안 결정: {_clean(seed_advice.get('decision'), '관망')}",
-        f"초안 이유: {_compact(seed_advice.get('summary'), 120)}",
-        f"개인 조건 조정: {_clean(seed_personal.get('statusLabel'), '미적용')} / {_compact(seed_personal.get('summary'), 120)}",
+        f"초안 이유: {_compact(seed_advice.get('summary'), 80)}",
+        f"개인 조건: {_clean(seed_personal.get('statusLabel'), '미적용')}",
         f"뉴스 점수/확률: {_clean(seed_sentiment.get('score'), '0')}점, 상승 {_clean(seed_probabilities.get('up'), '확인')}%, 하락 {_clean(seed_probabilities.get('down'), '확인')}%, 횡보 {_clean(seed_probabilities.get('flat'), '확인')}%",
         f"장후 분위기: {_clean(seed_report.get('mood'), '확인 필요')}",
-        f"초보자 코치 초안: {_compact(seed_coach.get('plainSummary'), 120)}",
     ])
     system = (
         "너는 한국 주식 초보자를 위한 로컬 Ollama 투자 학습 보조자다. "
-        "반드시 제공된 근거 안에서만 답하고 투자 지시, 수익 보장, 확정 표현을 금지한다. "
-        "점수와 확률은 시스템 초안을 그대로 유지하고, 문장만 더 자연스럽게 다듬는다. "
-        "'호재', '악재', '20일선' 같은 단어는 초보자가 이해할 수 있게 이유와 행동으로 풀어 쓴다. "
-        "반드시 한국어 JSON 객체 하나만 반환하고, 각 배열은 최대 2개 항목으로 짧게 쓴다. "
-        "마크다운, 코드블록, JSON 밖 설명은 쓰지 않는다."
+        "제공된 근거만 쓰고 투자 지시와 수익 보장은 금지한다. "
+        "점수와 확률은 초안을 유지한다. "
+        "한국어 JSON 객체 하나만 반환한다. 값은 짧고 자연스럽게 쓴다."
     )
     user = f"""
 대상: {subject}{f"({code})" if code else ""}
@@ -2886,50 +2895,34 @@ def _build_ollama_insights_prompt(
 근거:
 {context or "제공된 근거가 없습니다."}
 
-다음 JSON 스키마만 반환해라. score와 nextTradingDay는 초안 숫자를 그대로 써라.
+다음 JSON 스키마만 반환해라. 빈 배열은 최대 1개 문장만 넣어라.
 {{
   "answer": "",
   "stockAdvice": {{
-    "decision": "매수 검토|관망|매도 검토",
     "summary": "",
-    "tradeTiming": {{
-      "entryTiming": "",
-      "exitTiming": "",
-      "waitCondition": "",
-      "invalidationTrigger": "",
-      "tomorrowChecklist": []
-    }},
     "buyConditions": [],
     "watchConditions": [],
     "sellConditions": []
   }},
   "newsSentiment": {{
-    "summary": "",
     "llmContextLabel": "상승에 우호적|하락 위험|혼재|근거 약함",
     "llmContextReason": "",
-    "llmContextEvidence": [],
     "upReasons": [],
     "downRisks": [],
-    "caution": "",
     "actionGuide": []
   }},
   "afterMarketReport": {{
-    "llmComment": "",
-    "nextWatch": []
+    "llmComment": ""
   }},
   "beginnerCoach": {{
-    "title": "초보자 AI 코치",
     "plainSummary": "",
     "goodReason": "",
     "cautionReason": "",
     "nextAction": "",
-    "avoidAction": "",
-    "checklist": []
-  }},
-  "beginnerNotes": [],
-  "limitations": []
+    "avoidAction": ""
+  }}
 }}
-빈 값에는 반드시 위 근거를 읽고 실제 한국어 문장을 채워라. 한 문장은 70자 이내로 써라.
+각 문장은 45자 이내로 써라.
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -3257,14 +3250,17 @@ def ollama_insights(req: ChatRequest):
     code = _clean(req.stockCode, "")
     basis_date = _clean(req.contextDate, date.today().isoformat())
     documents = _build_retrieval_documents(req, subject, code, _clean(req.topicType, "stock"), basis_date)
-    documents, qdrant_meta = _augment_with_qdrant_documents(
-        req,
-        documents,
-        subject,
-        code,
-        _clean(req.topicType, "stock"),
-        basis_date,
-    )
+    if _qdrant_insights_sync_enabled():
+        documents, qdrant_meta = _augment_with_qdrant_documents(
+            req,
+            documents,
+            subject,
+            code,
+            _clean(req.topicType, "stock"),
+            basis_date,
+        )
+    else:
+        qdrant_meta = _qdrant_skip_meta("종목 선택 직후 응답 속도를 위해 인사이트 API에서는 Qdrant 동기 검색을 건너뜁니다.")
     seed = _fallback_ollama_insights(req, subject, code, basis_date, documents, _ollama_config_meta())
     llm_answer, llm_meta = _call_ollama_llm(
         _build_ollama_insights_prompt(req, subject, code, basis_date, documents, seed),

@@ -134,7 +134,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
     : qdrant?.vectorProvider === 'hash'
       ? '해시 검색'
       : '벡터 검색';
-  const qdrantLabel = qdrant?.enabled
+  const qdrantLabel = qdrant?.enabled && !qdrant?.skipped
     ? `Qdrant ${qdrantModeLabel} ${qdrant.retrievedCount || 0}개 · 저장 ${qdrant.storedCount || 0}개`
     : '';
   const insightRuntime = insights?.runtimeCache || null;
@@ -179,7 +179,7 @@ export default function FloatingAiCard({ ai, events, asOf, onExpandedChange, onR
     reportRuntimeLabelText,
     compactStorageChip(insights?.storage || ai.storage),
     compactStorageChip(ai.marketReport?.storage),
-    qdrant?.enabled ? `Qdrant 근거 ${qdrant.retrievedCount || 0}개` : ''
+    qdrant?.enabled && !qdrant?.skipped ? `Qdrant 근거 ${qdrant.retrievedCount || 0}개` : ''
   ].filter(Boolean);
   const marketDashboard = ai.marketReport?.marketDashboard || null;
   const topGainer = marketDashboard?.topGainer || null;
