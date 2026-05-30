@@ -64,6 +64,7 @@ export default function FloatingAiCard({ ai, events, asOf }) {
   const newsSentiment = insights?.newsSentiment || {};
   const nextTradingDay = newsSentiment?.nextTradingDay || {};
   const afterMarketReport = insights?.afterMarketReport || {};
+  const decisionFactors = Array.isArray(insights?.decisionFactors) ? insights.decisionFactors.slice(0, 4) : [];
   const personalRisk = stockAdvice.personalRisk || ai.portfolioGuidance?.positionDiagnostics || null;
   const visibleHeadlineCount = newsSentiment?.headlineSignals?.length || 0;
   const adviceDecision = stockAdvice.decision || '관망';
@@ -182,6 +183,23 @@ export default function FloatingAiCard({ ai, events, asOf }) {
                   <div>
                     <strong>{adviceDecision}</strong>
                     <p>{adviceSummary}</p>
+                    {decisionFactors.length > 0 && (
+                      <div className={styles.decisionFactorPanel} aria-label="AI 종합 판단 근거">
+                        {decisionFactors.map((factor) => (
+                          <span
+                            key={`${factor.label}-${factor.state}`}
+                            className={clsx(
+                              factor.tone === 'positive' && styles.factorPositive,
+                              factor.tone === 'negative' && styles.factorNegative
+                            )}
+                          >
+                            <b>{factor.label}</b>
+                            <strong>{factor.state}</strong>
+                            <em>{factor.summary}</em>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {personalRisk && (
                       <div className={styles.personalRiskPanel} aria-label="개인 조건 손익 기준">
                         <div className={styles.personalRiskHeader}>

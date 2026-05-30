@@ -434,6 +434,16 @@ function normalizeScoreBreakdown(breakdown = {}) {
   };
 }
 
+function normalizeDecisionFactors(items) {
+  if (!Array.isArray(items)) return [];
+  return items.slice(0, 4).map((item) => ({
+    label: humanizeText(item?.label || "근거"),
+    state: humanizeText(item?.state || "확인"),
+    tone: ["positive", "negative", "neutral"].includes(item?.tone) ? item.tone : "neutral",
+    summary: humanizeText(item?.summary || "")
+  })).filter((item) => item.label && item.summary);
+}
+
 function normalizeOllamaInsights(remote = {}) {
   const advice = remote.stockAdvice || {};
   const sentiment = remote.newsSentiment || {};
@@ -488,6 +498,7 @@ function normalizeOllamaInsights(remote = {}) {
       llmComment: humanizeText(report.llmComment || "장후 브리프에 로컬 LLM 코멘트를 붙일 수 있습니다."),
       nextWatch: normalizeTextList(report.nextWatch)
     },
+    decisionFactors: normalizeDecisionFactors(remote.decisionFactors),
     beginnerNotes: normalizeTextList(remote.beginnerNotes),
     limitations: normalizeTextList(remote.limitations),
     storage: remote.storage || null

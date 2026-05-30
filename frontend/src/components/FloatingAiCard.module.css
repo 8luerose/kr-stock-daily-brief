@@ -340,6 +340,72 @@
   overflow-wrap: anywhere;
 }
 
+.decisionFactorPanel {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.decisionFactorPanel span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.44);
+  padding: 7px;
+}
+
+.decisionFactorPanel b,
+.decisionFactorPanel strong,
+.decisionFactorPanel em {
+  display: block;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.decisionFactorPanel b {
+  color: var(--color-text-tertiary);
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.decisionFactorPanel strong {
+  color: #fde68a;
+  font-size: 0.76rem;
+  font-weight: 950;
+  line-height: 1.22;
+}
+
+.decisionFactorPanel em {
+  color: var(--color-text-secondary);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.32;
+  max-height: 35px;
+  overflow: hidden;
+}
+
+.decisionFactorPanel .factorPositive {
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+.decisionFactorPanel .factorPositive strong {
+  color: #bbf7d0;
+}
+
+.decisionFactorPanel .factorNegative {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.decisionFactorPanel .factorNegative strong {
+  color: #fecaca;
+}
+
 .sentimentMeta {
   display: block;
   color: #bfdbfe;
@@ -1071,6 +1137,7 @@
 
   .conditionGrid { grid-template-columns: 1fr; }
   .ollamaWorkflowGrid { grid-template-columns: 1fr; }
+  .decisionFactorPanel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sentimentReasonGrid { grid-template-columns: 1fr; }
   .newsGrid { grid-template-columns: 1fr; }
   .checklist { grid-template-columns: 1fr; }

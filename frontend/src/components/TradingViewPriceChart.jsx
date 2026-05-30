@@ -137,6 +137,12 @@ function probabilityTone(up, down) {
   return 'neutral';
 }
 
+function factorToneClass(tone, styles) {
+  if (tone === 'positive') return styles.factorPositive;
+  if (tone === 'negative') return styles.factorNegative;
+  return styles.factorNeutral;
+}
+
 function probabilityValue(value) {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : null;
@@ -368,7 +374,8 @@ export default function TradingViewPriceChart({
       nextWatch,
       title,
       modeLabel: compactText(statusLabel, '근거 기반 AI', 48),
-      live: insights?.mode === 'ollama_llm' || ai?.llmUsed
+      live: insights?.mode === 'ollama_llm' || ai?.llmUsed,
+      factors: Array.isArray(insights?.decisionFactors) ? insights.decisionFactors.slice(0, 4) : []
     };
   }, [ai]);
 
@@ -748,6 +755,20 @@ export default function TradingViewPriceChart({
             <span>재무 <strong>{aiDecision.fundamentalLabel}</strong></span>
             <span>장후 <strong>{aiDecision.mood}</strong></span>
           </div>
+          {aiDecision.factors.length > 0 && (
+            <div className={styles.aiFactorGrid} aria-label="차트 재무 뉴스 센티멘트 판단 근거">
+              {aiDecision.factors.map((factor) => (
+                <div
+                  key={`${factor.label}-${factor.state}`}
+                  className={clsx(styles.aiFactorItem, factorToneClass(factor.tone, styles))}
+                >
+                  <span>{factor.label}</span>
+                  <strong>{factor.state}</strong>
+                  <em>{factor.summary}</em>
+                </div>
+              ))}
+            </div>
+          )}
           <div className={styles.aiDecisionReasonGrid}>
             <div>
               <b>판단 근거</b>

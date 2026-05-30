@@ -1418,6 +1418,71 @@ def _decision_reason(decision: str, score: int, ma20: dict[str, str]) -> str:
     )
 
 
+def _decision_factor_breakdown(
+    decision: str,
+    score: int,
+    ma20: dict[str, str],
+    probabilities: dict[str, int],
+    fundamentals: dict[str, Any],
+) -> list[dict[str, str]]:
+    position = _clean(ma20.get("position"), "")
+    if position in {"above", "near"}:
+        chart_state, chart_tone = "우호", "positive"
+    elif position == "below":
+        chart_state, chart_tone = "주의", "negative"
+    else:
+        chart_state, chart_tone = "보류", "neutral"
+
+    if score >= 20:
+        news_state, news_tone = "우호", "positive"
+    elif score <= -20:
+        news_state, news_tone = "주의", "negative"
+    else:
+        news_state, news_tone = "혼재", "neutral"
+
+    up = _number(probabilities.get("up"), None)
+    down = _number(probabilities.get("down"), None)
+    if up is not None and down is not None and up >= down + 8:
+        sentiment_state, sentiment_tone = "상승 우위", "positive"
+    elif up is not None and down is not None and down >= up + 8:
+        sentiment_state, sentiment_tone = "하락 주의", "negative"
+    else:
+        sentiment_state, sentiment_tone = "확인 필요", "neutral"
+
+    finance_summary = _clean(fundamentals.get("summary"), "")
+    if not finance_summary or any(token in finance_summary for token in ["없어", "비어", "확인"]):
+        finance_state, finance_tone = "제한", "neutral"
+    else:
+        finance_state, finance_tone = "반영", "positive"
+
+    return [
+        {
+            "label": "차트",
+            "state": chart_state,
+            "tone": chart_tone,
+            "summary": f"현재가가 20일선 {ma20['ma20']} 기준 {ma20['positionLabel']}입니다.",
+        },
+        {
+            "label": "재무",
+            "state": finance_state,
+            "tone": finance_tone,
+            "summary": finance_summary or "재무 스냅샷이 제한적이라 차트와 뉴스 근거를 더 보수적으로 봅니다.",
+        },
+        {
+            "label": "뉴스",
+            "state": news_state,
+            "tone": news_tone,
+            "summary": f"뉴스/이벤트 점수는 {score}점입니다.",
+        },
+        {
+            "label": "센티멘트",
+            "state": sentiment_state,
+            "tone": sentiment_tone,
+            "summary": f"다음 거래일 참고 확률은 상승 {probabilities['up']}%, 하락 {probabilities['down']}%입니다.",
+        },
+    ]
+
+
 def _after_market_comment(subject: str, decision: str, score: int, probabilities: dict[str, int], summary_points: list[str]) -> str:
     subject_label = f"{subject} 종목"
     market_line = summary_points[0] if summary_points else "저장 브리프의 시장 대표 신호가 제한적입니다."
@@ -1645,6 +1710,7 @@ def _fallback_ollama_insights(
                 fundamentals["summary"],
             ][:4],
         },
+        "decisionFactors": _decision_factor_breakdown(decision, score, ma20, probabilities, fundamentals),
         "newsSentiment": {
             "title": "뉴스 감성 기반 단기 방향 예측",
             "score": score,
