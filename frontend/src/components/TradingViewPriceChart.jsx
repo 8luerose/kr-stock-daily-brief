@@ -239,7 +239,8 @@ export default function TradingViewPriceChart({
   ai,
   learningMode,
   onTermClick,
-  focusMode = false
+  focusMode = false,
+  onOpenPortfolio
 }) {
   const containerRef = useRef(null);
   const chartApiRef = useRef(null);
@@ -337,6 +338,7 @@ export default function TradingViewPriceChart({
       || ai?.portfolioGuidance?.positionDiagnostics
       || null
   ), [ai]);
+  const needsPortfolioSetup = !personalRisk || personalRisk.status === 'not_saved';
 
   const personalPriceLines = useMemo(() => {
     if (!personalRisk || personalRisk.status === 'not_saved') return [];
@@ -1055,6 +1057,15 @@ export default function TradingViewPriceChart({
             <b>다음 확인</b>
             <span>{aiDecision.timingNextAction || aiDecision.primaryCondition || aiDecision.nextWatch}</span>
           </div>
+          {needsPortfolioSetup && onOpenPortfolio && (
+            <button
+              type="button"
+              className={styles.personalSetupButton}
+              onClick={onOpenPortfolio}
+            >
+              평균단가 저장하고 AI 상담 개인화
+            </button>
+          )}
           {aiDecision.hasTradeTiming && (
             <div className={styles.aiTimingGrid} aria-label="AI 매매 타이밍">
               <div>
@@ -1128,6 +1139,34 @@ export default function TradingViewPriceChart({
             <strong>{aiDecision.timingNextAction || aiDecision.nextWatch || aiDecision.primaryCondition}</strong>
           </span>
         </div>
+      )}
+      {needsPortfolioSetup && onOpenPortfolio && (
+        <button
+          type="button"
+          className={styles.mobilePortfolioCta}
+          onClick={onOpenPortfolio}
+        >
+          평균단가 저장
+        </button>
+      )}
+      {visibleLayers.personal && showDetailPanels && needsPortfolioSetup && onOpenPortfolio && (
+        <aside
+          className={clsx(styles.personalRiskOverlay, styles.personalRiskMissing)}
+          aria-label="개인 평균단가 저장 안내"
+        >
+          <div className={styles.personalRiskTopline}>
+            <span>내 기준</span>
+            <strong>샌드박스 미저장</strong>
+          </div>
+          <p>{personalRisk?.summary || '평균단가와 손실허용을 저장하면 AI가 매수보다 리스크 기준을 먼저 계산합니다.'}</p>
+          <button
+            type="button"
+            className={styles.personalRiskAction}
+            onClick={onOpenPortfolio}
+          >
+            평균단가·손실허용 입력
+          </button>
+        </aside>
       )}
       {visibleLayers.personal && showDetailPanels && personalRisk && personalRisk.status !== 'not_saved' && (
         <aside

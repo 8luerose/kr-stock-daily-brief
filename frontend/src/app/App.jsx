@@ -249,6 +249,7 @@ function App() {
             aiCardExpanded={aiCardExpanded}
             onPanelOpenChange={setChartPanelOpen}
             onRefreshAi={refreshAi}
+            onOpenPortfolio={() => setPortfolioOpen(true)}
           />
         )}
       </div>
